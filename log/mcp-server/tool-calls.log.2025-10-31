@@ -1,0 +1,134 @@
+{"timestamp": "2025-10-31T20:20:49.952018Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T20:20:49.958019Z", "level": "INFO", "logger": "gitban.tools", "message": "No cards found", "operation": "get_kanban_stats_no_cards"}
+{"timestamp": "2025-10-31T20:27:30.770377Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Initialize Python Project Structure", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:27:30.821404Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:27:30.909451Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:27:30.910452Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement CLI Interface with Click", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:27:30.910452Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:27:30.916453Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:27:30.916453Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Image Loading and Validation", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:27:30.916453Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:27:30.919453Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:27:56.128197Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Initialize Python Project Structure", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:27:56.130192Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:27:56.131191Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:27:56.136192Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: j5ta2i", "operation": "create_card_success", "card_id": "j5ta2i"}
+{"timestamp": "2025-10-31T20:29:17.048516Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement CLI Interface with Click", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:29:17.049511Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:29:17.050514Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:29:17.056513Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 69yucs", "operation": "create_card_success", "card_id": "69yucs"}
+{"timestamp": "2025-10-31T20:29:19.161759Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Image Loading and Validation", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:29:19.161759Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:29:19.162760Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:29:19.165766Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: jkvie2", "operation": "create_card_success", "card_id": "jkvie2"}
+{"timestamp": "2025-10-31T20:32:21.521569Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Hough Circle Transform", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:32:21.522567Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:32:21.523568Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:32:21.527581Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: iyjev2", "operation": "create_card_success", "card_id": "iyjev2"}
+{"timestamp": "2025-10-31T20:32:24.272581Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Extract Circle Colors", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:32:24.273583Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:32:24.274584Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:32:24.277585Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: unclae", "operation": "create_card_success", "card_id": "unclae"}
+{"timestamp": "2025-10-31T20:32:27.957733Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Format Detection Results", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:32:27.957733Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:32:27.959734Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:32:27.962734Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: mucerq", "operation": "create_card_success", "card_id": "mucerq"}
+{"timestamp": "2025-10-31T20:34:38.384902Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Generate Test Image Dataset", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:34:38.386902Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:34:38.392422Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:34:39.659287Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Write Unit Tests", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:34:39.660286Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:34:39.661283Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:35:00.394745Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Generate Test Image Dataset", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:35:00.423276Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:35:00.425273Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:35:02.214474Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Write Unit Tests", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:35:02.214474Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:35:02.216475Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:35:26.326998Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Generate Test Image Dataset", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:35:26.337999Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:35:26.338996Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:35:26.342116Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: v99s0z", "operation": "create_card_success", "card_id": "v99s0z"}
+{"timestamp": "2025-10-31T20:35:27.541448Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Write Unit Tests for MVP", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T20:35:27.542448Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T20:35:27.543449Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T20:35:27.546447Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: a9lo2z", "operation": "create_card_success", "card_id": "a9lo2z"}
+{"timestamp": "2025-10-31T20:40:55.422905Z", "level": "INFO", "logger": "gitban.tools", "message": "Health check called", "operation": "health_check_start"}
+{"timestamp": "2025-10-31T20:40:55.455900Z", "level": "INFO", "logger": "gitban.tools", "message": "Health check completed", "operation": "health_check_success"}
+{"timestamp": "2025-10-31T21:11:46.116186Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Image Loading and Validation", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T21:11:46.123186Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T21:11:46.150190Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T21:11:46.151231Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Hough Circle Transform", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T21:11:46.151231Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T21:11:46.152187Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T21:11:46.153219Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Extract Circle Colors", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T21:11:46.153219Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T21:11:46.154187Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T21:11:46.154187Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Format Detection Results", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T21:11:46.155187Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T21:11:46.155187Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:13:02.850232Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add minimum radius filter CLI flag", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T22:13:02.856232Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T22:13:02.861232Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:13:02.871233Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 7rsm9u", "operation": "create_card_success", "card_id": "7rsm9u"}
+{"timestamp": "2025-10-31T22:13:16.962435Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add maximum radius filter CLI flag", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T22:13:16.963439Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T22:13:16.964447Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:13:16.968443Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: ju72xb", "operation": "create_card_success", "card_id": "ju72xb"}
+{"timestamp": "2025-10-31T22:13:40.620321Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add smart color grouping with max-colors flag", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T22:13:40.621324Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T22:13:40.622327Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:13:40.625322Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: l5m8r9", "operation": "create_card_success", "card_id": "l5m8r9"}
+{"timestamp": "2025-10-31T22:13:56.164412Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add configurable color tolerance flag", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T22:13:56.164412Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T22:13:56.165411Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:13:56.168415Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 2gzwsw", "operation": "create_card_success", "card_id": "2gzwsw"}
+{"timestamp": "2025-10-31T22:18:00.883184Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T22:18:00.887193Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 4 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-10-31T22:18:00.888194Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-10-31T22:18:00.888194Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-10-31T22:28:37.014768Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T22:28:37.016766Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 4 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-10-31T22:28:37.016766Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-10-31T22:28:37.017768Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-10-31T22:40:39.315512Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T22:40:39.319524Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 4 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-10-31T22:40:39.319524Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-10-31T22:40:39.319524Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-10-31T22:48:47.118895Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add sensitivity control with presets", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T22:48:47.135895Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T22:48:47.171905Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:48:47.175899Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 4b58vp", "operation": "create_card_success", "card_id": "4b58vp"}
+{"timestamp": "2025-10-31T22:49:08.232537Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add confidence scores to detections", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T22:49:08.232537Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T22:49:08.234536Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-10-31T22:49:08.237536Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: vizb1s", "operation": "create_card_success", "card_id": "vizb1s"}
+{"timestamp": "2025-10-31T22:52:57.168316Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T22:52:57.169321Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 6 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-10-31T22:52:57.171311Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-10-31T22:52:57.172315Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-10-31T23:14:09.761159Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T23:14:09.766163Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 6 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-10-31T23:14:09.767161Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-10-31T23:14:09.767161Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-10-31T23:18:34.320524Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add minimum distance between circles filter", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T23:18:34.323446Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T23:18:34.330441Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T23:18:40.722493Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement partial circle detection at edges", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T23:18:40.723498Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T23:18:40.724492Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T23:19:09.075713Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add minimum distance between circles filter", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T23:19:09.078715Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feat (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T23:19:09.079713Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feat: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T23:19:33.450838Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: feat-add-minimum-distance-between-circles", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T23:19:33.450838Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T23:19:33.496347Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T23:19:33.499347Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 0du3z8", "operation": "create_card_success", "card_id": "0du3z8"}
+{"timestamp": "2025-10-31T23:19:38.796094Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: feat-implement-partial-circle-detection-at-edges", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-10-31T23:19:38.797094Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-10-31T23:19:38.798090Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-10-31T23:19:38.800100Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: greeno", "operation": "create_card_success", "card_id": "greeno"}
+{"timestamp": "2025-10-31T23:24:03.729856Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-10-31T23:24:03.731862Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 8 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-10-31T23:24:03.731862Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-10-31T23:24:03.731862Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}

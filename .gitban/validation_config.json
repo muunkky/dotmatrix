@@ -1,0 +1,25 @@
+{
+  "_comment": "Gitban validation configuration - STRICT defaults for LLM safety",
+  "version": "1.0",
+  "default_mode": "strict",
+  "rules": {
+    "checkbox_completion": {
+      "_description": "Validate all checkboxes are complete before marking card done",
+      "enabled": true,
+      "mode": "strict",
+      "per_type": {}
+    },
+    "prerequisites": {
+      "_description": "Validate prerequisites are met before taking card",
+      "enabled": true,
+      "mode": "strict",
+      "per_type": {}
+    }
+  },
+  "_mode_docs": {
+    "strict": "Block action entirely, no override allowed - RECOMMENDED for LLMs",
+    "advisory": "Show warnings, allow override with force=True",
+    "none": "Skip validation entirely"
+  },
+  "_note": "Strict mode helps LLMs avoid skipping steps. Relax via set_validation_mode() or edit this file."
+}

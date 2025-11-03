@@ -1,0 +1,305 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Roadmap",
+  "description": "Schema for validating a multi-version project roadmap document.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "document_version",
+    "last_updated",
+    "metadata",
+    "changelog",
+    "versions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "The version of the schema itself."
+    },
+    "document_version": {
+      "type": "string",
+      "description": "The version of the roadmap document."
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "The date the document was last updated."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "High-level metadata about the roadmap document itself.",
+      "required": [
+        "maintained_by",
+        "review_frequency",
+        "related_docs",
+        "tools"
+      ],
+      "properties": {
+        "maintained_by": {
+          "type": "string",
+          "description": "The team or individual responsible for maintaining the roadmap."
+        },
+        "review_frequency": {
+          "type": "string",
+          "description": "How often the roadmap is reviewed and updated (e.g., 'Monthly')."
+        },
+        "related_docs": {
+          "type": "array",
+          "description": "A list of paths to related documentation.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tools": {
+          "type": "object",
+          "description": "Tools used for managing the project and its tasks.",
+          "required": [
+            "roadmap_tracking",
+            "task_tracking",
+            "Gitban_mcp"
+          ],
+          "properties": {
+            "roadmap_tracking": {
+              "type": "string"
+            },
+            "task_tracking": {
+              "type": "string"
+            },
+            "Gitban_mcp": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        }
+      }
+    },
+    "changelog": {
+      "type": "array",
+      "description": "A list of changes made to the document over time.",
+      "items": {
+        "$ref": "#/$defs/changelogEntry"
+      }
+    },
+    "versions": {
+      "type": "object",
+      "description": "A map of roadmap versions, e.g., 'v1', 'v2'.",
+      "patternProperties": {
+        "^v\\d+$": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "done",
+        "in_progress",
+        "todo"
+      ]
+    },
+    "changelogEntry": {
+      "type": "object",
+      "required": [
+        "version",
+        "date",
+        "changes"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "description",
+        "sequence",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "tdd_spec": {
+          "type": "string"
+        },
+        "docs_ref": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "description",
+        "status",
+        "projects"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "critical",
+            "high"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "projects": {
+          "type": "object",
+          "description": "A map of projects associated with this feature.",
+          "patternProperties": {
+            "^[a-z]+(-[a-z]+)*$": {
+              "$ref": "#/$defs/project"
+            }
+          }
+        }
+      }
+    },
+    "milestone": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "description",
+        "status",
+        "success_criteria",
+        "features"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "success_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "features": {
+          "type": "object",
+          "description": "A map of features associated with this milestone.",
+          "patternProperties": {
+            "^[a-z]+(-[a-z]+)*$": {
+              "$ref": "#/$defs/feature"
+            }
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "description",
+        "status",
+        "milestones"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "target_completion": {
+          "type": "string",
+          "format": "date"
+        },
+        "milestones": {
+          "type": "object",
+          "description": "A map of milestones associated with this version.",
+          "patternProperties": {
+            "^m\\d+$": {
+              "$ref": "#/$defs/milestone"
+            }
+          }
+        }
+      }
+    }
+  }
+}

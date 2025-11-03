@@ -1,0 +1,61 @@
+Loaded configuration from: configs/cmyk-overlapping.json
+  Merged min_radius: 30
+  Merged min_distance: 50
+  Merged sensitivity: strict
+  Merged edge_sampling: True
+  Merged edge_method: circumference
+Debug mode enabled
+Input: test_dotmatrix.png
+Output: stdout
+Format: json
+DotMatrix v0.1.0
+Loading image: test_dotmatrix.png
+Image loaded: (1776, 1696, 3)
+Detecting circles...
+Detected 16 circle(s)
+Extracting color palette (top 4 colors excluding white)...
+Color palette extracted: 4 colors
+  1. RGB(203, 203, 203)
+  2. RGB(7, 6, 6)
+  3. RGB(155, 92, 217)
+  4. RGB(95, 206, 238)
+  Extracting color for Circle(center=(1214.0, 1200.0), radius=265.0, confidence=44.4) (method: edge (circumference))
+    Sampled RGB(200, 115, 94) -> Palette RGB(155, 92, 217)
+  Extracting color for Circle(center=(1268.0, 944.0), radius=258.0, confidence=87.1) (method: edge (circumference))
+    Sampled RGB(128, 174, 179) -> Palette RGB(95, 206, 238)
+  Extracting color for Circle(center=(564.0, 846.0), radius=236.0, confidence=0.4) (method: edge (circumference))
+    Sampled RGB(140, 193, 224) -> Palette RGB(95, 206, 238)
+  Extracting color for Circle(center=(1102.0, 946.0), radius=209.0, confidence=21.8) (method: edge (circumference))
+    Sampled RGB(156, 92, 154) -> Palette RGB(155, 92, 217)
+  Extracting color for Circle(center=(1102.0, 1396.0), radius=184.0, confidence=64.0) (method: edge (circumference))
+    Sampled RGB(252, 248, 211) -> Palette RGB(203, 203, 203)
+  Extracting color for Circle(center=(346.0, 1374.0), radius=184.0, confidence=28.4) (method: edge (circumference))
+    Sampled RGB(252, 242, 202) -> Palette RGB(203, 203, 203)
+  Extracting color for Circle(center=(524.0, 882.0), radius=182.0, confidence=100.0) (method: edge (circumference))
+    Sampled RGB(24, 30, 40) -> Palette RGB(7, 6, 6)
+  Extracting color for Circle(center=(556.0, 602.0), radius=182.0, confidence=36.0) (method: edge (circumference))
+    Sampled RGB(236, 216, 138) -> Palette RGB(203, 203, 203)
+  Extracting color for Circle(center=(956.0, 464.0), radius=129.0, confidence=7.1) (method: edge (circumference))
+    Sampled RGB(218, 206, 221) -> Palette RGB(203, 203, 203)
+  Extracting color for Circle(center=(1004.0, 332.0), radius=129.0, confidence=4.0) (method: edge (circumference))
+    Sampled RGB(209, 188, 148) -> Palette RGB(203, 203, 203)
+  Extracting color for Circle(center=(812.0, 350.0), radius=128.0, confidence=16.0) (method: edge (circumference))
+    Sampled RGB(214, 151, 180) -> Palette RGB(203, 203, 203)
+  Extracting color for Circle(center=(652.0, 1506.0), radius=128.0, confidence=11.1) (method: edge (circumference))
+    Sampled RGB(200, 109, 157) -> Palette RGB(155, 92, 217)
+  Extracting color for Circle(center=(630.0, 1062.0), radius=128.0, confidence=1.8) (method: edge (circumference))
+    Sampled RGB(173, 113, 159) -> Palette RGB(155, 92, 217)
+  Extracting color for Circle(center=(892.0, 202.0), radius=118.0, confidence=75.1) (method: edge (circumference))
+    Sampled RGB(160, 144, 140) -> Palette RGB(155, 92, 217)
+  Extracting color for Circle(center=(490.0, 1568.0), radius=117.0, confidence=53.8) (method: edge (circumference))
+    Sampled RGB(68, 38, 42) -> Palette RGB(7, 6, 6)
+  Extracting color for Circle(center=(542.0, 1426.0), radius=84.0, confidence=0.0) (method: edge (circumference))
+    Sampled RGB(153, 94, 94) -> Palette RGB(155, 92, 217)
+Extracting circles to: demo_results/final_test4
+Using k-means clustering with max_colors=4
+Extracted 4 color group(s) to demo_results/final_test4/
+  - circles_color_007_006_006.png
+  - circles_color_095_206_238.png
+  - circles_color_155_092_217.png
+  - circles_color_203_203_203.png
+Extraction complete!

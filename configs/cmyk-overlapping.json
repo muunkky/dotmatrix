@@ -1,0 +1,13 @@
+{
+  "description": "Optimal settings for CMYK overlapping circles (like test_dotmatrix.png)",
+  "sensitivity": "strict",
+  "min_radius": 30,
+  "min_distance": 50,
+  "edge_sampling": true,
+  "edge_method": "circumference",
+  "edge_samples": 72,
+  "max_colors": 4,
+  "color_tolerance": 80,
+  "use_histogram": true,
+  "exclude_background": true
+}

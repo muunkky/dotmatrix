@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "default_mode": "strict",
+  "rules": {
+    "template_usage": {
+      "_description": "Enforce or encourage template usage for structured card types",
+      "enabled": true,
+      "mode": "strict",
+      "per_type": {
+        "feature": "advisory",
+        "test": "advisory",
+        "chore": "advisory"
+      }
+    }
+  },
+  "_comment": "Gitban template enforcement configuration - STRICT defaults for consistency",
+  "_mode_docs": {
+    "strict": "Block cards without proper template structure - RECOMMENDED",
+    "advisory": "Show warnings, allow cards without templates",
+    "none": "Skip template enforcement entirely"
+  },
+  "_note": "Strict mode ensures consistent card structure. Relax via set_template_mode() or edit this file."
+}
