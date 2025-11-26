@@ -139,8 +139,13 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Disable automatic subdirectory creation for --extract (flat output)'
 )
+@click.option(
+    '--save-config',
+    type=click.Path(path_type=Path),
+    help='Save current settings to config file (YAML or JSON)'
+)
 @click.version_option(version=__version__, prog_name='dotmatrix')
-def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize):
+def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -167,7 +172,8 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
                               'color_tolerance', 'max_colors', 'sensitivity',
                               'min_confidence', 'edge_sampling', 'edge_samples',
                               'edge_method', 'exclude_background', 'use_histogram', 'color_separation',
-                              'convex_edge', 'palette', 'quantize_output', 'run_name', 'no_organize']:
+                              'convex_edge', 'palette', 'quantize_output', 'run_name', 'no_organize',
+                              'save_config']:
                 if param_name in ctx.params:
                     source = ctx.get_parameter_source(param_name)
                     # Only add if NOT from default (i.e., from CLI or environment)
@@ -201,6 +207,7 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
             quantize_output = merged.get('quantize_output', quantize_output)
             run_name = merged.get('run_name', run_name)
             no_organize = merged.get('no_organize', no_organize)
+            save_config = merged.get('save_config', save_config)
 
             if debug:
                 click.echo(f"Loaded configuration from: {config}", err=True)
@@ -242,6 +249,42 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
             err=True
         )
         sys.exit(1)
+
+    # Save config if requested
+    if save_config:
+        from .config_loader import save_config as do_save_config
+
+        # Collect all current settings
+        current_settings = {
+            'min_radius': min_radius,
+            'max_radius': max_radius,
+            'min_distance': min_distance,
+            'sensitivity': sensitivity,
+            'min_confidence': min_confidence,
+            'convex_edge': convex_edge,
+            'palette': palette,
+            'color_tolerance': color_tolerance,
+            'max_colors': max_colors,
+            'edge_sampling': edge_sampling,
+            'edge_samples': edge_samples,
+            'edge_method': edge_method,
+            'exclude_background': exclude_background,
+            'use_histogram': use_histogram,
+            'format': format,
+            'run_name': run_name,
+            'no_organize': no_organize,
+        }
+
+        try:
+            do_save_config(save_config, current_settings)
+            click.echo(f"Configuration saved to: {save_config}", err=True)
+        except ValueError as e:
+            click.echo(f"Error saving config: {e}", err=True)
+            sys.exit(1)
+
+        # If only saving config (no input), exit early
+        if not input:
+            sys.exit(0)
 
     try:
         # Import modules
