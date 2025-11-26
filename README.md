@@ -10,7 +10,7 @@ DotMatrix is a Python command-line tool that detects circles in images and outpu
 - 🎨 Color extraction for each detected circle (RGB)
 - 📊 Multiple output formats: JSON and CSV
 - 🖼️ **PNG extraction**: Generate separate images by color with transparent backgrounds
-- 🔄 Handles overlapping circles (coming in v0.2.0)
+- 🔄 **Handles overlapping circles** with convex edge detection (best-in-class for CMYK/halftone)
 - 🚀 Fast processing with optimized algorithms
 - 📝 Simple command-line interface
 
@@ -154,6 +154,51 @@ dotmatrix --input image.png --min-distance 30 --min-radius 15
 - Larger values prevent overlapping circle detections
 - Useful for grid patterns or well-spaced circles
 - Default of 20px works well for most images
+
+### Convex Edge Detection (Best for Overlapping Circles)
+
+For images with heavily overlapping circles (like CMYK halftones), use convex edge detection:
+
+```bash
+# Detect overlapping CMYK circles using convex edge analysis
+dotmatrix --input image.png --convex-edge --palette cmyk
+
+# With min-radius filter (recommended)
+dotmatrix --input image.png --convex-edge --palette cmyk --min-radius 80
+
+# Extract to color-grouped PNGs
+dotmatrix --input image.png --convex-edge --palette cmyk --extract output_dir/
+
+# Use custom color palette (RGB values separated by semicolons)
+dotmatrix --input image.png --convex-edge --palette "255,0,0;0,255,0;0,0,255"
+
+# Save quantized image for debugging
+dotmatrix --input image.png --convex-edge --palette cmyk --quantize-output debug.png
+```
+
+**About Convex Edge Detection:**
+- Uses convexity defect analysis to separate overlapping circles
+- First quantizes image to a limited color palette (handles anti-aliasing)
+- Detects circles from convex-only edges (ignores overlapping concave regions)
+- Best-circle-per-blob selection ensures accurate detection
+- Automatically deduplicates similar circles
+
+**Preset Palettes:**
+- `cmyk`: White, Black, Cyan (118,193,241), Magenta (217,93,155), Yellow (238,206,94)
+- `rgb`: White, Black, Red, Green, Blue
+
+**When to Use:**
+- ✅ **Use convex-edge** for CMYK halftone patterns with overlapping circles
+- ✅ **Use convex-edge** when standard detection misses circles due to heavy overlap
+- ✅ **Use convex-edge** when you know the exact colors in your image
+- ❌ **Use standard detection** for well-separated circles
+- ❌ **Use standard detection** when colors are unknown/varied
+
+**Example (16 overlapping CMYK circles):**
+```bash
+$ dotmatrix --input halftone.png --convex-edge --palette cmyk --min-radius 80
+# Detects all 16 circles: 4 black, 4 cyan, 4 magenta, 4 yellow
+```
 
 ### Edge-Based Color Sampling
 
@@ -336,6 +381,7 @@ dotmatrix/
 │       ├── __main__.py
 │       ├── cli.py              # CLI interface
 │       ├── circle_detector.py  # Hough Circle Transform
+│       ├── convex_detector.py  # Convex edge detection for overlapping circles
 │       ├── color_extractor.py  # Color sampling
 │       ├── color_clustering.py # K-means color clustering
 │       ├── image_extractor.py  # PNG extraction by color
@@ -358,11 +404,11 @@ dotmatrix/
 - [ ] JSON/CSV output
 - [ ] Unit tests
 
-### v0.2.0 - Overlapping Circles
-- [ ] Advanced edge detection
-- [ ] Multi-scale detection
-- [ ] Occlusion handling
-- [ ] Depth ordering for color extraction
+### v0.2.0 - Overlapping Circles (Current)
+- [x] Convex edge detection for overlapping circles
+- [x] Color palette quantization (CMYK, RGB, custom)
+- [x] Per-color circle detection with convexity analysis
+- [x] `--convex-edge`, `--palette`, `--quantize-output` CLI flags
 
 ### v0.3.0 - Production Ready
 - [ ] Confidence scores

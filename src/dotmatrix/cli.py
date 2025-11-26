@@ -113,8 +113,24 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Separate image by color first, then detect circles independently per color (best for overlapping)'
 )
+@click.option(
+    '--convex-edge',
+    is_flag=True,
+    help='Use convex edge detection for heavily overlapping circles (best accuracy for CMYK/halftone)'
+)
+@click.option(
+    '--palette',
+    type=str,
+    default='cmyk',
+    help='Color palette for convex-edge mode: preset name (cmyk, rgb) or custom "R,G,B;R,G,B" (default: cmyk)'
+)
+@click.option(
+    '--quantize-output',
+    type=click.Path(path_type=Path),
+    help='Save quantized image to this path (for debugging convex-edge mode)'
+)
 @click.version_option(version=__version__, prog_name='dotmatrix')
-def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation):
+def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -140,7 +156,8 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
                               'min_radius', 'max_radius', 'min_distance',
                               'color_tolerance', 'max_colors', 'sensitivity',
                               'min_confidence', 'edge_sampling', 'edge_samples',
-                              'edge_method', 'exclude_background', 'use_histogram', 'color_separation']:
+                              'edge_method', 'exclude_background', 'use_histogram', 'color_separation',
+                              'convex_edge', 'palette', 'quantize_output']:
                 if param_name in ctx.params:
                     source = ctx.get_parameter_source(param_name)
                     # Only add if NOT from default (i.e., from CLI or environment)
@@ -169,6 +186,9 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
             exclude_background = merged.get('exclude_background', exclude_background)
             use_histogram = merged.get('use_histogram', use_histogram)
             color_separation = merged.get('color_separation', color_separation)
+            convex_edge = merged.get('convex_edge', convex_edge)
+            palette = merged.get('palette', palette)
+            quantize_output = merged.get('quantize_output', quantize_output)
 
             if debug:
                 click.echo(f"Loaded configuration from: {config}", err=True)
@@ -230,91 +250,160 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
             click.echo(f"Image loaded: {image.shape}", err=True)
             click.echo("Detecting circles...", err=True)
 
-        # 2. Detect circles
-        circles = detect_circles(
-            image,
-            min_radius=min_radius,
-            max_radius=max_radius,
-            min_distance=min_distance,
-            sensitivity=sensitivity
-        )
-
-        if debug:
-            click.echo(f"Detected {len(circles)} circle(s)", err=True)
-
-        # Filter by confidence if specified
-        if min_confidence is not None:
-            circles = [c for c in circles if c.confidence >= min_confidence]
-            if debug:
-                click.echo(f"After confidence filter (>={min_confidence}): {len(circles)} circle(s)", err=True)
-
-        if len(circles) == 0:
-            click.echo("No circles detected in image.", err=True)
-            sys.exit(0)
-
-        # 3. Extract colors for each circle
-        # If using histogram mode, extract color palette first
-        color_palette = None
-        if use_histogram and max_colors:
-            from .histogram_colors import extract_color_palette
-            if debug:
-                click.echo(f"Extracting color palette (top {max_colors} colors excluding white)...", err=True)
-            # Convert BGR to RGB for histogram analysis
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            color_palette = extract_color_palette(
-                image_rgb,
-                n_colors=max_colors,
-                exclude_background=exclude_background,
-                mode='histogram'
+        # 2. Detect circles - use convex-edge mode if requested
+        if convex_edge:
+            # Convex edge detection for overlapping circles
+            from .convex_detector import (
+                detect_all_circles, parse_palette, get_color_name
             )
-            if debug:
-                click.echo(f"Color palette extracted: {len(color_palette)} colors", err=True)
-                for i, color in enumerate(color_palette, 1):
-                    click.echo(f"  {i}. RGB{color}", err=True)
 
-        results = []
-        for circle in circles:
             if debug:
-                sampling_method = "edge" if edge_sampling else "area"
-                if edge_sampling:
-                    sampling_method = f"edge ({edge_method})"
-                click.echo(f"  Extracting color for {circle} (method: {sampling_method})", err=True)
+                click.echo(f"Using convex edge detection with palette: {palette}", err=True)
 
-            # Sample color from circle
-            if color_palette:
-                # Use new function that counts palette color matches
-                from .color_extractor import extract_color_with_palette
-                color = extract_color_with_palette(
-                    image,
-                    circle,
-                    palette=color_palette,
-                    num_samples=edge_samples,
-                    max_distance=50.0
+            try:
+                color_palette = parse_palette(palette)
+            except ValueError as e:
+                click.echo(f"Error: {e}", err=True)
+                sys.exit(1)
+
+            if debug:
+                click.echo(f"Palette colors: {len(color_palette)}", err=True)
+                for i, color in enumerate(color_palette):
+                    click.echo(f"  {i+1}. {get_color_name(color)} RGB{color}", err=True)
+
+            # Convert BGR to RGB for convex detector
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            # Debug callback to show per-color progress
+            def debug_cb(color, mask, circles):
+                if debug:
+                    click.echo(f"  {get_color_name(color)}: {len(circles)} circle(s) detected", err=True)
+
+            # Detect all circles using convex edge analysis
+            detected_circles, quantized = detect_all_circles(
+                image_rgb,
+                color_palette,
+                min_radius=min_radius,
+                max_radius=max_radius,
+                exclude_background=True,
+                debug_callback=debug_cb if debug else None
+            )
+
+            if debug:
+                click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)
+
+            # Save quantized image if requested
+            if quantize_output:
+                quantized_bgr = cv2.cvtColor(quantized, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(str(quantize_output), quantized_bgr)
+                if debug:
+                    click.echo(f"Quantized image saved to: {quantize_output}", err=True)
+
+            if len(detected_circles) == 0:
+                click.echo("No circles detected in image.", err=True)
+                sys.exit(0)
+
+            # Convert to results format (circle, color) tuples
+            # Create a simple Circle-like object for compatibility with formatter
+            from dataclasses import dataclass
+            @dataclass
+            class SimpleCircle:
+                center_x: int
+                center_y: int
+                radius: int
+                confidence: float = 100.0
+
+            results = []
+            for dc in detected_circles:
+                circle = SimpleCircle(dc.x, dc.y, dc.radius, dc.confidence)
+                results.append((circle, dc.color))
+
+        else:
+            # Standard detection path
+            circles = detect_circles(
+                image,
+                min_radius=min_radius,
+                max_radius=max_radius,
+                min_distance=min_distance,
+                sensitivity=sensitivity
+            )
+
+            if debug:
+                click.echo(f"Detected {len(circles)} circle(s)", err=True)
+
+            # Filter by confidence if specified
+            if min_confidence is not None:
+                circles = [c for c in circles if c.confidence >= min_confidence]
+                if debug:
+                    click.echo(f"After confidence filter (>={min_confidence}): {len(circles)} circle(s)", err=True)
+
+            if len(circles) == 0:
+                click.echo("No circles detected in image.", err=True)
+                sys.exit(0)
+
+            # 3. Extract colors for each circle
+            # If using histogram mode, extract color palette first
+            color_palette = None
+            if use_histogram and max_colors:
+                from .histogram_colors import extract_color_palette
+                if debug:
+                    click.echo(f"Extracting color palette (top {max_colors} colors excluding white)...", err=True)
+                # Convert BGR to RGB for histogram analysis
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                color_palette = extract_color_palette(
+                    image_rgb,
+                    n_colors=max_colors,
+                    exclude_background=exclude_background,
+                    mode='histogram'
                 )
                 if debug:
-                    click.echo(f"    Assigned to palette RGB{color}", err=True)
-            else:
-                # Old method for non-histogram mode
-                sampled_color = extract_color(
-                    image,
-                    circle,
-                    use_edge_sampling=edge_sampling,
-                    num_samples=edge_samples,
-                    edge_method=edge_method,
-                    all_circles=circles if edge_method == 'exposed' else None
-                )
-                color = sampled_color
+                    click.echo(f"Color palette extracted: {len(color_palette)} colors", err=True)
+                    for i, color in enumerate(color_palette, 1):
+                        click.echo(f"  {i}. RGB{color}", err=True)
 
-            # Filter out background colors if requested (only in non-histogram mode)
-            if not color_palette and exclude_background:
-                r, g, b = color
-                # Exclude near-white colors (RGB > 240)
-                if r > 240 and g > 240 and b > 240:
+            results = []
+            for circle in circles:
+                if debug:
+                    sampling_method = "edge" if edge_sampling else "area"
+                    if edge_sampling:
+                        sampling_method = f"edge ({edge_method})"
+                    click.echo(f"  Extracting color for {circle} (method: {sampling_method})", err=True)
+
+                # Sample color from circle
+                if color_palette:
+                    # Use new function that counts palette color matches
+                    from .color_extractor import extract_color_with_palette
+                    color = extract_color_with_palette(
+                        image,
+                        circle,
+                        palette=color_palette,
+                        num_samples=edge_samples,
+                        max_distance=50.0
+                    )
                     if debug:
-                        click.echo(f"    Skipping background color: RGB({r},{g},{b})", err=True)
-                    continue
+                        click.echo(f"    Assigned to palette RGB{color}", err=True)
+                else:
+                    # Old method for non-histogram mode
+                    sampled_color = extract_color(
+                        image,
+                        circle,
+                        use_edge_sampling=edge_sampling,
+                        num_samples=edge_samples,
+                        edge_method=edge_method,
+                        all_circles=circles if edge_method == 'exposed' else None
+                    )
+                    color = sampled_color
 
-            results.append((circle, color))
+                # Filter out background colors if requested (only in non-histogram mode)
+                if not color_palette and exclude_background:
+                    r, g, b = color
+                    # Exclude near-white colors (RGB > 240)
+                    if r > 240 and g > 240 and b > 240:
+                        if debug:
+                            click.echo(f"    Skipping background color: RGB({r},{g},{b})", err=True)
+                        continue
+
+                results.append((circle, color))
 
         # 4. Extract to separate PNG images if requested
         if extract:

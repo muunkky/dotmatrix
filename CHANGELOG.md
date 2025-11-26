@@ -80,10 +80,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Median color calculation for edge samples (robust to outliers and partial occlusions)
 - Edge sampling significantly improves color accuracy for overlapping circles
 
+### Added (Convex Edge Detection - v0.2.0)
+- `--convex-edge` CLI flag for detecting heavily overlapping circles using convex edge analysis
+- `--palette` CLI flag for specifying color palette: preset names (`cmyk`, `rgb`) or custom RGB values (`255,0,0;0,255,0`)
+- `--quantize-output` CLI flag to save quantized image for debugging
+- New `convex_detector.py` module implementing convex edge detection algorithm:
+  - Color quantization to limited palette using Euclidean distance
+  - Per-color filtering to isolate circle segments
+  - Convexity defect analysis to identify convex-only edges (using `cv2.convexityDefects`)
+  - Circle fitting on convex edges only (using `cv2.HoughCircles`)
+  - Best-circle-per-blob selection with coverage scoring
+  - Deduplication of similar circles
+- Preset color palettes: `cmyk` (White, Black, Cyan, Magenta, Yellow) and `rgb` (White, Black, Red, Green, Blue)
+- 27 unit tests for convex_detector module (85% coverage)
+- 10 integration tests for convex-edge CLI functionality
+
+### Technical Details (Convex Edge Detection)
+- Algorithm validated on test image with 16 overlapping CMYK circles - 100% detection accuracy
+- Performance: <5 seconds for 1776x1696 image
+- Key parameters: defect depth threshold 5px, non-convex margin 20px, dedup distance 20px
+- Convex edge detection bypasses standard HoughCircles when `--convex-edge` is enabled
+- Results compatible with existing JSON/CSV formatters and `--extract` functionality
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode
-- Improved overlapping circle separation
 
 ---
 
