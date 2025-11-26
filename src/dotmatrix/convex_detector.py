@@ -494,6 +494,228 @@ def get_color_name(color: Tuple[int, int, int]) -> str:
     return f'rgb_{color[0]}_{color[1]}_{color[2]}'
 
 
+@dataclass
+class RadiusCalibration:
+    """Calibration data from reference circle detection."""
+    min_radius: int
+    max_radius: int
+    mean_radius: float
+    std_radius: float
+    reference_color: Tuple[int, int, int]
+    reference_count: int
+
+
+def calculate_radius_statistics(circles: List[DetectedCircle]) -> Dict[str, float]:
+    """Calculate radius statistics from detected circles.
+
+    Args:
+        circles: List of DetectedCircle objects
+
+    Returns:
+        Dictionary with mean, std, min, max radius values
+    """
+    if not circles:
+        return {'mean': 0, 'std': 0, 'min': 0, 'max': 0, 'count': 0}
+
+    radii = [c.radius for c in circles]
+    return {
+        'mean': float(np.mean(radii)),
+        'std': float(np.std(radii)),
+        'min': int(np.min(radii)),
+        'max': int(np.max(radii)),
+        'count': len(radii)
+    }
+
+
+def calibrate_radius_from_reference(
+    circles: List[DetectedCircle],
+    sigma_multiplier: float = 2.0,
+    min_samples: int = 5
+) -> Optional[RadiusCalibration]:
+    """Calculate calibrated radius bounds from reference circles.
+
+    Uses statistical analysis of detected circles to derive tight radius
+    bounds. The default 2σ range captures ~95% of the expected sizes.
+
+    Args:
+        circles: List of reference circles (typically from highest-contrast color)
+        sigma_multiplier: Number of standard deviations for bounds (default: 2.0)
+        min_samples: Minimum circles needed for reliable calibration (default: 5)
+
+    Returns:
+        RadiusCalibration object or None if insufficient samples
+    """
+    if len(circles) < min_samples:
+        return None
+
+    radii = [c.radius for c in circles]
+    mean_r = np.mean(radii)
+    std_r = np.std(radii)
+
+    # Calculate bounds: mean ± sigma_multiplier * std
+    # With 10% padding to avoid cutting off edge cases
+    padding = 0.1
+    min_radius = max(1, int(mean_r - sigma_multiplier * std_r * (1 + padding)))
+    max_radius = int(mean_r + sigma_multiplier * std_r * (1 + padding))
+
+    # Get reference color (most common color in reference set)
+    color_counts: Dict[Tuple[int, int, int], int] = {}
+    for c in circles:
+        color_counts[c.color] = color_counts.get(c.color, 0) + 1
+    reference_color = max(color_counts.keys(), key=lambda k: color_counts[k])
+
+    return RadiusCalibration(
+        min_radius=min_radius,
+        max_radius=max_radius,
+        mean_radius=float(mean_r),
+        std_radius=float(std_r),
+        reference_color=reference_color,
+        reference_count=len(circles)
+    )
+
+
+def select_reference_color(
+    image: np.ndarray,
+    palette: List[Tuple[int, int, int]],
+    exclude_background: bool = True
+) -> Tuple[int, int, int]:
+    """Select the best reference color for calibration.
+
+    Chooses the highest-contrast color (typically black) as reference
+    because it tends to be detected most reliably.
+
+    Args:
+        image: RGB image as numpy array
+        palette: List of palette colors
+        exclude_background: If True, skip first color (assumed white)
+
+    Returns:
+        Selected reference color (RGB tuple)
+    """
+    # Priority order: black first (highest contrast), then by darkness
+    start_idx = 1 if exclude_background else 0
+    colors = palette[start_idx:]
+
+    # Calculate luminance for each color (lower = darker = higher contrast)
+    def luminance(c: Tuple[int, int, int]) -> float:
+        return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+
+    # Sort by luminance (darkest first)
+    colors_sorted = sorted(colors, key=luminance)
+
+    # Return darkest color (typically black)
+    return colors_sorted[0] if colors_sorted else (0, 0, 0)
+
+
+def detect_with_calibration(
+    image: np.ndarray,
+    palette: List[Tuple[int, int, int]],
+    initial_min_radius: int = 5,
+    initial_max_radius: int = 500,
+    calibrate_from: Optional[str] = None,
+    auto_calibrate: bool = False,
+    exclude_background: bool = True,
+    debug_callback: Optional[callable] = None,
+    sensitive_mode: bool = False,
+    morphological_enhance: bool = False
+) -> Tuple[List[DetectedCircle], np.ndarray, Optional[RadiusCalibration]]:
+    """Detect circles with optional auto-calibration from reference color.
+
+    Two-pass detection:
+    1. First pass: Detect reference color circles with wide radius range
+    2. Calibrate: Calculate tight radius bounds from reference detections
+    3. Second pass: Detect all colors with calibrated radius bounds
+
+    Args:
+        image: RGB image as numpy array (H, W, 3)
+        palette: List of RGB tuples (first is assumed to be background)
+        initial_min_radius: Starting min radius for reference detection
+        initial_max_radius: Starting max radius for reference detection
+        calibrate_from: Color name to calibrate from (e.g., 'black', 'cyan')
+        auto_calibrate: If True, auto-select reference color (darkest)
+        exclude_background: If True, skip the first palette color
+        debug_callback: Optional function for debugging
+        sensitive_mode: Use lower thresholds for partial circles
+        morphological_enhance: Apply morphological preprocessing
+
+    Returns:
+        Tuple of (circles, quantized_image, calibration_data)
+    """
+    # Quantize image once
+    quantized = quantize_to_palette(image, palette)
+
+    # Determine reference color for calibration
+    reference_color = None
+    calibration = None
+
+    if auto_calibrate or calibrate_from:
+        if calibrate_from:
+            # Find color by name in palette
+            reference_color = None
+            for color in palette:
+                if get_color_name(color).lower() == calibrate_from.lower():
+                    reference_color = color
+                    break
+            if reference_color is None:
+                # Try approximate match
+                for color in palette:
+                    name = get_color_name(color).lower()
+                    if calibrate_from.lower() in name or name in calibrate_from.lower():
+                        reference_color = color
+                        break
+        else:
+            # Auto-select: use darkest (highest contrast) color
+            reference_color = select_reference_color(image, palette, exclude_background)
+
+        if reference_color:
+            # First pass: detect reference color with wide bounds
+            ref_mask = filter_by_color(quantized, reference_color)
+            ref_circles = detect_circles_from_convex_edges(
+                ref_mask,
+                reference_color,
+                min_radius=initial_min_radius,
+                max_radius=initial_max_radius,
+                sensitive_mode=sensitive_mode,
+                morphological_enhance=morphological_enhance
+            )
+
+            if debug_callback:
+                debug_callback(reference_color, ref_mask, ref_circles)
+
+            # Calculate calibration from reference
+            calibration = calibrate_radius_from_reference(ref_circles)
+
+    # Determine final radius bounds
+    if calibration:
+        min_radius = calibration.min_radius
+        max_radius = calibration.max_radius
+    else:
+        min_radius = initial_min_radius
+        max_radius = initial_max_radius
+
+    # Second pass: detect all colors with (potentially calibrated) bounds
+    all_circles = []
+    start_idx = 1 if exclude_background else 0
+
+    for color in palette[start_idx:]:
+        mask = filter_by_color(quantized, color)
+        circles = detect_circles_from_convex_edges(
+            mask,
+            color,
+            min_radius=min_radius,
+            max_radius=max_radius,
+            sensitive_mode=sensitive_mode,
+            morphological_enhance=morphological_enhance
+        )
+
+        if debug_callback and color != reference_color:
+            debug_callback(color, mask, circles)
+
+        all_circles.extend(circles)
+
+    return all_circles, quantized, calibration
+
+
 def generate_tiles(
     image_shape: Tuple[int, int],
     chunk_size: int,

@@ -174,7 +174,17 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Apply morphological enhancement to connect fragmented color regions (helps with occluded circles)'
 )
-def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance):
+@click.option(
+    '--auto-calibrate',
+    is_flag=True,
+    help='Auto-calibrate radius from reference color (darkest color, typically black)'
+)
+@click.option(
+    '--calibrate-from',
+    type=str,
+    help='Calibrate radius from specific color (e.g., "black", "cyan")'
+)
+def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -192,10 +202,11 @@ def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radi
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance)
+                   no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance,
+                   auto_calibrate, calibrate_from)
 
 
-def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False):
+def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
     """Internal function for circle detection."""
     # Load configuration file if provided
     if config:
@@ -367,7 +378,8 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             # Convex edge detection for overlapping circles
             from .convex_detector import (
                 detect_all_circles, parse_palette, get_color_name,
-                process_chunked, calculate_chunk_size, PALETTES
+                process_chunked, calculate_chunk_size, PALETTES,
+                detect_with_calibration
             )
 
             # Show progress message for convex detection (can be slow for large images)
@@ -455,17 +467,51 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
                     if debug:
                         click.echo(f"  {get_color_name(color)}: {len(circles)} circle(s) detected", err=True)
 
-                # Detect all circles using convex edge analysis
-                detected_circles, quantized = detect_all_circles(
-                    image_rgb,
-                    color_palette,
-                    min_radius=min_radius,
-                    max_radius=max_radius,
-                    exclude_background=True,
-                    debug_callback=debug_cb if debug else None,
-                    sensitive_mode=sensitive_occlusion,
-                    morphological_enhance=morph_enhance
-                )
+                # Use calibration mode if requested
+                if auto_calibrate or calibrate_from:
+                    if debug:
+                        if calibrate_from:
+                            click.echo(f"Calibrating radius from color: {calibrate_from}", err=True)
+                        else:
+                            click.echo("Auto-calibrating radius from reference color...", err=True)
+
+                    # Detect with calibration
+                    detected_circles, quantized, calibration = detect_with_calibration(
+                        image_rgb,
+                        color_palette,
+                        initial_min_radius=min_radius,
+                        initial_max_radius=max_radius,
+                        calibrate_from=calibrate_from,
+                        auto_calibrate=auto_calibrate,
+                        exclude_background=True,
+                        debug_callback=debug_cb if debug else None,
+                        sensitive_mode=sensitive_occlusion,
+                        morphological_enhance=morph_enhance
+                    )
+
+                    # Report calibration results
+                    if calibration:
+                        click.echo(
+                            f"Calibration: {get_color_name(calibration.reference_color)} reference "
+                            f"({calibration.reference_count} circles), "
+                            f"radius {calibration.min_radius}-{calibration.max_radius}px "
+                            f"(mean={calibration.mean_radius:.1f}, std={calibration.std_radius:.1f})",
+                            err=True
+                        )
+                    else:
+                        click.echo("Warning: Calibration failed (insufficient reference circles), using original radius bounds", err=True)
+                else:
+                    # Standard detection without calibration
+                    detected_circles, quantized = detect_all_circles(
+                        image_rgb,
+                        color_palette,
+                        min_radius=min_radius,
+                        max_radius=max_radius,
+                        exclude_background=True,
+                        debug_callback=debug_cb if debug else None,
+                        sensitive_mode=sensitive_occlusion,
+                        morphological_enhance=morph_enhance
+                    )
 
             if debug:
                 click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)

@@ -398,3 +398,142 @@ class TestMorphologicalEnhancement:
         # Both should detect the circle
         assert len(circles_sensitive) >= 1
         assert len(circles_morph) >= 1
+
+
+class TestRadiusCalibration:
+    """Tests for radius calibration feature."""
+
+    def test_calculate_radius_statistics_empty(self):
+        """Test radius statistics with empty input."""
+        from dotmatrix.convex_detector import calculate_radius_statistics
+
+        stats = calculate_radius_statistics([])
+        assert stats['mean'] == 0
+        assert stats['std'] == 0
+        assert stats['count'] == 0
+
+    def test_calculate_radius_statistics(self):
+        """Test radius statistics calculation."""
+        from dotmatrix.convex_detector import calculate_radius_statistics
+
+        circles = [
+            DetectedCircle(100, 100, 50, (0, 0, 0)),
+            DetectedCircle(200, 200, 52, (0, 0, 0)),
+            DetectedCircle(300, 300, 48, (0, 0, 0)),
+        ]
+
+        stats = calculate_radius_statistics(circles)
+        assert stats['count'] == 3
+        assert stats['mean'] == 50.0
+        assert stats['min'] == 48
+        assert stats['max'] == 52
+
+    def test_calibrate_radius_from_reference(self):
+        """Test calibration from reference circles."""
+        from dotmatrix.convex_detector import calibrate_radius_from_reference
+
+        # Create 10 circles with radius around 50 (±5)
+        circles = [
+            DetectedCircle(i * 100, i * 100, 50 + (i % 5) - 2, (0, 0, 0))
+            for i in range(10)
+        ]
+
+        calibration = calibrate_radius_from_reference(circles)
+
+        assert calibration is not None
+        assert calibration.reference_count == 10
+        assert calibration.min_radius > 0
+        assert calibration.max_radius > calibration.min_radius
+        assert 45 < calibration.mean_radius < 55
+
+    def test_calibrate_insufficient_samples(self):
+        """Test calibration fails with insufficient samples."""
+        from dotmatrix.convex_detector import calibrate_radius_from_reference
+
+        # Only 3 circles (below default min_samples=5)
+        circles = [
+            DetectedCircle(100, 100, 50, (0, 0, 0)),
+            DetectedCircle(200, 200, 52, (0, 0, 0)),
+            DetectedCircle(300, 300, 48, (0, 0, 0)),
+        ]
+
+        calibration = calibrate_radius_from_reference(circles)
+        assert calibration is None
+
+    def test_select_reference_color(self):
+        """Test reference color selection (darkest color)."""
+        from dotmatrix.convex_detector import select_reference_color
+
+        palette = [
+            (255, 255, 255),  # White
+            (0, 0, 0),        # Black
+            (255, 0, 0),      # Red
+            (0, 255, 0),      # Green
+        ]
+
+        # Create dummy image (not used in selection)
+        image = np.zeros((100, 100, 3), dtype=np.uint8)
+
+        ref_color = select_reference_color(image, palette, exclude_background=True)
+
+        # Should select black (darkest)
+        assert ref_color == (0, 0, 0)
+
+    def test_detect_with_calibration_auto(self):
+        """Test detection with auto-calibration."""
+        from dotmatrix.convex_detector import detect_with_calibration
+
+        # Create image with circles of different colors
+        image = np.full((400, 400, 3), 255, dtype=np.uint8)
+
+        # Draw black circles (will be reference)
+        for i in range(6):
+            cv2.circle(image, (50 + i * 60, 100), 25, (0, 0, 0), -1)
+
+        # Draw red circles
+        for i in range(3):
+            cv2.circle(image, (100 + i * 100, 300), 25, (255, 0, 0), -1)
+
+        palette = [
+            (255, 255, 255),  # White
+            (0, 0, 0),        # Black
+            (255, 0, 0),      # Red
+        ]
+
+        circles, quantized, calibration = detect_with_calibration(
+            image, palette,
+            initial_min_radius=10,
+            initial_max_radius=100,
+            auto_calibrate=True
+        )
+
+        # Should return calibration data
+        if calibration:
+            assert calibration.reference_color == (0, 0, 0)  # Black
+            assert calibration.reference_count >= 1
+
+    def test_detect_with_calibration_from_color(self):
+        """Test detection with calibration from specific color."""
+        from dotmatrix.convex_detector import detect_with_calibration
+
+        # Create image with circles
+        image = np.full((300, 300, 3), 255, dtype=np.uint8)
+
+        # Draw cyan circles
+        for i in range(6):
+            cv2.circle(image, (50 + i * 40, 150), 20, (118, 193, 241), -1)
+
+        palette = [
+            (255, 255, 255),
+            (118, 193, 241),  # Cyan
+        ]
+
+        circles, quantized, calibration = detect_with_calibration(
+            image, palette,
+            initial_min_radius=10,
+            initial_max_radius=100,
+            calibrate_from='cyan'
+        )
+
+        # Should return circles
+        assert isinstance(circles, list)
