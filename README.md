@@ -67,6 +67,7 @@ Options:
   --sensitivity [strict|normal|relaxed]  Detection sensitivity preset (default: normal)
   --min-confidence INTEGER  Minimum confidence score to include detection (0-100)
   --chunk-size TEXT       Chunk size for tiled processing: "auto" (default), pixels (e.g., "2000"), or "0" to disable
+  --num-colors INTEGER    Number of colors to detect when using --palette auto (default: 6)
   --debug                 Enable debug output
   --version               Show version and exit
   --help                  Show this message and exit
@@ -185,6 +186,7 @@ dotmatrix --input image.png --convex-edge --palette cmyk --quantize-output debug
 - Automatically deduplicates similar circles
 
 **Preset Palettes:**
+- `auto`: Automatically detect dominant colors from image (recommended for unknown palettes)
 - `cmyk`: White, Black, Cyan (118,193,241), Magenta (217,93,155), Yellow (238,206,94)
 - `rgb`: White, Black, Red, Green, Blue
 
@@ -200,6 +202,39 @@ dotmatrix --input image.png --convex-edge --palette cmyk --quantize-output debug
 $ dotmatrix --input halftone.png --convex-edge --palette cmyk --min-radius 80
 # Detects all 16 circles: 4 black, 4 cyan, 4 magenta, 4 yellow
 ```
+
+### Auto-Palette Detection
+
+Automatically detect dominant colors instead of specifying a preset palette:
+
+```bash
+# Auto-detect palette (recommended when you don't know the exact colors)
+dotmatrix --input image.png --convex-edge --palette auto
+
+# Control number of colors to detect (default: 6)
+dotmatrix --input image.png --convex-edge --palette auto --num-colors 8
+
+# Combine with other options
+dotmatrix --input image.png --convex-edge --palette auto --num-colors 4 --min-radius 50
+```
+
+**Output Example:**
+```
+Detected palette: ~black, ~cyan, ~magenta, ~yellow, RGB(255,120,60), RGB(80,200,160)
+```
+
+**About Auto-Palette Detection:**
+- Analyzes image histogram to find dominant colors
+- Automatically excludes white/background colors
+- Always includes black when present in the image
+- Uses color quantization to reduce noise from anti-aliasing
+- Works with chunked processing for large images
+
+**When to Use:**
+- ✅ **Use auto-palette** when you don't know the exact colors in the image
+- ✅ **Use auto-palette** for images with non-standard color palettes
+- ✅ **Use auto-palette** to discover what colors are actually present
+- ❌ **Use preset palettes** when you know the exact colors (faster)
 
 ### Chunked Processing for Large Images
 
@@ -512,6 +547,7 @@ dotmatrix/
 │       ├── convex_detector.py  # Convex edge detection for overlapping circles
 │       ├── color_extractor.py  # Color sampling
 │       ├── color_clustering.py # K-means color clustering
+│       ├── color_palette_detector.py # Auto-palette detection
 │       ├── config_loader.py    # Configuration save/load
 │       ├── image_extractor.py  # PNG extraction by color
 │       ├── manifest.py         # Run manifest generation

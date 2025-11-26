@@ -155,6 +155,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Warning threshold: 20 megapixels (~4500×4500 pixels)
 - Progress message threshold: 5 megapixels
 
+### Added (Color Detection - COLORDETECTION Sprint)
+- **Auto-palette detection**: `--palette auto` option to automatically detect dominant colors
+  - Histogram-based color detection identifies dominant colors from image
+  - `--num-colors N` option to specify number of colors to detect (default: 6)
+  - White/background colors automatically excluded from detected palette
+  - Black always included in detected palette when present
+  - Detected palette displayed to user (e.g., "Detected palette: ~black, ~cyan, ~magenta, ~yellow")
+  - Works with chunked processing and all existing convex-edge features
+- New `color_palette_detector.py` module with histogram analysis
+- 25 unit tests for palette detection (test_palette_detection.py)
+
+### Technical Details (Color Detection)
+- Color quantization (bucket_size=20) reduces anti-aliasing noise
+- Image subsampling (every 10th pixel) for performance on large images
+- Minimum color presence threshold (0.5%) filters out noise
+- Detection uses histogram peak analysis (no k-means dependency for palette detection)
+
 ### Added (Scaling Performance - SCALING Sprint)
 - **KD-tree spatial indexing**: O(n log n) circle deduplication replacing O(n²) nested loops
 - **Chunked/tiled processing**: `--chunk-size` CLI flag for processing large images in tiles
