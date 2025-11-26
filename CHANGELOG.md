@@ -155,6 +155,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Warning threshold: 20 megapixels (~4500×4500 pixels)
 - Progress message threshold: 5 megapixels
 
+### Added (Scaling Performance - SCALING Sprint)
+- **KD-tree spatial indexing**: O(n log n) circle deduplication replacing O(n²) nested loops
+- **Chunked/tiled processing**: `--chunk-size` CLI flag for processing large images in tiles
+  - `--chunk-size auto`: Automatic chunking for images >20 MP (default behavior)
+  - `--chunk-size 2000`: Explicit chunk size in pixels
+  - `--chunk-size 0`: Disable chunking (process entire image at once)
+- **Boundary deduplication**: Circles on tile boundaries correctly deduplicated using overlap regions
+- 12 new tests for chunked processing (TestGenerateTiles, TestCalculateChunkSize, TestProcessChunked)
+- 39 total tests for convex detector with 92% coverage
+
+### Technical Details (Scaling Performance)
+- **KD-tree deduplication**: scipy.spatial.KDTree with query_ball_point() for O(n log n) neighbor searches
+- **Tile overlap**: 2×max_radius to ensure boundary circles are fully captured in at least one tile
+- **Minimum chunk size**: Enforced minimum of 3×overlap to prevent excessive tiling
+- **Auto-chunking threshold**: Images >20 MP trigger automatic chunking
+- **38 MP benchmark**: CMYK halftone image (6480×6000) processes in <5 minutes with ~8,000 circles detected
+- **Deduplication benchmark**: 50,000 circles deduplicate in <10 seconds with KD-tree (vs minutes with nested loops)
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode

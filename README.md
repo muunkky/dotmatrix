@@ -66,6 +66,7 @@ Options:
   --max-colors INTEGER    Maximum number of color groups using k-means clustering (only with --extract)
   --sensitivity [strict|normal|relaxed]  Detection sensitivity preset (default: normal)
   --min-confidence INTEGER  Minimum confidence score to include detection (0-100)
+  --chunk-size TEXT       Chunk size for tiled processing: "auto" (default), pixels (e.g., "2000"), or "0" to disable
   --debug                 Enable debug output
   --version               Show version and exit
   --help                  Show this message and exit
@@ -199,6 +200,37 @@ dotmatrix --input image.png --convex-edge --palette cmyk --quantize-output debug
 $ dotmatrix --input halftone.png --convex-edge --palette cmyk --min-radius 80
 # Detects all 16 circles: 4 black, 4 cyan, 4 magenta, 4 yellow
 ```
+
+### Chunked Processing for Large Images
+
+For very large images (>20 megapixels), use chunked processing to avoid memory issues and improve performance:
+
+```bash
+# Auto mode (default) - automatically chunks images >20 MP
+dotmatrix --input large_image.png --convex-edge --palette cmyk
+
+# Explicit chunk size (2000x2000 pixel tiles)
+dotmatrix --input large_image.png --convex-edge --palette cmyk --chunk-size 2000
+
+# Disable chunking (process entire image at once)
+dotmatrix --input large_image.png --convex-edge --palette cmyk --chunk-size 0
+```
+
+**About Chunked Processing:**
+- Splits large images into overlapping tiles for parallel-friendly processing
+- Tiles overlap by 2×max_radius to ensure boundary circles are captured
+- Automatic deduplication removes duplicate circles from overlapping regions
+- Uses KD-tree spatial indexing for O(n log n) deduplication (vs O(n²) without)
+
+**Chunk Size Options:**
+- `auto` (default): Automatically chunks images >20 megapixels
+- Integer (e.g., `2000`): Explicit tile size in pixels
+- `0`: Disable chunking (process entire image at once)
+
+**Performance:**
+- 38 MP CMYK halftone (6480×6000): <5 minutes with ~8,000 circles detected
+- Memory usage scales with chunk size, not total image size
+- Recommended for images >20 megapixels or when hitting memory limits
 
 ### Edge-Based Color Sampling
 
@@ -535,7 +567,7 @@ For overlapping circles (v0.2.0+), we also perform:
 
 ## Performance
 
-DotMatrix is optimized for processing images up to 10MB+ (4-9 megapixels) efficiently.
+DotMatrix is optimized for processing images from small to very large (38+ megapixels) efficiently.
 
 ### Performance Characteristics
 
@@ -543,11 +575,24 @@ DotMatrix is optimized for processing images up to 10MB+ (4-9 megapixels) effici
 |-----------------|-------|--------|----------|
 | **Hough Transform** | ~0.02s/MP | ~5 MB/MP | General use, well-separated circles |
 | **Convex Edge** | ~2s/MP | ~20 MB/MP | Overlapping circles, CMYK halftones |
+| **Convex Edge + Chunking** | ~7s/MP | ~200 MB fixed | Very large images (>20 MP) |
 
 **Key metrics:**
 - **Hough detection**: Handles 64+ megapixels in <2 seconds
 - **Convex detection**: Handles 20 megapixels in <30 seconds
+- **Chunked convex**: 38 MP CMYK halftone in <5 minutes with ~8,000 circles
 - Performance scales with **megapixels** (not file size in MB)
+
+### Scaling Optimizations
+
+DotMatrix includes optimizations for processing large images with many circles:
+
+- **KD-tree deduplication**: O(n log n) spatial indexing for fast circle deduplication
+  - 50,000 circles deduplicate in <10 seconds (vs minutes with O(n²) approach)
+- **Chunked/tiled processing**: Splits large images into overlapping tiles
+  - Enabled automatically for images >20 megapixels
+  - Memory usage bounded by chunk size, not total image size
+  - Boundary circles correctly deduplicated across tiles
 
 ### Large Image Warning
 
