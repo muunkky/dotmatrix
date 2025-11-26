@@ -243,7 +243,7 @@ def detect_circles_from_convex_edges(
     color: Tuple[int, int, int],
     min_radius: int = 80,
     max_radius: int = 350,
-    min_blob_area: int = 1000,
+    min_blob_area: Optional[int] = None,
     defect_depth_threshold: int = 5,
     non_convex_margin: int = 20,
     dedup_distance: int = 20,
@@ -265,7 +265,9 @@ def detect_circles_from_convex_edges(
         color: RGB tuple for this color (attached to results)
         min_radius: Minimum circle radius in pixels
         max_radius: Maximum circle radius in pixels
-        min_blob_area: Minimum blob area to consider (filters noise)
+        min_blob_area: Minimum blob area to consider (filters noise). If None,
+            auto-calculated as 30% of min circle area (π * min_radius² * 0.3)
+            to handle partial/crescent shapes in halftone images.
         defect_depth_threshold: Minimum defect depth in pixels to mark as concave
         non_convex_margin: Points within this distance of defects are non-convex
         dedup_distance: Circles with centers this close are deduplicated
@@ -276,6 +278,11 @@ def detect_circles_from_convex_edges(
     Returns:
         List of DetectedCircle objects
     """
+    # Auto-calculate min_blob_area based on min_radius if not specified
+    # Use 30% of circle area to capture partial/crescent shapes in halftone images
+    if min_blob_area is None:
+        min_blob_area = max(50, int(np.pi * min_radius * min_radius * 0.3))
+
     # Apply morphological enhancement if enabled (helps with occluded circles)
     if morphological_enhance:
         color_mask = apply_morphological_enhancement(color_mask)
