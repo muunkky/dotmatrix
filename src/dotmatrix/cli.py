@@ -164,7 +164,17 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     default='auto',
     help='Tile size for chunked processing: "auto" (default), pixel size (e.g. "2000"), or "0" to disable'
 )
-def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size):
+@click.option(
+    '--sensitive-occlusion',
+    is_flag=True,
+    help='Enable sensitive detection mode for heavily occluded circles (lower HoughCircles thresholds)'
+)
+@click.option(
+    '--morph-enhance',
+    is_flag=True,
+    help='Apply morphological enhancement to connect fragmented color regions (helps with occluded circles)'
+)
+def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -182,10 +192,10 @@ def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radi
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, chunk_size)
+                   no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance)
 
 
-def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto'):
+def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False):
     """Internal function for circle detection."""
     # Load configuration file if provided
     if config:
@@ -434,7 +444,9 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
                     min_radius=min_radius,
                     exclude_background=True,
                     progress_callback=progress_cb if not debug else None,
-                    debug_callback=None
+                    debug_callback=None,
+                    sensitive_mode=sensitive_occlusion,
+                    morphological_enhance=morph_enhance
                 )
                 quantized = None  # Not available in chunked mode
             else:
@@ -450,7 +462,9 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
                     min_radius=min_radius,
                     max_radius=max_radius,
                     exclude_background=True,
-                    debug_callback=debug_cb if debug else None
+                    debug_callback=debug_cb if debug else None,
+                    sensitive_mode=sensitive_occlusion,
+                    morphological_enhance=morph_enhance
                 )
 
             if debug:

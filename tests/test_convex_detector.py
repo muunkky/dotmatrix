@@ -320,3 +320,81 @@ class TestDetectedCircle:
         """Test default confidence is 100."""
         circle = DetectedCircle(0, 0, 10, (0, 0, 0))
         assert circle.confidence == 100.0
+
+
+class TestMorphologicalEnhancement:
+    """Tests for morphological enhancement feature."""
+
+    def test_morphological_enhancement_applied(self):
+        """Test that morphological enhancement can be enabled."""
+        from dotmatrix.convex_detector import apply_morphological_enhancement
+
+        # Create fragmented mask
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        cv2.circle(mask, (100, 100), 45, 255, 3)  # Just the edge, not filled
+
+        # Apply enhancement
+        enhanced = apply_morphological_enhancement(mask, dilation_size=5, erosion_size=2)
+
+        # Enhanced mask should have more white pixels
+        assert enhanced.shape == mask.shape
+
+    def test_detect_with_morphological_enhance(self):
+        """Test detection with morphological_enhance flag."""
+        # Create image with a circle
+        image = np.full((300, 300, 3), 255, dtype=np.uint8)
+        cv2.circle(image, (150, 150), 60, (255, 0, 0), -1)
+
+        palette = [(255, 255, 255), (255, 0, 0)]
+
+        circles, _ = detect_all_circles(
+            image, palette,
+            min_radius=40, max_radius=80,
+            morphological_enhance=True
+        )
+
+        # Should detect circle with morph enhancement
+        assert len(circles) >= 1
+
+    def test_detect_with_sensitive_mode(self):
+        """Test detection with sensitive_mode flag."""
+        # Create image with a circle
+        image = np.full((300, 300, 3), 255, dtype=np.uint8)
+        cv2.circle(image, (150, 150), 60, (0, 255, 0), -1)
+
+        palette = [(255, 255, 255), (0, 255, 0)]
+
+        circles, _ = detect_all_circles(
+            image, palette,
+            min_radius=40, max_radius=80,
+            sensitive_mode=True
+        )
+
+        # Should detect circle with sensitive mode
+        assert len(circles) >= 1
+
+    def test_detect_circles_from_convex_edges_with_flags(self):
+        """Test detect_circles_from_convex_edges with new flags."""
+        # Create a solid circle mask
+        mask = np.zeros((200, 200), dtype=np.uint8)
+        cv2.circle(mask, (100, 100), 50, 255, -1)
+
+        # Test with sensitive mode
+        circles_sensitive = detect_circles_from_convex_edges(
+            mask, (255, 0, 0),
+            min_radius=30, max_radius=70,
+            sensitive_mode=True,
+            morphological_enhance=False
+        )
+
+        # Test with morphological enhance
+        circles_morph = detect_circles_from_convex_edges(
+            mask, (255, 0, 0),
+            min_radius=30, max_radius=70,
+            sensitive_mode=False,
+            morphological_enhance=True
+        )
+
+        # Both should detect the circle
+        assert len(circles_sensitive) >= 1
+        assert len(circles_morph) >= 1

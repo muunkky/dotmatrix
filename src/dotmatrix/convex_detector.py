@@ -203,6 +203,41 @@ def deduplicate_circles_kdtree(
     return final_circles
 
 
+def apply_morphological_enhancement(
+    mask: np.ndarray,
+    dilation_size: int = 3,
+    erosion_size: int = 2
+) -> np.ndarray:
+    """Apply morphological operations to enhance fragmented color regions.
+
+    Dilation connects nearby fragments, erosion separates touching circles.
+    This helps detect occluded circles whose color regions are fragmented.
+
+    Args:
+        mask: Binary mask (255 = color present, 0 = absent)
+        dilation_size: Kernel size for dilation (default: 3)
+        erosion_size: Kernel size for erosion (default: 2)
+
+    Returns:
+        Enhanced binary mask
+    """
+    # Dilate to connect fragments
+    if dilation_size > 0:
+        dilate_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (dilation_size, dilation_size)
+        )
+        mask = cv2.dilate(mask, dilate_kernel, iterations=1)
+
+    # Erode to separate touching regions
+    if erosion_size > 0:
+        erode_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (erosion_size, erosion_size)
+        )
+        mask = cv2.erode(mask, erode_kernel, iterations=1)
+
+    return mask
+
+
 def detect_circles_from_convex_edges(
     color_mask: np.ndarray,
     color: Tuple[int, int, int],
@@ -211,7 +246,10 @@ def detect_circles_from_convex_edges(
     min_blob_area: int = 1000,
     defect_depth_threshold: int = 5,
     non_convex_margin: int = 20,
-    dedup_distance: int = 20
+    dedup_distance: int = 20,
+    min_convex_points: int = 20,
+    morphological_enhance: bool = False,
+    sensitive_mode: bool = False
 ) -> List[DetectedCircle]:
     """Detect circles from a single-color mask using convex edge analysis.
 
@@ -231,10 +269,17 @@ def detect_circles_from_convex_edges(
         defect_depth_threshold: Minimum defect depth in pixels to mark as concave
         non_convex_margin: Points within this distance of defects are non-convex
         dedup_distance: Circles with centers this close are deduplicated
+        min_convex_points: Minimum convex points needed to fit a circle (default: 20)
+        morphological_enhance: Apply dilation/erosion to connect fragments (default: False)
+        sensitive_mode: Use lower HoughCircles thresholds for partial arcs (default: False)
 
     Returns:
         List of DetectedCircle objects
     """
+    # Apply morphological enhancement if enabled (helps with occluded circles)
+    if morphological_enhance:
+        color_mask = apply_morphological_enhancement(color_mask)
+
     # Find connected components
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
         color_mask, connectivity=8
@@ -297,7 +342,7 @@ def detect_circles_from_convex_edges(
                 # Extract only convex points
                 convex_points = contour[convex_mask]
 
-        if len(convex_points) < 20:
+        if len(convex_points) < min_convex_points:
             # Not enough convex points to fit a circle
             continue
 
@@ -309,13 +354,22 @@ def detect_circles_from_convex_edges(
 
         # Detect circles from convex edge points
         blurred = cv2.GaussianBlur(temp_img, (9, 9), 2)
+
+        # Use lower thresholds in sensitive mode for partial arcs
+        if sensitive_mode:
+            hough_param1 = 20  # Lower Canny threshold
+            hough_param2 = 15  # Lower accumulator threshold
+        else:
+            hough_param1 = 30
+            hough_param2 = 20
+
         circles = cv2.HoughCircles(
             blurred,
             cv2.HOUGH_GRADIENT,
             dp=1,
             minDist=50,
-            param1=30,
-            param2=20,  # Lower threshold for partial arcs
+            param1=hough_param1,
+            param2=hough_param2,
             minRadius=min_radius,
             maxRadius=max_radius
         )
@@ -359,7 +413,9 @@ def detect_all_circles(
     min_radius: int = 80,
     max_radius: int = 350,
     exclude_background: bool = True,
-    debug_callback: Optional[callable] = None
+    debug_callback: Optional[callable] = None,
+    sensitive_mode: bool = False,
+    morphological_enhance: bool = False
 ) -> Tuple[List[DetectedCircle], np.ndarray]:
     """Detect all circles using convex edge analysis.
 
@@ -373,6 +429,8 @@ def detect_all_circles(
         max_radius: Maximum circle radius in pixels
         exclude_background: If True, skip the first palette color (background)
         debug_callback: Optional function(color_name, mask, circles) for debugging
+        sensitive_mode: Use lower thresholds for detecting partial/occluded circles
+        morphological_enhance: Apply dilation/erosion to connect fragmented regions
 
     Returns:
         Tuple of (list of DetectedCircle, quantized image)
@@ -394,7 +452,9 @@ def detect_all_circles(
             mask,
             color,
             min_radius=min_radius,
-            max_radius=max_radius
+            max_radius=max_radius,
+            sensitive_mode=sensitive_mode,
+            morphological_enhance=morphological_enhance
         )
 
         if debug_callback:
@@ -512,7 +572,9 @@ def process_chunked(
     min_radius: int = 80,
     exclude_background: bool = True,
     progress_callback: Optional[callable] = None,
-    debug_callback: Optional[callable] = None
+    debug_callback: Optional[callable] = None,
+    sensitive_mode: bool = False,
+    morphological_enhance: bool = False
 ) -> List[DetectedCircle]:
     """Process large image in chunks with overlapping tiles.
 
@@ -528,6 +590,8 @@ def process_chunked(
         exclude_background: If True, skip the first palette color (background)
         progress_callback: Optional function(tile_num, total_tiles) for progress
         debug_callback: Optional function(color_name, mask, circles) for debugging
+        sensitive_mode: Use lower thresholds for detecting partial/occluded circles
+        morphological_enhance: Apply dilation/erosion to connect fragmented regions
 
     Returns:
         List of DetectedCircle objects with global coordinates
@@ -551,7 +615,9 @@ def process_chunked(
     if total_tiles == 1:
         circles, _ = detect_all_circles(
             image, palette, min_radius, max_radius,
-            exclude_background, debug_callback
+            exclude_background, debug_callback,
+            sensitive_mode=sensitive_mode,
+            morphological_enhance=morphological_enhance
         )
         return circles
 
@@ -567,7 +633,9 @@ def process_chunked(
         # Process tile
         tile_circles, _ = detect_all_circles(
             tile, palette, min_radius, max_radius,
-            exclude_background, debug_callback
+            exclude_background, debug_callback,
+            sensitive_mode=sensitive_mode,
+            morphological_enhance=morphological_enhance
         )
 
         # Offset coordinates to global image space
