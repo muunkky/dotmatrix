@@ -1,482 +1,573 @@
-# ============================================================================
-# DotMatrix Project Roadmap
-# ============================================================================
-# Purpose:
-#   This document serves as the single source of truth for DotMatrix's strategic
-#   roadmap, providing a hierarchical view of versions, milestones, features,
-#   and projects. DotMatrix is a Python CLI tool that detects circles in images,
-#   identifying their center coordinates, radius, and color - even when circles
-#   are opaque and overlapping.
-#
-# Scope:
-#   This roadmap captures the long-term strategic plan at the milestone and
-#   feature level. It is intentionally separated from day-to-day task tracking,
-#   which is managed in the .gitban/cards/ directory using the Gitban MCP system.
-#
-# Structure:
-#   versions -> milestones -> features -> projects
-#
-# See Also:
-#   - roadmap-usage.md - Detailed guide on using this document
-#   - roadmap_schema.json - JSON schema for validation
-# ============================================================================
-
-schema_version: "1.0.0"
-document_version: "0.1.0"
-last_updated: "2025-10-31"
-
+schema_version: 1.0.0
+document_version: 0.1.0
+last_updated: '2025-10-31'
 metadata:
-  maintained_by: "CAMERON"
-  review_frequency: "Weekly"
+  maintained_by: CAMERON
+  review_frequency: Weekly
   related_docs:
-    - "README.md"
-    - ".gitban/roadmap/roadmap-usage.md"
+    - README.md
+    - .gitban/roadmap/roadmap-usage.md
   tools:
-    roadmap_tracking: "roadmap.yaml"
-    task_tracking: "Gitban MCP"
-    Gitban_mcp: "https://github.com/cammytown/gitban"
-
+    roadmap_tracking: roadmap.yaml
+    task_tracking: Gitban MCP
+    Gitban_mcp: https://github.com/cammytown/gitban
 changelog:
-  - version: "0.1.0"
-    date: "2025-10-31"
+  - version: 0.1.0
+    date: '2025-10-31'
     changes:
-      - "Initial roadmap created for DotMatrix circle detection CLI"
-      - "Defined V1 with three milestones: MVP, Enhancement, Production"
-
+      - Initial roadmap created for DotMatrix circle detection CLI
+      - 'Defined V1 with three milestones: MVP, Enhancement, Production'
 versions:
   v1:
-    id: "v1"
-    title: "V1: DotMatrix Circle Detection CLI"
-    description: "First production-ready version of DotMatrix - a Python CLI tool that detects circles in images with overlapping and occlusion support"
-    status: "todo"
-    start_date: "2025-10-31"
-    target_completion: "2025-11-30"
-
+    id: v1
+    title: 'V1: DotMatrix Circle Detection CLI'
+    description: First production-ready version of DotMatrix - a Python CLI tool
+      that detects circles in images with overlapping and occlusion support
+    status: todo
+    start_date: '2025-10-31'
+    target_completion: '2025-11-30'
     milestones:
       m1:
-        id: "m1"
-        title: "M1: MVP - Basic Circle Detection"
-        description: "Implement core functionality to detect non-overlapping circles in images and output their properties"
-        status: "todo"
-        due_date: "2025-11-07"
+        id: m1
+        title: 'M1: MVP - Basic Circle Detection'
+        description: Implement core functionality to detect non-overlapping 
+          circles in images and output their properties
+        status: todo
+        due_date: '2025-11-07'
         success_criteria:
-          - "CLI successfully reads image files (PNG, JPG)"
-          - "Detects circles using Hough Circle Transform"
-          - "Outputs center coordinates, radius, and average color for each circle"
-          - "Works on test images with non-overlapping circles"
-          - "Unit tests cover core detection logic"
-
+          - CLI successfully reads image files (PNG, JPG)
+          - Detects circles using Hough Circle Transform
+          - Outputs center coordinates, radius, and average color for each 
+            circle
+          - Works on test images with non-overlapping circles
+          - Unit tests cover core detection logic
         features:
           cli-foundation:
-            id: "cli-foundation"
-            title: "CLI Foundation & Project Setup"
-            description: "Set up Python project structure, CLI interface, and basic file I/O"
-            priority: "critical"
-            status: "todo"
+            id: cli-foundation
+            title: CLI Foundation & Project Setup
+            description: Set up Python project structure, CLI interface, and 
+              basic file I/O
+            priority: critical
+            status: todo
             depends_on: []
-
             projects:
               project-setup:
-                id: "project-setup"
-                title: "Initialize Python Project Structure"
-                description: "Create Python package with proper structure, pyproject.toml, dependencies (click, opencv-python, numpy, pillow)"
-                owner: ""
-                tdd_spec: "pip install -e . runs successfully, dotmatrix --help displays usage"
-                docs_ref: "README.md"
+                id: project-setup
+                title: Initialize Python Project Structure
+                description: Create Python package with proper structure, 
+                  pyproject.toml, dependencies (click, opencv-python, numpy, 
+                  pillow)
+                owner: ''
+                tdd_spec: pip install -e . runs successfully, dotmatrix --help 
+                  displays usage
+                docs_ref: README.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               cli-interface:
-                id: "cli-interface"
-                title: "Implement CLI Interface with Click"
-                description: "Create CLI with arguments: --input (image path), --output (optional JSON/CSV), --debug flag"
-                owner: ""
-                tdd_spec: "dotmatrix --input test.png runs without error, dotmatrix validates file exists"
-                docs_ref: "docs/cli-usage.md"
+                id: cli-interface
+                title: Implement CLI Interface with Click
+                description: 'Create CLI with arguments: --input (image path), --output
+                  (optional JSON/CSV), --debug flag'
+                owner: ''
+                tdd_spec: dotmatrix --input test.png runs without error, 
+                  dotmatrix validates file exists
+                docs_ref: docs/cli-usage.md
                 sequence: 2
-                depends_on: ["project-setup"]
-                status: "todo"
-
+                depends_on:
+                  - project-setup
+                status: todo
               image-loader:
-                id: "image-loader"
-                title: "Image Loading and Validation"
-                description: "Load images using OpenCV/Pillow, validate format and dimensions"
-                owner: ""
-                tdd_spec: "Successfully loads PNG/JPG files, rejects invalid formats with clear error"
-                docs_ref: "TBD"
+                id: image-loader
+                title: Image Loading and Validation
+                description: Load images using OpenCV/Pillow, validate format 
+                  and dimensions
+                owner: ''
+                tdd_spec: Successfully loads PNG/JPG files, rejects invalid 
+                  formats with clear error
+                docs_ref: TBD
                 sequence: 3
-                depends_on: ["cli-interface"]
-                status: "todo"
-
+                depends_on:
+                  - cli-interface
+                status: todo
           circle-detection:
-            id: "circle-detection"
-            title: "Basic Circle Detection Algorithm"
-            description: "Implement Hough Circle Transform for detecting non-overlapping circles"
-            priority: "critical"
-            status: "todo"
-            depends_on: ["cli-foundation"]
-
+            id: circle-detection
+            title: Basic Circle Detection Algorithm
+            description: Implement Hough Circle Transform for detecting 
+              non-overlapping circles
+            priority: critical
+            status: todo
+            depends_on:
+              - cli-foundation
             projects:
               hough-transform:
-                id: "hough-transform"
-                title: "Implement Hough Circle Transform"
-                description: "Use cv2.HoughCircles to detect circles in grayscale images"
-                owner: ""
-                tdd_spec: "Detects at least 90% of circles in test images with <5px center error"
-                docs_ref: "docs/algorithms/hough-transform.md"
+                id: hough-transform
+                title: Implement Hough Circle Transform
+                description: Use cv2.HoughCircles to detect circles in grayscale
+                  images
+                owner: ''
+                tdd_spec: Detects at least 90% of circles in test images with 
+                  <5px center error
+                docs_ref: docs/algorithms/hough-transform.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               color-extraction:
-                id: "color-extraction"
-                title: "Extract Circle Colors"
-                description: "Sample pixels within detected circles to determine average RGB color"
-                owner: ""
-                tdd_spec: "Returns RGB tuple within 10% tolerance of actual circle color"
-                docs_ref: "TBD"
+                id: color-extraction
+                title: Extract Circle Colors
+                description: Sample pixels within detected circles to determine 
+                  average RGB color
+                owner: ''
+                tdd_spec: Returns RGB tuple within 10% tolerance of actual 
+                  circle color
+                docs_ref: TBD
                 sequence: 2
-                depends_on: ["hough-transform"]
-                status: "todo"
-
+                depends_on:
+                  - hough-transform
+                status: todo
               result-formatter:
-                id: "result-formatter"
-                title: "Format Detection Results"
-                description: "Structure output as JSON/CSV with center (x,y), radius, color (r,g,b)"
-                owner: ""
-                tdd_spec: "Outputs valid JSON with schema: [{center: [x,y], radius: r, color: [r,g,b]}]"
-                docs_ref: "docs/output-format.md"
+                id: result-formatter
+                title: Format Detection Results
+                description: Structure output as JSON/CSV with center (x,y), 
+                  radius, color (r,g,b)
+                owner: ''
+                tdd_spec: 'Outputs valid JSON with schema: [{center: [x,y], radius:
+                  r, color: [r,g,b]}]'
+                docs_ref: docs/output-format.md
                 sequence: 3
-                depends_on: ["color-extraction"]
-                status: "todo"
-
+                depends_on:
+                  - color-extraction
+                status: todo
           testing-mvp:
-            id: "testing-mvp"
-            title: "MVP Testing & Validation"
-            description: "Create test suite and validation images for MVP functionality"
-            priority: "high"
-            status: "todo"
-            depends_on: ["circle-detection"]
-
+            id: testing-mvp
+            title: MVP Testing & Validation
+            description: Create test suite and validation images for MVP 
+              functionality
+            priority: high
+            status: todo
+            depends_on:
+              - circle-detection
             projects:
               test-images:
-                id: "test-images"
-                title: "Generate Test Image Dataset"
-                description: "Create synthetic test images with known circle properties"
-                owner: ""
-                tdd_spec: "10+ test images with documented ground truth (center, radius, color)"
-                docs_ref: "tests/data/README.md"
+                id: test-images
+                title: Generate Test Image Dataset
+                description: Create synthetic test images with known circle 
+                  properties
+                owner: ''
+                tdd_spec: 10+ test images with documented ground truth (center, 
+                  radius, color)
+                docs_ref: tests/data/README.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               unit-tests:
-                id: "unit-tests"
-                title: "Write Unit Tests"
-                description: "Test each module: image loading, circle detection, color extraction, formatting"
-                owner: ""
-                tdd_spec: "pytest runs with >80% code coverage, all tests pass"
-                docs_ref: "TBD"
+                id: unit-tests
+                title: Write Unit Tests
+                description: 'Test each module: image loading, circle detection, color
+                  extraction, formatting'
+                owner: ''
+                tdd_spec: pytest runs with >80% code coverage, all tests pass
+                docs_ref: TBD
                 sequence: 2
-                depends_on: ["test-images"]
-                status: "todo"
-
+                depends_on:
+                  - test-images
+                status: todo
       m2:
-        id: "m2"
-        title: "M2: Overlapping Circle Detection"
-        description: "Enhance detection to handle overlapping and occluded circles"
-        status: "todo"
-        due_date: "2025-11-17"
+        id: m2
+        title: 'M2: Overlapping Circle Detection'
+        description: Enhance detection to handle overlapping and occluded 
+          circles
+        status: todo
+        due_date: '2025-11-17'
         success_criteria:
-          - "Detects partially occluded circles (>50% visible)"
-          - "Separates overlapping circles correctly"
-          - "Color extraction samples only visible pixels"
-          - "Performance: <2s for 1920x1080 image with 20 circles"
-
+          - Detects partially occluded circles (>50% visible)
+          - Separates overlapping circles correctly
+          - Color extraction samples only visible pixels
+          - 'Performance: <2s for 1920x1080 image with 20 circles'
         features:
           advanced-detection:
-            id: "advanced-detection"
-            title: "Advanced Detection for Overlapping Circles"
-            description: "Implement algorithms to detect and separate overlapping circles"
-            priority: "critical"
-            status: "todo"
+            id: advanced-detection
+            title: Advanced Detection for Overlapping Circles
+            description: Implement algorithms to detect and separate overlapping
+              circles
+            priority: critical
+            status: todo
             depends_on: []
-
             projects:
               edge-detection:
-                id: "edge-detection"
-                title: "Improve Edge Detection"
-                description: "Use Canny edge detection and adaptive thresholding for better circle boundaries"
-                owner: ""
-                tdd_spec: "Detects edges of overlapping circles with <10% false positive rate"
-                docs_ref: "docs/algorithms/edge-detection.md"
+                id: edge-detection
+                title: Improve Edge Detection
+                description: Use Canny edge detection and adaptive thresholding 
+                  for better circle boundaries
+                owner: ''
+                tdd_spec: Detects edges of overlapping circles with <10% false 
+                  positive rate
+                docs_ref: docs/algorithms/edge-detection.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               multi-scale-detection:
-                id: "multi-scale-detection"
-                title: "Multi-Scale Circle Detection"
-                description: "Run Hough transform at multiple scales to catch circles of varying sizes"
-                owner: ""
-                tdd_spec: "Detects circles from 10px to 500px radius with >85% accuracy"
-                docs_ref: "TBD"
+                id: multi-scale-detection
+                title: Multi-Scale Circle Detection
+                description: Run Hough transform at multiple scales to catch 
+                  circles of varying sizes
+                owner: ''
+                tdd_spec: Detects circles from 10px to 500px radius with >85% 
+                  accuracy
+                docs_ref: TBD
                 sequence: 2
-                depends_on: ["edge-detection"]
-                status: "todo"
-
+                depends_on:
+                  - edge-detection
+                status: todo
               occlusion-handling:
-                id: "occlusion-handling"
-                title: "Handle Occluded Circles"
-                description: "Detect partially visible circles and estimate full circle from visible arc"
-                owner: ""
-                tdd_spec: "Detects circles with >50% visibility, estimates center within 10px error"
-                docs_ref: "docs/algorithms/occlusion.md"
+                id: occlusion-handling
+                title: Handle Occluded Circles
+                description: Detect partially visible circles and estimate full 
+                  circle from visible arc
+                owner: ''
+                tdd_spec: Detects circles with >50% visibility, estimates center
+                  within 10px error
+                docs_ref: docs/algorithms/occlusion.md
                 sequence: 3
-                depends_on: ["multi-scale-detection"]
-                status: "todo"
-
+                depends_on:
+                  - multi-scale-detection
+                status: todo
           color-refinement:
-            id: "color-refinement"
-            title: "Refined Color Extraction for Overlaps"
-            description: "Improve color sampling to handle overlapping circles correctly"
-            priority: "high"
-            status: "todo"
-            depends_on: ["advanced-detection"]
-
+            id: color-refinement
+            title: Refined Color Extraction for Overlaps
+            description: Improve color sampling to handle overlapping circles 
+              correctly
+            priority: high
+            status: todo
+            depends_on:
+              - advanced-detection
             projects:
               depth-ordering:
-                id: "depth-ordering"
-                title: "Infer Circle Depth Ordering"
-                description: "Determine which circles are in front based on occlusion patterns"
-                owner: ""
-                tdd_spec: "Correctly orders 80% of overlapping pairs in test images"
-                docs_ref: "docs/algorithms/depth-ordering.md"
+                id: depth-ordering
+                title: Infer Circle Depth Ordering
+                description: Determine which circles are in front based on 
+                  occlusion patterns
+                owner: ''
+                tdd_spec: Correctly orders 80% of overlapping pairs in test 
+                  images
+                docs_ref: docs/algorithms/depth-ordering.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               masked-sampling:
-                id: "masked-sampling"
-                title: "Sample Colors with Occlusion Masks"
-                description: "Create masks to sample only visible pixels of each circle"
-                owner: ""
-                tdd_spec: "Color extraction within 15% tolerance for overlapping circles"
-                docs_ref: "TBD"
+                id: masked-sampling
+                title: Sample Colors with Occlusion Masks
+                description: Create masks to sample only visible pixels of each 
+                  circle
+                owner: ''
+                tdd_spec: Color extraction within 15% tolerance for overlapping 
+                  circles
+                docs_ref: TBD
                 sequence: 2
-                depends_on: ["depth-ordering"]
-                status: "todo"
-
+                depends_on:
+                  - depth-ordering
+                status: todo
           performance-opt:
-            id: "performance-opt"
-            title: "Performance Optimization"
-            description: "Optimize detection speed for larger images"
-            priority: "high"
-            status: "todo"
+            id: performance-opt
+            title: Performance Optimization
+            description: Optimize detection speed for larger images
+            priority: high
+            status: todo
             depends_on: []
-
             projects:
               algorithm-tuning:
-                id: "algorithm-tuning"
-                title: "Tune Algorithm Parameters"
-                description: "Optimize Hough transform parameters for speed/accuracy tradeoff"
-                owner: ""
-                tdd_spec: "1920x1080 image with 20 circles processes in <2 seconds"
-                docs_ref: "TBD"
+                id: algorithm-tuning
+                title: Tune Algorithm Parameters
+                description: Optimize Hough transform parameters for 
+                  speed/accuracy tradeoff
+                owner: ''
+                tdd_spec: 1920x1080 image with 20 circles processes in <2 
+                  seconds
+                docs_ref: TBD
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               parallel-processing:
-                id: "parallel-processing"
-                title: "Add Parallel Processing Support"
-                description: "Use multiprocessing for batch image processing"
-                owner: ""
-                tdd_spec: "Batch processing 10 images uses multiple cores, 2x speedup"
-                docs_ref: "TBD"
+                id: parallel-processing
+                title: Add Parallel Processing Support
+                description: Use multiprocessing for batch image processing
+                owner: ''
+                tdd_spec: Batch processing 10 images uses multiple cores, 2x 
+                  speedup
+                docs_ref: TBD
                 sequence: 2
-                depends_on: ["algorithm-tuning"]
-                status: "todo"
-
+                depends_on:
+                  - algorithm-tuning
+                status: todo
       m3:
-        id: "m3"
-        title: "M3: Production Ready & Polish"
-        description: "Add production features, documentation, and distribution packaging"
-        status: "todo"
-        due_date: "2025-11-30"
+        id: m3
+        title: 'M3: Production Ready & Polish'
+        description: Add production features, documentation, and distribution 
+          packaging
+        status: todo
+        due_date: '2025-11-30'
         success_criteria:
-          - "Comprehensive documentation and examples"
-          - "Installable via pip"
-          - "Confidence scores for each detection"
-          - "Visualization mode shows detected circles"
-          - "CI/CD pipeline running tests"
-
+          - Comprehensive documentation and examples
+          - Installable via pip
+          - Confidence scores for each detection
+          - Visualization mode shows detected circles
+          - CI/CD pipeline running tests
         features:
           output-enhancements:
-            id: "output-enhancements"
-            title: "Enhanced Output & Visualization"
-            description: "Add confidence scores, visualization mode, and flexible output formats"
-            priority: "high"
-            status: "todo"
+            id: output-enhancements
+            title: Enhanced Output & Visualization
+            description: Add confidence scores, visualization mode, and flexible
+              output formats
+            priority: high
+            status: todo
             depends_on: []
-
             projects:
               confidence-scores:
-                id: "confidence-scores"
-                title: "Add Detection Confidence Scores"
-                description: "Calculate confidence score (0-1) for each detected circle"
-                owner: ""
-                tdd_spec: "Output includes confidence field, higher for clearly visible circles"
-                docs_ref: "docs/output-format.md"
+                id: confidence-scores
+                title: Add Detection Confidence Scores
+                description: Calculate confidence score (0-1) for each detected 
+                  circle
+                owner: ''
+                tdd_spec: Output includes confidence field, higher for clearly 
+                  visible circles
+                docs_ref: docs/output-format.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               visualization:
-                id: "visualization"
-                title: "Implement Visualization Mode"
-                description: "Add --visualize flag to output image with detected circles overlaid"
-                owner: ""
-                tdd_spec: "dotmatrix --visualize saves output image with circles drawn"
-                docs_ref: "docs/cli-usage.md"
+                id: visualization
+                title: Implement Visualization Mode
+                description: Add --visualize flag to output image with detected 
+                  circles overlaid
+                owner: ''
+                tdd_spec: dotmatrix --visualize saves output image with circles 
+                  drawn
+                docs_ref: docs/cli-usage.md
                 sequence: 2
                 depends_on: []
-                status: "todo"
-
+                status: todo
               output-formats:
-                id: "output-formats"
-                title: "Support Multiple Output Formats"
-                description: "Support JSON, CSV, and plain text output formats"
-                owner: ""
-                tdd_spec: "dotmatrix --format json|csv|txt produces valid output"
-                docs_ref: "docs/output-format.md"
+                id: output-formats
+                title: Support Multiple Output Formats
+                description: Support JSON, CSV, and plain text output formats
+                owner: ''
+                tdd_spec: dotmatrix --format json|csv|txt produces valid output
+                docs_ref: docs/output-format.md
                 sequence: 3
-                depends_on: ["confidence-scores"]
-                status: "todo"
-
+                depends_on:
+                  - confidence-scores
+                status: todo
           documentation:
-            id: "documentation"
-            title: "Comprehensive Documentation"
-            description: "Write user guide, API docs, algorithm explanations, and examples"
-            priority: "high"
-            status: "todo"
+            id: documentation
+            title: Comprehensive Documentation
+            description: Write user guide, API docs, algorithm explanations, and
+              examples
+            priority: high
+            status: todo
             depends_on: []
-
             projects:
               user-guide:
-                id: "user-guide"
-                title: "Write User Guide"
-                description: "Complete user guide with installation, usage, examples, troubleshooting"
-                owner: ""
-                tdd_spec: "docs/user-guide.md covers all CLI flags with examples"
-                docs_ref: "docs/user-guide.md"
+                id: user-guide
+                title: Write User Guide
+                description: Complete user guide with installation, usage, 
+                  examples, troubleshooting
+                owner: ''
+                tdd_spec: docs/user-guide.md covers all CLI flags with examples
+                docs_ref: docs/user-guide.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               algorithm-docs:
-                id: "algorithm-docs"
-                title: "Document Detection Algorithms"
-                description: "Explain Hough transform, occlusion handling, color extraction algorithms"
-                owner: ""
-                tdd_spec: "docs/algorithms/ contains detailed explanations with diagrams"
-                docs_ref: "docs/algorithms/README.md"
+                id: algorithm-docs
+                title: Document Detection Algorithms
+                description: Explain Hough transform, occlusion handling, color 
+                  extraction algorithms
+                owner: ''
+                tdd_spec: docs/algorithms/ contains detailed explanations with 
+                  diagrams
+                docs_ref: docs/algorithms/README.md
                 sequence: 2
                 depends_on: []
-                status: "todo"
-
+                status: todo
               api-reference:
-                id: "api-reference"
-                title: "Generate API Reference"
-                description: "Use sphinx/mkdocs to generate API docs from docstrings"
-                owner: ""
-                tdd_spec: "API docs published at docs.dotmatrix.io or in docs/api/"
-                docs_ref: "docs/api/README.md"
+                id: api-reference
+                title: Generate API Reference
+                description: Use sphinx/mkdocs to generate API docs from 
+                  docstrings
+                owner: ''
+                tdd_spec: API docs published at docs.dotmatrix.io or in 
+                  docs/api/
+                docs_ref: docs/api/README.md
                 sequence: 3
                 depends_on: []
-                status: "todo"
-
+                status: todo
           distribution:
-            id: "distribution"
-            title: "Package & Distribution"
-            description: "Prepare for PyPI distribution and set up CI/CD"
-            priority: "high"
-            status: "todo"
+            id: distribution
+            title: Package & Distribution
+            description: Prepare for PyPI distribution and set up CI/CD
+            priority: high
+            status: todo
             depends_on: []
-
             projects:
               pypi-packaging:
-                id: "pypi-packaging"
-                title: "Prepare PyPI Package"
-                description: "Configure pyproject.toml for PyPI, add classifiers, README for PyPI"
-                owner: ""
-                tdd_spec: "python -m build creates wheel, twine check passes"
-                docs_ref: "docs/development/packaging.md"
+                id: pypi-packaging
+                title: Prepare PyPI Package
+                description: Configure pyproject.toml for PyPI, add classifiers,
+                  README for PyPI
+                owner: ''
+                tdd_spec: python -m build creates wheel, twine check passes
+                docs_ref: docs/development/packaging.md
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               ci-cd:
-                id: "ci-cd"
-                title: "Set Up CI/CD Pipeline"
-                description: "GitHub Actions for testing, linting, and automated releases"
-                owner: ""
-                tdd_spec: "CI runs tests on push, creates release on tag"
-                docs_ref: ".github/workflows/README.md"
+                id: ci-cd
+                title: Set Up CI/CD Pipeline
+                description: GitHub Actions for testing, linting, and automated 
+                  releases
+                owner: ''
+                tdd_spec: CI runs tests on push, creates release on tag
+                docs_ref: .github/workflows/README.md
                 sequence: 2
                 depends_on: []
-                status: "todo"
-
+                status: todo
               publish-pypi:
-                id: "publish-pypi"
-                title: "Publish to PyPI"
-                description: "Upload package to PyPI, verify pip install dotmatrix works"
-                owner: ""
-                tdd_spec: "pip install dotmatrix installs latest version from PyPI"
-                docs_ref: "TBD"
+                id: publish-pypi
+                title: Publish to PyPI
+                description: Upload package to PyPI, verify pip install 
+                  dotmatrix works
+                owner: ''
+                tdd_spec: pip install dotmatrix installs latest version from 
+                  PyPI
+                docs_ref: TBD
                 sequence: 3
-                depends_on: ["pypi-packaging", "ci-cd"]
-                status: "todo"
-
+                depends_on:
+                  - pypi-packaging
+                  - ci-cd
+                status: todo
           polish:
-            id: "polish"
-            title: "Final Polish & Error Handling"
-            description: "Improve error messages, add logging, handle edge cases"
-            priority: "high"
-            status: "todo"
+            id: polish
+            title: Final Polish & Error Handling
+            description: Improve error messages, add logging, handle edge cases
+            priority: high
+            status: todo
             depends_on: []
-
             projects:
               error-handling:
-                id: "error-handling"
-                title: "Comprehensive Error Handling"
-                description: "Add clear error messages for invalid inputs, missing files, unsupported formats"
-                owner: ""
-                tdd_spec: "All error conditions produce helpful messages, non-zero exit codes"
-                docs_ref: "TBD"
+                id: error-handling
+                title: Comprehensive Error Handling
+                description: Add clear error messages for invalid inputs, 
+                  missing files, unsupported formats
+                owner: ''
+                tdd_spec: All error conditions produce helpful messages, 
+                  non-zero exit codes
+                docs_ref: TBD
                 sequence: 1
                 depends_on: []
-                status: "todo"
-
+                status: todo
               logging:
-                id: "logging"
-                title: "Add Logging Support"
-                description: "Implement --verbose flag with detailed logging for debugging"
-                owner: ""
-                tdd_spec: "dotmatrix --verbose logs detection steps and timings"
-                docs_ref: "TBD"
+                id: logging
+                title: Add Logging Support
+                description: Implement --verbose flag with detailed logging for 
+                  debugging
+                owner: ''
+                tdd_spec: dotmatrix --verbose logs detection steps and timings
+                docs_ref: TBD
                 sequence: 2
                 depends_on: []
-                status: "todo"
-
+                status: todo
               edge-cases:
-                id: "edge-cases"
-                title: "Handle Edge Cases"
-                description: "Test and handle: no circles found, very small/large images, malformed images"
-                owner: ""
-                tdd_spec: "Gracefully handles edge cases documented in tests/edge-cases/"
-                docs_ref: "tests/edge-cases/README.md"
+                id: edge-cases
+                title: Handle Edge Cases
+                description: 'Test and handle: no circles found, very small/large
+                  images, malformed images'
+                owner: ''
+                tdd_spec: Gracefully handles edge cases documented in 
+                  tests/edge-cases/
+                docs_ref: tests/edge-cases/README.md
                 sequence: 3
-                depends_on: ["error-handling", "logging"]
-                status: "todo"
+                depends_on:
+                  - error-handling
+                  - logging
+                status: todo
+          workflow-improvements:
+            id: workflow-improvements
+            title: Workflow Improvements
+            description: Better output organization, config files, and run 
+              management for users running many experiments
+            status: in_progress
+            priority: high
+            projects:
+              organized-output-dirs:
+                id: organized-output-dirs
+                title: Organized Output Directories with Run Naming
+                description: Auto-create timestamped/named output folders for 
+                  each run
+                status: todo
+                sequence: 1
+              config-save-load:
+                id: config-save-load
+                title: Save and Load Config Files
+                description: Save detection settings to YAML/JSON config files 
+                  that can be reloaded
+                status: todo
+                sequence: 2
+              run-manifest:
+                id: run-manifest
+                title: Run Manifest with Metadata
+                description: Auto-generate manifest.json with settings, source 
+                  file, timestamp for each run
+                status: todo
+                sequence: 3
+              search-past-runs:
+                id: search-past-runs
+                title: List and Search Past Runs
+                description: CLI commands to list, search, and compare past 
+                  detection runs
+                status: todo
+                sequence: 4
+          large-file-support:
+            id: large-file-support
+            title: Large File Support (10MB+)
+            status: in_progress
+            priority: high
+            description: Support for processing large image files up to 10MB+ 
+              (4-9 megapixels). Based on spike research (ADR-001), no special 
+              processing is needed - current architecture handles target sizes 
+              efficiently.
+            depends_on: []
+            projects:
+              perf-benchmark:
+                id: perf-benchmark
+                title: Performance Benchmarking
+                status: done
+                sequence: 1
+                description: Establish baseline performance metrics across image
+                  sizes. Completed spike w804xa.
+                owner: ''
+                tdd_spec: Benchmark scripts in benchmarks/
+                docs_ref: docs/adr/ADR-001-large-file-processing.md
+                depends_on: []
+              size-warnings:
+                id: size-warnings
+                title: Add Size Warnings for Large Images
+                status: todo
+                sequence: 2
+                description: Add warnings for convex detection on images >20MP.
+                owner: ''
+                tdd_spec: Warning displayed when image exceeds 20MP with 
+                  --convex-edge
+                docs_ref: ''
+                depends_on:
+                  - perf-benchmark
+              progress-reporting:
+                id: progress-reporting
+                title: Progress Reporting for Long Operations
+                status: todo
+                sequence: 3
+                description: Add progress feedback for operations >5 seconds.
+                owner: ''
+                tdd_spec: Progress indicator shown for operations exceeding 5s
+                docs_ref: ''
+                depends_on:
+                  - size-warnings
