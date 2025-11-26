@@ -152,7 +152,13 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Disable automatic manifest.json generation when using --extract'
 )
-def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest):
+@click.option(
+    '--chunk-size',
+    type=str,
+    default='auto',
+    help='Tile size for chunked processing: "auto" (default), pixel size (e.g. "2000"), or "0" to disable'
+)
+def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -170,10 +176,10 @@ def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radi
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, quantize_output, run_name,
-                   no_organize, save_config, no_manifest)
+                   no_organize, save_config, no_manifest, chunk_size)
 
 
-def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest):
+def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto'):
     """Internal function for circle detection."""
     # Load configuration file if provided
     if config:
@@ -193,7 +199,7 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
                               'min_confidence', 'edge_sampling', 'edge_samples',
                               'edge_method', 'exclude_background', 'use_histogram', 'color_separation',
                               'convex_edge', 'palette', 'quantize_output', 'run_name', 'no_organize',
-                              'save_config', 'no_manifest']:
+                              'save_config', 'no_manifest', 'chunk_size']:
                 if param_name in ctx.params:
                     source = ctx.get_parameter_source(param_name)
                     # Only add if NOT from default (i.e., from CLI or environment)
@@ -229,6 +235,7 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             no_organize = merged.get('no_organize', no_organize)
             save_config = merged.get('save_config', save_config)
             no_manifest = merged.get('no_manifest', no_manifest)
+            chunk_size = merged.get('chunk_size', chunk_size)
 
             if debug:
                 click.echo(f"Loaded configuration from: {config}", err=True)
@@ -342,7 +349,8 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
         if convex_edge:
             # Convex edge detection for overlapping circles
             from .convex_detector import (
-                detect_all_circles, parse_palette, get_color_name
+                detect_all_circles, parse_palette, get_color_name,
+                process_chunked, calculate_chunk_size, PALETTES
             )
 
             # Show progress message for convex detection (can be slow for large images)
@@ -366,30 +374,72 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             # Convert BGR to RGB for convex detector
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            # Debug callback to show per-color progress
-            def debug_cb(color, mask, circles):
-                if debug:
-                    click.echo(f"  {get_color_name(color)}: {len(circles)} circle(s) detected", err=True)
+            # Determine chunk size for processing
+            use_chunked = False
+            actual_chunk_size = 0
+            if chunk_size != '0':
+                if chunk_size == 'auto':
+                    # Auto: use chunking for images > 20 MP
+                    if megapixels > LARGE_IMAGE_THRESHOLD_MP:
+                        actual_chunk_size = calculate_chunk_size(image_rgb.shape, max_radius)
+                        use_chunked = True
+                else:
+                    # Explicit size
+                    try:
+                        actual_chunk_size = int(chunk_size)
+                        use_chunked = True
+                    except ValueError:
+                        click.echo(f"Error: Invalid chunk-size '{chunk_size}'. Use 'auto', '0', or a pixel size.", err=True)
+                        sys.exit(1)
 
-            # Detect all circles using convex edge analysis
-            detected_circles, quantized = detect_all_circles(
-                image_rgb,
-                color_palette,
-                min_radius=min_radius,
-                max_radius=max_radius,
-                exclude_background=True,
-                debug_callback=debug_cb if debug else None
-            )
+            if use_chunked:
+                # Use chunked processing for large images
+                if debug:
+                    click.echo(f"Using chunked processing with chunk size: {actual_chunk_size}px", err=True)
+
+                # Progress callback to show tile progress
+                def progress_cb(tile_num, total_tiles):
+                    click.echo(f"Processing tile {tile_num}/{total_tiles}...", err=True)
+
+                detected_circles = process_chunked(
+                    image_rgb,
+                    palette=color_palette,
+                    chunk_size=actual_chunk_size,
+                    max_radius=max_radius,
+                    min_radius=min_radius,
+                    exclude_background=True,
+                    progress_callback=progress_cb if not debug else None,
+                    debug_callback=None
+                )
+                quantized = None  # Not available in chunked mode
+            else:
+                # Debug callback to show per-color progress
+                def debug_cb(color, mask, circles):
+                    if debug:
+                        click.echo(f"  {get_color_name(color)}: {len(circles)} circle(s) detected", err=True)
+
+                # Detect all circles using convex edge analysis
+                detected_circles, quantized = detect_all_circles(
+                    image_rgb,
+                    color_palette,
+                    min_radius=min_radius,
+                    max_radius=max_radius,
+                    exclude_background=True,
+                    debug_callback=debug_cb if debug else None
+                )
 
             if debug:
                 click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)
 
             # Save quantized image if requested
             if quantize_output:
-                quantized_bgr = cv2.cvtColor(quantized, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(str(quantize_output), quantized_bgr)
-                if debug:
-                    click.echo(f"Quantized image saved to: {quantize_output}", err=True)
+                if quantized is not None:
+                    quantized_bgr = cv2.cvtColor(quantized, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(str(quantize_output), quantized_bgr)
+                    if debug:
+                        click.echo(f"Quantized image saved to: {quantize_output}", err=True)
+                else:
+                    click.echo("Warning: Quantized image not available in chunked mode", err=True)
 
             if len(detected_circles) == 0:
                 click.echo("No circles detected in image.", err=True)

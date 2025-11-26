@@ -432,3 +432,175 @@ def get_color_name(color: Tuple[int, int, int]) -> str:
 
     # Return RGB string for unknown colors
     return f'rgb_{color[0]}_{color[1]}_{color[2]}'
+
+
+def generate_tiles(
+    image_shape: Tuple[int, int],
+    chunk_size: int,
+    overlap: int
+) -> List[Tuple[int, int, int, int]]:
+    """Generate overlapping tile coordinates for chunked processing.
+
+    Creates a grid of tiles that cover the entire image with overlap to ensure
+    circles on boundaries are detected. Each tile is (x1, y1, x2, y2) in pixels.
+
+    Args:
+        image_shape: (height, width) of the image
+        chunk_size: Size of each tile in pixels
+        overlap: Overlap between adjacent tiles in pixels
+
+    Returns:
+        List of (x1, y1, x2, y2) tile coordinates
+    """
+    h, w = image_shape[:2]
+    tiles = []
+
+    # Calculate step size (chunk_size minus overlap)
+    step = max(1, chunk_size - overlap)
+
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            x1 = x
+            y1 = y
+            x2 = min(x + chunk_size, w)
+            y2 = min(y + chunk_size, h)
+            tiles.append((x1, y1, x2, y2))
+
+    return tiles
+
+
+def calculate_chunk_size(
+    image_shape: Tuple[int, int],
+    max_radius: int,
+    target_megapixels: float = 4.0
+) -> int:
+    """Calculate optimal chunk size based on image and circle parameters.
+
+    Uses a formula based on max_radius to ensure tiles are large enough to
+    contain complete circles while keeping memory usage reasonable.
+
+    Args:
+        image_shape: (height, width) of the image
+        max_radius: Maximum expected circle radius in pixels
+        target_megapixels: Target megapixels per chunk (default: 4 MP)
+
+    Returns:
+        Chunk size in pixels
+    """
+    h, w = image_shape[:2]
+
+    # Base size: at least 50x max_radius to contain multiple circles
+    min_size = max(2000, max_radius * 50)
+
+    # Calculate size based on target megapixels
+    target_size = int(np.sqrt(target_megapixels * 1e6))
+
+    # Use larger of minimum and target
+    chunk_size = max(min_size, target_size)
+
+    # Cap at image dimensions
+    chunk_size = min(chunk_size, h, w)
+
+    return int(chunk_size)
+
+
+def process_chunked(
+    image: np.ndarray,
+    palette: List[Tuple[int, int, int]],
+    chunk_size: int,
+    max_radius: int,
+    min_radius: int = 80,
+    exclude_background: bool = True,
+    progress_callback: Optional[callable] = None,
+    debug_callback: Optional[callable] = None
+) -> List[DetectedCircle]:
+    """Process large image in chunks with overlapping tiles.
+
+    Splits the image into overlapping tiles, processes each independently,
+    then merges results with boundary deduplication.
+
+    Args:
+        image: RGB image as numpy array (H, W, 3)
+        palette: List of RGB tuples (first is assumed to be background)
+        chunk_size: Size of each tile in pixels
+        max_radius: Maximum circle radius in pixels
+        min_radius: Minimum circle radius in pixels
+        exclude_background: If True, skip the first palette color (background)
+        progress_callback: Optional function(tile_num, total_tiles) for progress
+        debug_callback: Optional function(color_name, mask, circles) for debugging
+
+    Returns:
+        List of DetectedCircle objects with global coordinates
+    """
+    h, w = image.shape[:2]
+
+    # Calculate overlap based on max_radius (ensure boundary circles detected)
+    # Overlap should be at least 2x max_radius to catch boundary circles
+    overlap = max_radius * 2
+
+    # Ensure chunk_size is larger than overlap (at least 3x overlap for efficiency)
+    min_chunk_size = overlap * 3
+    if chunk_size < min_chunk_size:
+        chunk_size = min_chunk_size
+
+    # Generate tiles
+    tiles = generate_tiles((h, w), chunk_size, overlap)
+    total_tiles = len(tiles)
+
+    # If only one tile, process directly without chunking overhead
+    if total_tiles == 1:
+        circles, _ = detect_all_circles(
+            image, palette, min_radius, max_radius,
+            exclude_background, debug_callback
+        )
+        return circles
+
+    all_circles = []
+
+    for i, (x1, y1, x2, y2) in enumerate(tiles):
+        if progress_callback:
+            progress_callback(i + 1, total_tiles)
+
+        # Extract tile
+        tile = image[y1:y2, x1:x2]
+
+        # Process tile
+        tile_circles, _ = detect_all_circles(
+            tile, palette, min_radius, max_radius,
+            exclude_background, debug_callback
+        )
+
+        # Offset coordinates to global image space
+        for circle in tile_circles:
+            # Create new circle with offset coordinates
+            global_circle = DetectedCircle(
+                x=circle.x + x1,
+                y=circle.y + y1,
+                radius=circle.radius,
+                color=circle.color,
+                confidence=circle.confidence
+            )
+            all_circles.append(global_circle)
+
+    # Deduplicate circles from overlapping regions
+    # Convert to tuples for deduplication
+    circle_tuples = [(c.x, c.y, c.radius) for c in all_circles]
+    color_map = {(c.x, c.y, c.radius): c.color for c in all_circles}
+
+    # Group by color for deduplication
+    circles_by_color: Dict[Tuple[int, int, int], List[Tuple[int, int, int]]] = {}
+    for circle in all_circles:
+        color = circle.color
+        if color not in circles_by_color:
+            circles_by_color[color] = []
+        circles_by_color[color].append((circle.x, circle.y, circle.radius))
+
+    # Deduplicate each color group
+    final_circles = []
+    dedup_distance = max_radius // 2  # Tighter threshold for boundary dedup
+
+    for color, circles in circles_by_color.items():
+        deduped = deduplicate_circles_kdtree(circles, color, dedup_distance)
+        final_circles.extend(deduped)
+
+    return final_circles
