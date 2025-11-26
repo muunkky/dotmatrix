@@ -129,8 +129,18 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=click.Path(path_type=Path),
     help='Save quantized image to this path (for debugging convex-edge mode)'
 )
+@click.option(
+    '--run-name',
+    type=str,
+    help='Custom name for this run (creates named subdirectory in extract folder)'
+)
+@click.option(
+    '--no-organize',
+    is_flag=True,
+    help='Disable automatic subdirectory creation for --extract (flat output)'
+)
 @click.version_option(version=__version__, prog_name='dotmatrix')
-def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output):
+def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -157,7 +167,7 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
                               'color_tolerance', 'max_colors', 'sensitivity',
                               'min_confidence', 'edge_sampling', 'edge_samples',
                               'edge_method', 'exclude_background', 'use_histogram', 'color_separation',
-                              'convex_edge', 'palette', 'quantize_output']:
+                              'convex_edge', 'palette', 'quantize_output', 'run_name', 'no_organize']:
                 if param_name in ctx.params:
                     source = ctx.get_parameter_source(param_name)
                     # Only add if NOT from default (i.e., from CLI or environment)
@@ -189,6 +199,8 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
             convex_edge = merged.get('convex_edge', convex_edge)
             palette = merged.get('palette', palette)
             quantize_output = merged.get('quantize_output', quantize_output)
+            run_name = merged.get('run_name', run_name)
+            no_organize = merged.get('no_organize', no_organize)
 
             if debug:
                 click.echo(f"Loaded configuration from: {config}", err=True)
@@ -407,21 +419,30 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
 
         # 4. Extract to separate PNG images if requested
         if extract:
+            from .run_manager import create_run_directory
+
+            # Create organized output directory (unless --no-organize)
+            output_dir = create_run_directory(
+                base_dir=extract,
+                run_name=run_name,
+                organize=not no_organize
+            )
+
             if debug:
-                click.echo(f"Extracting circles to: {extract}", err=True)
+                click.echo(f"Extracting circles to: {output_dir}", err=True)
                 if max_colors:
                     click.echo(f"Using k-means clustering with max_colors={max_colors}", err=True)
 
             extracted_files = extract_circles_to_images(
                 results,
                 image_shape=image.shape[:2],
-                output_dir=extract,
+                output_dir=output_dir,
                 prefix="circles",
                 tolerance=color_tolerance,
                 max_colors=max_colors
             )
 
-            click.echo(f"Extracted {len(extracted_files)} color group(s) to {extract}/")
+            click.echo(f"Extracted {len(extracted_files)} color group(s) to {output_dir}/")
             for filepath in extracted_files:
                 click.echo(f"  - {filepath.name}")
 
