@@ -125,7 +125,13 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     '--palette',
     type=str,
     default='cmyk',
-    help='Color palette for convex-edge mode: preset name (cmyk, rgb) or custom "R,G,B;R,G,B" (default: cmyk)'
+    help='Color palette for convex-edge mode: "auto" (detect from image), preset (cmyk, rgb), or custom "R,G,B;R,G,B" (default: cmyk)'
+)
+@click.option(
+    '--num-colors',
+    type=int,
+    default=6,
+    help='Number of colors to detect when using --palette auto (default: 6)'
 )
 @click.option(
     '--quantize-output',
@@ -158,7 +164,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     default='auto',
     help='Tile size for chunked processing: "auto" (default), pixel size (e.g. "2000"), or "0" to disable'
 )
-def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size):
+def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -175,11 +181,11 @@ def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radi
         _do_detect(config, input, output, format, debug, extract, min_radius, max_radius,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
-                   color_separation, convex_edge, palette, quantize_output, run_name,
+                   color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
                    no_organize, save_config, no_manifest, chunk_size)
 
 
-def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto'):
+def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto'):
     """Internal function for circle detection."""
     # Load configuration file if provided
     if config:
@@ -198,7 +204,7 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
                               'color_tolerance', 'max_colors', 'sensitivity',
                               'min_confidence', 'edge_sampling', 'edge_samples',
                               'edge_method', 'exclude_background', 'use_histogram', 'color_separation',
-                              'convex_edge', 'palette', 'quantize_output', 'run_name', 'no_organize',
+                              'convex_edge', 'palette', 'num_colors', 'quantize_output', 'run_name', 'no_organize',
                               'save_config', 'no_manifest', 'chunk_size']:
                 if param_name in ctx.params:
                     source = ctx.get_parameter_source(param_name)
@@ -230,6 +236,7 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             color_separation = merged.get('color_separation', color_separation)
             convex_edge = merged.get('convex_edge', convex_edge)
             palette = merged.get('palette', palette)
+            num_colors = merged.get('num_colors', num_colors)
             quantize_output = merged.get('quantize_output', quantize_output)
             run_name = merged.get('run_name', run_name)
             no_organize = merged.get('no_organize', no_organize)
@@ -360,19 +367,37 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             if debug:
                 click.echo(f"Using convex edge detection with palette: {palette}", err=True)
 
-            try:
-                color_palette = parse_palette(palette)
-            except ValueError as e:
-                click.echo(f"Error: {e}", err=True)
-                sys.exit(1)
+            # Convert BGR to RGB for convex detector (needed for both auto and preset)
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            # Handle auto-palette detection
+            if palette.lower() == 'auto':
+                from .color_palette_detector import (
+                    detect_palette_for_convex, format_detected_palette
+                )
+
+                if debug:
+                    click.echo(f"Auto-detecting color palette ({num_colors} colors)...", err=True)
+
+                color_palette = detect_palette_for_convex(
+                    image_rgb, n_colors=num_colors
+                )
+
+                # Show detected palette to user
+                palette_desc = format_detected_palette(color_palette)
+                click.echo(f"Detected palette: {palette_desc}", err=True)
+            else:
+                # Use preset or custom palette
+                try:
+                    color_palette = parse_palette(palette)
+                except ValueError as e:
+                    click.echo(f"Error: {e}", err=True)
+                    sys.exit(1)
 
             if debug:
                 click.echo(f"Palette colors: {len(color_palette)}", err=True)
                 for i, color in enumerate(color_palette):
                     click.echo(f"  {i+1}. {get_color_name(color)} RGB{color}", err=True)
-
-            # Convert BGR to RGB for convex detector
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
             # Determine chunk size for processing
             use_chunked = False
