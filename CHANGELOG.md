@@ -102,6 +102,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Convex edge detection bypasses standard HoughCircles when `--convex-edge` is enabled
 - Results compatible with existing JSON/CSV formatters and `--extract` functionality
 
+### Added (Workflow Features - WORKFLOW Sprint)
+- **Organized Output Directories**: Extraction now creates timestamped subdirectories
+  - `--run-name` flag for custom run naming (e.g., `my-experiment_20251125_143022/`)
+  - `--no-organize` flag to output files directly (flat mode) for backward compatibility
+  - Automatic timestamping in `run_YYYYMMDD_HHMMSS` format
+  - Directory name sanitization for filesystem safety
+- **Configuration Save/Load**: Reusable detection settings
+  - `--save-config` flag to save settings to YAML/JSON file
+  - `--config` flag to load settings from file
+  - Supports both flat and nested config formats
+  - Config schema with default values and descriptions
+  - CLI arguments always override config file values
+- **Run Manifests**: Automatic metadata generation
+  - `manifest.json` auto-generated in each run directory
+  - Includes: version, timestamp, source file hash, all settings, results summary
+  - SHA256 hash for source file verification
+  - Circle count per color for quick reference
+  - `--no-manifest` flag to disable generation
+- **Run Management CLI**: Query and replay past runs
+  - `dotmatrix runs list` - List all runs with name, date, source, circle count
+  - `dotmatrix runs list --source FILE` - Filter by source filename
+  - `dotmatrix runs list --after DATE` - Filter by date (YYYY-MM-DD)
+  - `dotmatrix runs show RUN_NAME` - Display full manifest details
+  - `dotmatrix runs replay RUN_NAME` - Re-run with same settings
+  - `dotmatrix runs replay --dry-run` - Show command without executing
+- New modules: `run_manager.py`, `manifest.py`, `runs.py`
+- 79 new tests for workflow features (now 222 total tests)
+- 5 end-to-end workflow tests covering the complete detection pipeline
+
+### Technical Details (Workflow Features)
+- CLI converted to click group for subcommand support (backward compatible)
+- Config schema defines all configurable parameters with defaults and types
+- Manifests use JSON format for easy parsing and tool integration
+- Run discovery scans for `manifest.json` files in output subdirectories
+- Replay reconstructs CLI command from manifest settings
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode

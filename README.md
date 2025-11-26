@@ -271,6 +271,102 @@ Extracted 4 color group(s) to circles/
   - circles_color_255_255_000.png  # Yellow circles
 ```
 
+### Workflow Features (Run Management)
+
+DotMatrix automatically organizes outputs and provides tools to manage detection runs:
+
+#### Organized Output
+
+```bash
+# Default: creates timestamped subdirectory
+dotmatrix --input image.png --extract ./output
+# Output: ./output/run_20251125_143022/
+
+# Custom run name
+dotmatrix --input image.png --extract ./output --run-name my-experiment
+# Output: ./output/my_experiment_20251125_143022/
+
+# Flat output (no subdirectory)
+dotmatrix --input image.png --extract ./output --no-organize
+# Output: ./output/*.png
+```
+
+#### Save and Load Configuration
+
+```bash
+# Save settings to config file
+dotmatrix --input image.png --convex-edge --palette cmyk --save-config settings.yaml
+
+# Reuse settings later
+dotmatrix --input another.png --config settings.yaml
+
+# CLI args override config file
+dotmatrix --input image.png --config settings.yaml --min-radius 100
+```
+
+**Config file example (YAML):**
+```yaml
+detection:
+  convex_edge: true
+  palette: cmyk
+  min_radius: 80
+  sensitivity: normal
+```
+
+#### List and Search Runs
+
+```bash
+# List all runs
+dotmatrix runs list
+# Output:
+# NAME                 DATE              SOURCE              CIRCLES
+# ------------------------------------------------------------------
+# run_20251125_143022  2025-11-25 14:30  test_dotmatrix.png       16
+# my_experiment        2025-11-25 10:15  halftone.png             24
+
+# Filter by source file
+dotmatrix runs list --source halftone
+
+# Filter by date
+dotmatrix runs list --after 2025-11-20
+
+# Show full details for a run
+dotmatrix runs show run_20251125_143022
+
+# Replay a run with same settings
+dotmatrix runs replay run_20251125_143022
+
+# Preview command without executing
+dotmatrix runs replay run_20251125_143022 --dry-run
+```
+
+#### Run Manifests
+
+Each extraction creates a `manifest.json` with full metadata:
+
+```json
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-25T14:30:22",
+  "source_file": {
+    "name": "test_dotmatrix.png",
+    "hash": "sha256:abc123..."
+  },
+  "settings": {
+    "convex_edge": true,
+    "palette": "cmyk",
+    "min_radius": 80
+  },
+  "results": {
+    "total_circles": 16,
+    "circles_by_color": {"black": 4, "cyan": 4, "magenta": 4, "yellow": 4}
+  },
+  "output_files": ["circles_color_000_000_000.png", "..."]
+}
+```
+
+Disable manifest generation with `--no-manifest`.
+
 ### Smart Color Grouping
 
 Use k-means clustering to intelligently reduce many colors to N groups:
@@ -379,18 +475,23 @@ dotmatrix/
 │   └── dotmatrix/
 │       ├── __init__.py
 │       ├── __main__.py
-│       ├── cli.py              # CLI interface
+│       ├── cli.py              # CLI interface with runs subcommand
 │       ├── circle_detector.py  # Hough Circle Transform
 │       ├── convex_detector.py  # Convex edge detection for overlapping circles
 │       ├── color_extractor.py  # Color sampling
 │       ├── color_clustering.py # K-means color clustering
+│       ├── config_loader.py    # Configuration save/load
 │       ├── image_extractor.py  # PNG extraction by color
+│       ├── manifest.py         # Run manifest generation
+│       ├── run_manager.py      # Organized output directories
+│       ├── runs.py             # Run discovery and management
 │       └── formatter.py        # JSON/CSV formatters
 ├── tests/
 │   ├── data/                   # Test images and ground truth
 │   ├── test_cli.py
 │   ├── test_circle_detector.py
-│   └── test_color_extractor.py
+│   ├── test_runs.py            # Run management tests
+│   └── test_e2e_workflow.py    # End-to-end workflow tests
 ├── pyproject.toml
 └── README.md
 ```
