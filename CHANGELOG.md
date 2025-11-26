@@ -138,6 +138,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Run discovery scans for `manifest.json` files in output subdirectories
 - Replay reconstructs CLI command from manifest settings
 
+### Added (Large File Support - LARGEFILE Sprint)
+- **Performance documentation**: README now includes Performance section with benchmarks
+- **Size warnings**: Warning displayed for `--convex-edge` on images >20 megapixels
+- **Progress indicators**: "Detecting circles..." message for convex detection on large images
+- **Helper function**: `get_image_megapixels()` for consistent size measurement
+- New benchmark scripts: `benchmarks/large_file_benchmark.py`, `benchmarks/realistic_benchmark.py`
+- ADR-001 documenting large file processing strategy and findings
+- 12 new tests for large file handling (now 210 total tests)
+
+### Technical Details (Large File Support)
+- Per ADR-001: Use megapixels (not MB) as performance metric
+- Hough detection: ~0.02s/MP, ~5 MB memory/MP - handles 64+ MP in <2 seconds
+- Convex detection: ~2s/MP, ~20 MB memory/MP - handles 20 MP in <30 seconds
+- No tiling/chunking needed: current architecture handles 10MB+ files efficiently
+- Warning threshold: 20 megapixels (~4500×4500 pixels)
+- Progress message threshold: 5 megapixels
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode

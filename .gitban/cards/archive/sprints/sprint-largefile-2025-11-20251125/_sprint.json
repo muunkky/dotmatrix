@@ -1,0 +1,26 @@
+{
+  "sprint_id": "sprint-largefile-2025-11-20251125",
+  "sprint_name": "LARGEFILE-2025-11",
+  "sprint_folder": "sprint-largefile-2025-11-20251125",
+  "created_at": "2025-11-25T23:43:59.455918",
+  "start_date": null,
+  "end_date": "2025-11-25",
+  "archived_at": "2025-11-25T23:43:59.455918",
+  "card_ids": [
+    "w804xa",
+    "brz25i"
+  ],
+  "metrics": {
+    "total_cards": 2,
+    "by_priority": {
+      "P0": 2
+    },
+    "by_type": {
+      "feature": 1,
+      "spike": 1
+    },
+    "by_owner": {
+      "CAMERON": 2
+    }
+  }
+}
