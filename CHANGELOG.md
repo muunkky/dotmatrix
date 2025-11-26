@@ -172,6 +172,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minimum color presence threshold (0.5%) filters out noise
 - Detection uses histogram peak analysis (no k-means dependency for palette detection)
 
+### Added (Occluded Circle Detection - COLORDETECTION Sprint)
+- `--sensitive-occlusion` CLI flag for detecting heavily occluded circles
+  - Adjusts detection parameters for partially visible circles
+  - More permissive thresholds for edge detection
+  - Better coverage of overlapping circle regions
+- `--morph-enhance` CLI flag for morphological enhancement
+  - Applies morphological operations to improve circle edges
+  - Opening (erosion + dilation) removes small noise
+  - Closing (dilation + erosion) fills small gaps in circle edges
+  - Configurable kernel size based on circle radius
+
+### Added (Radius Auto-Calibration - COLORDETECTION Sprint)
+- `--auto-calibrate` CLI flag to auto-detect radius bounds from reference color
+  - Uses darkest color (typically black) as reference for initial detection
+  - Statistical analysis (mean ± 2σ) determines tight radius bounds
+  - 10% padding applied for safety margin
+  - Two-pass detection: first detect reference, then apply calibrated bounds
+- `--calibrate-from` CLI flag to specify reference color by name
+  - Supports color names: "black", "cyan", "magenta", "yellow", "red", "green", "blue"
+  - Reference color detection provides reliable radius samples
+- New calibration functions in `convex_detector.py`:
+  - `RadiusCalibration` dataclass for calibration results
+  - `calculate_radius_statistics()` computes mean, std, min, max
+  - `calibrate_radius_from_reference()` creates calibration from detected circles
+  - `select_reference_color()` picks darkest color from palette
+  - `detect_with_calibration()` main entry point for calibrated detection
+- 7 new tests for radius calibration (TestRadiusCalibration class)
+
+### Technical Details (Radius Calibration)
+- Reference color selection uses luminance: L = 0.299*R + 0.587*G + 0.114*B
+- Calibration bounds: mean ± 2σ with 10% padding, enforced min_radius >= 5
+- Requires minimum 3 detected circles for reliable calibration
+- Calibration result includes reference color, count, and statistics
+
 ### Added (Scaling Performance - SCALING Sprint)
 - **KD-tree spatial indexing**: O(n log n) circle deduplication replacing O(n²) nested loops
 - **Chunked/tiled processing**: `--chunk-size` CLI flag for processing large images in tiles
@@ -180,7 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--chunk-size 0`: Disable chunking (process entire image at once)
 - **Boundary deduplication**: Circles on tile boundaries correctly deduplicated using overlap regions
 - 12 new tests for chunked processing (TestGenerateTiles, TestCalculateChunkSize, TestProcessChunked)
-- 39 total tests for convex detector with 92% coverage
+- 45 total tests for convex detector with 94% coverage
 
 ### Technical Details (Scaling Performance)
 - **KD-tree deduplication**: scipy.spatial.KDTree with query_ball_point() for O(n log n) neighbor searches
