@@ -97,8 +97,13 @@ class TestConvexEdgeCLI:
 
         assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
-        # Check that 4 PNG files were created
-        png_files = list(temp_output_dir.glob("*.png"))
+        # Find the run directory (organized output creates timestamped subdirectory)
+        subdirs = [d for d in temp_output_dir.iterdir() if d.is_dir()]
+        assert len(subdirs) == 1, f"Expected 1 run directory, got {len(subdirs)}"
+        run_dir = subdirs[0]
+
+        # Check that 4 PNG files were created in the run directory
+        png_files = list(run_dir.glob("*.png"))
         assert len(png_files) == 4, f"Expected 4 PNG files, got {len(png_files)}"
 
         # Check that output mentions extraction

@@ -9,7 +9,10 @@ from . import __version__
 from .config_loader import load_config, merge_config_with_cli_args, validate_config
 
 
-@click.command()
+# Create the main CLI group
+@click.group(invoke_without_command=True)
+@click.pass_context
+@click.version_option(version=__version__, prog_name='dotmatrix')
 @click.option(
     '--config', '-c',
     type=click.Path(exists=True, path_type=Path),
@@ -149,8 +152,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Disable automatic manifest.json generation when using --extract'
 )
-@click.version_option(version=__version__, prog_name='dotmatrix')
-def main(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest):
+def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -159,7 +161,20 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
     Example:
         dotmatrix --input image.png --format json
         dotmatrix --config config.json --input image.png
+
+    Use 'dotmatrix runs' to list and manage past runs.
     """
+    # If no subcommand invoked, run detect (for backward compatibility)
+    if ctx.invoked_subcommand is None:
+        _do_detect(config, input, output, format, debug, extract, min_radius, max_radius,
+                   min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
+                   edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
+                   color_separation, convex_edge, palette, quantize_output, run_name,
+                   no_organize, save_config, no_manifest)
+
+
+def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, quantize_output, run_name, no_organize, save_config, no_manifest):
+    """Internal function for circle detection."""
     # Load configuration file if provided
     if config:
         try:
@@ -561,5 +576,195 @@ def main(config, input, output, format, debug, extract, min_radius, max_radius, 
         sys.exit(1)
 
 
+# ============================================================================
+# Runs subcommand group for managing past runs
+# ============================================================================
+
+@cli.group()
+def runs():
+    """Manage and query past detection runs.
+
+    Use these commands to list, view, and replay previous detection runs
+    based on their saved manifest files.
+    """
+    pass
+
+
+@runs.command('list')
+@click.option(
+    '--dir', '-d',
+    type=click.Path(exists=True, path_type=Path),
+    default='./output',
+    help='Output directory to search (default: ./output)'
+)
+@click.option(
+    '--source', '-s',
+    help='Filter by source filename (substring match)'
+)
+@click.option(
+    '--after',
+    help='Filter runs after date (YYYY-MM-DD format)'
+)
+def runs_list(dir, source, after):
+    """List all detection runs in the output directory.
+
+    Scans for directories containing manifest.json files and displays
+    a summary table with run name, date, source file, and circle count.
+
+    Examples:
+        dotmatrix runs list
+        dotmatrix runs list --source image.png
+        dotmatrix runs list --after 2025-11-20
+    """
+    from .runs import list_runs, format_runs_table
+
+    runs_data = list_runs(dir, source_filter=source, after_date=after)
+    click.echo(format_runs_table(runs_data))
+
+
+@runs.command('show')
+@click.argument('run_name')
+@click.option(
+    '--dir', '-d',
+    type=click.Path(exists=True, path_type=Path),
+    default='./output',
+    help='Output directory (default: ./output)'
+)
+def runs_show(run_name, dir):
+    """Display full manifest details for a specific run.
+
+    Shows all metadata including settings, source file info,
+    and detection results for the specified run.
+
+    Example:
+        dotmatrix runs show run_20251125_143022
+    """
+    from .runs import find_run_by_name, get_run_info
+    from .manifest import get_manifest_summary
+    import json
+
+    run_dir = find_run_by_name(dir, run_name)
+    if run_dir is None:
+        click.echo(f"Run '{run_name}' not found in {dir}", err=True)
+        sys.exit(1)
+
+    info = get_run_info(run_dir)
+    if info is None:
+        click.echo(f"Could not read manifest for '{run_name}'", err=True)
+        sys.exit(1)
+
+    manifest = info['manifest']
+
+    # Pretty print the manifest
+    click.echo(f"Run: {info['name']}")
+    click.echo(f"Date: {info['date']}")
+    click.echo(f"Source: {info['source']}")
+    click.echo()
+    click.echo("Settings:")
+    for key, value in manifest.get('settings', {}).items():
+        click.echo(f"  {key}: {value}")
+    click.echo()
+    click.echo("Results:")
+    results = manifest.get('results', {})
+    click.echo(f"  Total circles: {results.get('total_circles', 0)}")
+    by_color = results.get('circles_by_color', {})
+    if by_color:
+        click.echo(f"  By color: {', '.join(f'{k}={v}' for k, v in by_color.items())}")
+    click.echo()
+    click.echo("Output files:")
+    for f in manifest.get('output_files', []):
+        click.echo(f"  {f}")
+
+
+@runs.command('replay')
+@click.argument('run_name')
+@click.option(
+    '--dir', '-d',
+    type=click.Path(exists=True, path_type=Path),
+    default='./output',
+    help='Output directory (default: ./output)'
+)
+@click.option(
+    '--dry-run',
+    is_flag=True,
+    help='Print the command instead of executing it'
+)
+def runs_replay(run_name, dir, dry_run):
+    """Re-run detection with the same settings as a previous run.
+
+    Constructs and executes (or prints) the dotmatrix command needed
+    to reproduce a previous detection run with identical settings.
+
+    Examples:
+        dotmatrix runs replay run_20251125_143022
+        dotmatrix runs replay run_20251125_143022 --dry-run
+    """
+    from .runs import find_run_by_name, get_run_info, get_replay_settings
+    import subprocess
+
+    run_dir = find_run_by_name(dir, run_name)
+    if run_dir is None:
+        click.echo(f"Run '{run_name}' not found in {dir}", err=True)
+        sys.exit(1)
+
+    info = get_run_info(run_dir)
+    if info is None:
+        click.echo(f"Could not read manifest for '{run_name}'", err=True)
+        sys.exit(1)
+
+    settings = get_replay_settings(info['manifest'])
+
+    # Build command args
+    cmd = ['python3', '-m', 'dotmatrix']
+
+    source = settings.pop('source', None)
+    if source:
+        cmd.extend(['-i', source])
+
+    # Map settings to CLI flags
+    flag_map = {
+        'min_radius': '--min-radius',
+        'max_radius': '--max-radius',
+        'min_distance': '--min-distance',
+        'color_tolerance': '--color-tolerance',
+        'max_colors': '--max-colors',
+        'sensitivity': '--sensitivity',
+        'min_confidence': '--min-confidence',
+        'edge_sampling': '--edge-sampling',
+        'edge_samples': '--edge-samples',
+        'edge_method': '--edge-method',
+        'palette': '--palette',
+        'format': '--format',
+    }
+
+    bool_flags = {
+        'convex_edge': '--convex-edge',
+        'exclude_background': '--exclude-background',
+        'use_histogram': '--use-histogram',
+        'color_separation': '--color-separation',
+        'quantize_output': '--quantize-output',
+    }
+
+    for key, value in settings.items():
+        # Skip boolean values in flag_map (they should use bool_flags)
+        if key in flag_map and value is not None and not isinstance(value, bool):
+            cmd.extend([flag_map[key], str(value)])
+        elif key in bool_flags and value is True:
+            cmd.append(bool_flags[key])
+
+    cmd_str = ' '.join(cmd)
+
+    if dry_run:
+        click.echo(cmd_str)
+    else:
+        click.echo(f"Running: {cmd_str}")
+        result = subprocess.run(cmd, capture_output=False)
+        sys.exit(result.returncode)
+
+
+# For backward compatibility, expose cli as main
+main = cli
+
+
 if __name__ == '__main__':
-    main()
+    cli()
