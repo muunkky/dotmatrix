@@ -63,3 +63,25 @@ def load_image(path: Union[str, Path]) -> np.ndarray:
         raise ImageLoadError(f"Image has invalid dimensions: {path}")
 
     return image
+
+
+def get_image_megapixels(image: np.ndarray) -> float:
+    """Calculate the size of an image in megapixels.
+
+    Megapixels is a more reliable performance indicator than file size,
+    as file size varies dramatically based on content and compression.
+    See ADR-001 for details.
+
+    Args:
+        image: Image as numpy array with shape (height, width, channels)
+
+    Returns:
+        Image size in megapixels (millions of pixels)
+
+    Example:
+        >>> image = np.zeros((2000, 2000, 3), dtype=np.uint8)
+        >>> get_image_megapixels(image)
+        4.0
+    """
+    height, width = image.shape[:2]
+    return (height * width) / 1_000_000

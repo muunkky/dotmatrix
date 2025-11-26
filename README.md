@@ -533,6 +533,45 @@ For overlapping circles (v0.2.0+), we also perform:
 - Depth ordering inference from occlusion patterns
 - Masked color sampling for accurate color extraction
 
+## Performance
+
+DotMatrix is optimized for processing images up to 10MB+ (4-9 megapixels) efficiently.
+
+### Performance Characteristics
+
+| Detection Method | Speed | Memory | Best For |
+|-----------------|-------|--------|----------|
+| **Hough Transform** | ~0.02s/MP | ~5 MB/MP | General use, well-separated circles |
+| **Convex Edge** | ~2s/MP | ~20 MB/MP | Overlapping circles, CMYK halftones |
+
+**Key metrics:**
+- **Hough detection**: Handles 64+ megapixels in <2 seconds
+- **Convex detection**: Handles 20 megapixels in <30 seconds
+- Performance scales with **megapixels** (not file size in MB)
+
+### Large Image Warning
+
+When using `--convex-edge` on images larger than 20 megapixels (~4500×4500 pixels), DotMatrix will display a warning:
+
+```
+Warning: Large image detected (25.0 megapixels). Convex edge detection may take 30+ seconds.
+Consider using standard detection for faster results.
+```
+
+**Recommendations for large images:**
+- Use standard Hough detection when possible (much faster)
+- For convex detection on large images, use `--min-radius` to filter small circles
+- Consider downscaling very large images if precision isn't critical
+
+### Memory Usage
+
+Typical memory consumption:
+- **1 megapixel** (1000×1000): ~5-20 MB depending on method
+- **10 megapixels** (3162×3162): ~50-200 MB depending on method
+- **25 megapixels** (5000×5000): ~125-500 MB depending on method
+
+For detailed performance analysis, see [ADR-001: Large File Processing](docs/adr/ADR-001-large-file-processing.md).
+
 ## Contributing
 
 Contributions welcome! Please:

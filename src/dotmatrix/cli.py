@@ -309,7 +309,7 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
 
     try:
         # Import modules
-        from .image_loader import load_image
+        from .image_loader import load_image, get_image_megapixels
         from .circle_detector import detect_circles
         from .color_extractor import extract_color
         from .formatter import format_json, format_csv
@@ -326,12 +326,28 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             click.echo(f"Image loaded: {image.shape}", err=True)
             click.echo("Detecting circles...", err=True)
 
+        # Check image size and warn for large images with convex detection
+        megapixels = get_image_megapixels(image)
+        LARGE_IMAGE_THRESHOLD_MP = 20  # Per ADR-001
+
+        if convex_edge and megapixels > LARGE_IMAGE_THRESHOLD_MP:
+            click.echo(
+                f"Warning: Large image detected ({megapixels:.1f} megapixels). "
+                f"Convex edge detection may take 30+ seconds. "
+                f"Consider using standard detection for faster results.",
+                err=True
+            )
+
         # 2. Detect circles - use convex-edge mode if requested
         if convex_edge:
             # Convex edge detection for overlapping circles
             from .convex_detector import (
                 detect_all_circles, parse_palette, get_color_name
             )
+
+            # Show progress message for convex detection (can be slow for large images)
+            if megapixels > 5:  # Show progress for images > 5 MP
+                click.echo(f"Detecting circles (convex edge analysis)...", err=True)
 
             if debug:
                 click.echo(f"Using convex edge detection with palette: {palette}", err=True)
