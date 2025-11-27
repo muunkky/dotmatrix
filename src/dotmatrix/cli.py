@@ -46,6 +46,12 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Extract circles to separate PNG images by color. If path not given, uses output/'
 )
 @click.option(
+    '--mode', '-m',
+    type=click.Choice(['standard', 'halftone', 'cmyk-sep'], case_sensitive=False),
+    default=None,
+    help='Detection preset: standard (simple circles), halftone (overlapping CMYK), cmyk-sep (ink separation)'
+)
+@click.option(
     '--min-radius',
     type=int,
     default=10,
@@ -185,7 +191,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=str,
     help='Calibrate radius from specific color (e.g., "black", "cyan")'
 )
-def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
+def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -199,7 +205,7 @@ def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radi
     """
     # If no subcommand invoked, run detect (for backward compatibility)
     if ctx.invoked_subcommand is None:
-        _do_detect(config, input, output, format, debug, extract, min_radius, max_radius,
+        _do_detect(config, input, output, format, debug, extract, mode, min_radius, max_radius,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
@@ -207,8 +213,31 @@ def cli(ctx, config, input, output, format, debug, extract, min_radius, max_radi
                    auto_calibrate, calibrate_from)
 
 
-def _do_detect(config, input, output, format, debug, extract, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
+def _do_detect(config, input, output, format, debug, extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
     """Internal function for circle detection."""
+    # Apply mode presets - these set defaults that can be overridden by explicit flags
+    if mode:
+        mode_lower = mode.lower()
+        if mode_lower == 'standard':
+            # Standard mode: simple Hough circle detection (default behavior)
+            if convex_edge is None or not convex_edge:
+                convex_edge = False
+        elif mode_lower == 'halftone':
+            # Halftone mode: convex edge detection with CMYK palette
+            convex_edge = True
+            if palette == 'cmyk':  # Only override if not explicitly set
+                palette = 'cmyk'
+            sensitive_occlusion = True
+            morph_enhance = True
+        elif mode_lower == 'cmyk-sep':
+            # CMYK separation mode: ink separation with AND logic
+            convex_edge = True
+            palette = 'cmyk-sep'
+            sensitive_occlusion = True
+            morph_enhance = True
+
+        if debug:
+            click.echo(f"Mode '{mode}' preset applied", err=True)
     # Load configuration file if provided
     if config:
         try:
