@@ -169,7 +169,8 @@ class TestLargeFileProcessing:
                 "python3", "-m", "dotmatrix",
                 "-i", str(test_image_10mp),
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True,
@@ -198,7 +199,8 @@ class TestLargeFileProcessing:
                 "--convex-edge",
                 "--palette", "rgb",
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True,

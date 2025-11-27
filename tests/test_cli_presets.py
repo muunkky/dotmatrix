@@ -116,7 +116,7 @@ class TestCLIModeIntegration:
         image_path, _ = test_image_single_circle
 
         result = subprocess.run(
-            ['dotmatrix', '-i', str(image_path), '--mode', 'standard', '-f', 'json'],
+            ['dotmatrix', '-i', str(image_path), '--mode', 'standard', '-f', 'json', '--no-extract'],
             capture_output=True,
             text=True
         )
@@ -130,7 +130,7 @@ class TestCLIModeIntegration:
         image_path, _ = test_image_single_circle
 
         result = subprocess.run(
-            ['dotmatrix', '-i', str(image_path), '--mode', 'halftone', '-f', 'json'],
+            ['dotmatrix', '-i', str(image_path), '--mode', 'halftone', '-f', 'json', '--no-extract'],
             capture_output=True,
             text=True
         )
@@ -144,7 +144,7 @@ class TestCLIModeIntegration:
         image_path, _ = test_image_single_circle
 
         result = subprocess.run(
-            ['dotmatrix', '-i', str(image_path), '--mode', 'cmyk-sep', '-f', 'json'],
+            ['dotmatrix', '-i', str(image_path), '--mode', 'cmyk-sep', '-f', 'json', '--no-extract'],
             capture_output=True,
             text=True
         )

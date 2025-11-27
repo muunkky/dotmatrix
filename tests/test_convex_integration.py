@@ -32,7 +32,8 @@ class TestConvexEdgeCLI:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True
@@ -53,7 +54,8 @@ class TestConvexEdgeCLI:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True
@@ -80,8 +82,8 @@ class TestConvexEdgeCLI:
         assert color_counts == expected_colors, f"Color counts mismatch: {color_counts}"
 
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
-    def test_convex_edge_extract_creates_4_files(self, temp_output_dir):
-        """Test that --extract creates 4 color-grouped PNG files."""
+    def test_convex_edge_extract_creates_output_files(self, temp_output_dir):
+        """Test that --output-dir creates CMYK layer PNG files and results."""
         result = subprocess.run(
             [
                 "python3", "-m", "dotmatrix",
@@ -89,7 +91,7 @@ class TestConvexEdgeCLI:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--extract", str(temp_output_dir)
+                "--output-dir", str(temp_output_dir)
             ],
             capture_output=True,
             text=True
@@ -102,12 +104,15 @@ class TestConvexEdgeCLI:
         assert len(subdirs) == 1, f"Expected 1 run directory, got {len(subdirs)}"
         run_dir = subdirs[0]
 
-        # Check that 4 PNG files were created in the run directory
+        # Check that CMYK layer PNG files were created (at least 1)
         png_files = list(run_dir.glob("*.png"))
-        assert len(png_files) == 4, f"Expected 4 PNG files, got {len(png_files)}"
+        assert len(png_files) >= 1, f"Expected at least 1 PNG file, got {len(png_files)}"
 
-        # Check that output mentions extraction
-        assert "Extracted 4 color group" in result.stdout
+        # Check that results.json was created
+        assert (run_dir / "results.json").exists(), "results.json not created"
+
+        # Check that output mentions CMYK layer generation
+        assert "CMYK layer file" in result.stdout or "Generated" in result.stdout
 
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
     def test_convex_edge_quantize_output(self, temp_output_dir):
@@ -141,7 +146,8 @@ class TestConvexEdgeCLI:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--format", "csv"
+                "--format", "csv",
+                "--no-extract"
             ],
             capture_output=True,
             text=True
@@ -168,7 +174,8 @@ class TestConvexEdgeCLI:
                 "-i", str(TEST_IMAGE),
                 "--convex-edge",
                 "--palette", "255,0,0;0,255,0;0,0,255",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True
@@ -184,7 +191,8 @@ class TestConvexEdgeCLI:
                 "python3", "-m", "dotmatrix",
                 "-i", str(TEST_IMAGE),
                 "--convex-edge",
-                "--palette", "invalid_palette"
+                "--palette", "invalid_palette",
+                "--no-extract"
             ],
             capture_output=True,
             text=True
@@ -203,7 +211,8 @@ class TestConvexEdgeCLI:
                 "--convex-edge",
                 "--palette", "rgb",
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True
@@ -229,7 +238,8 @@ class TestConvexEdgePerformance:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True

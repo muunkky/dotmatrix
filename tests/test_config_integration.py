@@ -124,7 +124,7 @@ class TestLoadSavedConfig:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--extract", str(output1),
+                "--output-dir", str(output1),
                 "--no-organize",
                 "--save-config", str(config_path)
             ],
@@ -139,7 +139,7 @@ class TestLoadSavedConfig:
                 "python3", "-m", "dotmatrix",
                 "-i", str(TEST_IMAGE),
                 "--config", str(config_path),
-                "--extract", str(output2),
+                "--output-dir", str(output2),
                 "--no-organize"
             ],
             capture_output=True,
@@ -175,7 +175,8 @@ detection:
                 "-i", str(TEST_IMAGE),
                 "--config", str(config_path),
                 "--min-radius", "150",  # Override config
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"  # JSON to stdout
             ],
             capture_output=True,
             text=True
@@ -216,7 +217,8 @@ output:
             [
                 "python3", "-m", "dotmatrix",
                 "-i", str(TEST_IMAGE),
-                "--config", str(config_path)
+                "--config", str(config_path),
+                "--no-extract"  # JSON to stdout
             ],
             capture_output=True,
             text=True
@@ -245,7 +247,8 @@ format: "json"
             [
                 "python3", "-m", "dotmatrix",
                 "-i", str(TEST_IMAGE),
-                "--config", str(config_path)
+                "--config", str(config_path),
+                "--no-extract"  # JSON to stdout
             ],
             capture_output=True,
             text=True

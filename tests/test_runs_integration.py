@@ -33,7 +33,7 @@ class TestRunsListCommand:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--extract", str(temp_output_dir)
+                "--output-dir", str(temp_output_dir)
             ],
             capture_output=True,
             text=True
@@ -65,7 +65,7 @@ class TestRunsListCommand:
                 "-i", str(TEST_IMAGE),
                 "--convex-edge",
                 "--min-radius", "80",
-                "--extract", str(temp_output_dir)
+                "--output-dir", str(temp_output_dir)
             ],
             capture_output=True,
             text=True
@@ -115,7 +115,7 @@ class TestRunsShowCommand:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--extract", str(temp_output_dir)
+                "--output-dir", str(temp_output_dir)
             ],
             capture_output=True,
             text=True
@@ -176,7 +176,7 @@ class TestRunsReplayCommand:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--extract", str(temp_output_dir)
+                "--output-dir", str(temp_output_dir)
             ],
             capture_output=True,
             text=True
@@ -216,7 +216,7 @@ class TestRunsReplayCommand:
                 "--convex-edge",
                 "--palette", "cmyk",
                 "--min-radius", "80",
-                "--extract", str(temp_output_dir)
+                "--output-dir", str(temp_output_dir)
             ],
             capture_output=True,
             text=True
@@ -240,8 +240,8 @@ class TestRunsReplayCommand:
         )
         assert result.returncode == 0
 
-        # Run the command (without --extract) to get JSON output
-        cmd = result.stdout.strip()
+        # Run the command with --no-extract to get JSON output on stdout
+        cmd = result.stdout.strip() + " --no-extract"
         # Execute and check circle count
         replay_result = subprocess.run(
             cmd,
@@ -267,7 +267,8 @@ class TestBackwardCompatibility:
                 "-i", str(TEST_IMAGE),
                 "--convex-edge",
                 "--min-radius", "80",
-                "--format", "json"
+                "--format", "json",
+                "--no-extract"
             ],
             capture_output=True,
             text=True

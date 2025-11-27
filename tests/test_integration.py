@@ -107,9 +107,9 @@ class TestEndToEnd:
         """Test CLI with JSON output to stdout."""
         image_path, _ = test_image_single_circle
 
-        # Run CLI
+        # Run CLI (--no-extract to get JSON on stdout)
         result = subprocess.run(
-            ['dotmatrix', '--input', str(image_path), '--format', 'json'],
+            ['dotmatrix', '--input', str(image_path), '--format', 'json', '--no-extract'],
             capture_output=True,
             text=True
         )
@@ -132,9 +132,9 @@ class TestEndToEnd:
         """Test CLI with CSV output to stdout."""
         image_path, _ = test_image_single_circle
 
-        # Run CLI
+        # Run CLI (--no-extract to get CSV on stdout)
         result = subprocess.run(
-            ['dotmatrix', '--input', str(image_path), '--format', 'csv'],
+            ['dotmatrix', '--input', str(image_path), '--format', 'csv', '--no-extract'],
             capture_output=True,
             text=True
         )

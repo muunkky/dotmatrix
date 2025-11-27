@@ -128,7 +128,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @optgroup.option(
     '--max-colors',
     type=int,
-    help='Maximum color groups with k-means (only with --extract)'
+    help='Maximum color groups with k-means clustering'
 )
 @optgroup.option(
     '--exclude-background',
@@ -157,10 +157,15 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 # Output/Extract Options
 @optgroup.group('Output Options', help='Extraction and output settings')
 @optgroup.option(
-    '--extract', '-e',
+    '--output-dir',
     type=click.Path(path_type=Path),
-    default=None,
-    help='Extract circles to PNGs by color'
+    default=Path('output'),
+    help='Output directory for extracted PNGs (default: output/)'
+)
+@optgroup.option(
+    '--no-extract',
+    is_flag=True,
+    help='Disable PNG extraction (JSON output only)'
 )
 @optgroup.option(
     '--run-name',
@@ -170,7 +175,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @optgroup.option(
     '--no-organize',
     is_flag=True,
-    help='Disable subdirectory creation for --extract'
+    help='Disable timestamped subdirectory creation (write directly to output-dir)'
 )
 @optgroup.option(
     '--no-manifest',
@@ -207,7 +212,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=str,
     help='Calibrate from specific color (e.g., "black")'
 )
-def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -215,9 +220,9 @@ def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, ma
 
     \b
     QUICK START:
-      dotmatrix -i image.png                    # Basic detection, JSON output
-      dotmatrix -i image.png -e output/         # Extract circles to PNGs by color
+      dotmatrix -i image.png                    # Detect, extract PNGs + JSON to output/
       dotmatrix -i image.png -m halftone        # Halftone/overlapping circles
+      dotmatrix -i image.png --no-extract       # JSON output only (no files)
 
     \b
     COMMON USE CASES:
@@ -231,11 +236,14 @@ def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, ma
       halftone   - Overlapping CMYK halftone dots
       cmyk-sep   - CMYK ink separation with subtractive color logic
 
+    By default, outputs are written to output/ directory. Use --no-extract
+    to disable file output and print JSON to stdout instead.
+
     Use 'dotmatrix runs list' to view past detection runs.
     """
     # If no subcommand invoked, run detect (for backward compatibility)
     if ctx.invoked_subcommand is None:
-        _do_detect(config, input, output, format, debug, extract, mode, min_radius, max_radius,
+        _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
@@ -277,17 +285,17 @@ def _apply_mode_presets(mode, convex_edge, palette, sensitive_occlusion, morph_e
     return convex_edge, palette, sensitive_occlusion, morph_enhance
 
 
-def _validate_inputs(input_path, extract, max_colors):
+def _validate_inputs(input_path, no_extract, max_colors):
     """Validate input parameters, exit with error if invalid."""
     # Validate required --input parameter
     if not input_path:
         click.echo("Error: --input is required (either via CLI or config file)", err=True)
         sys.exit(1)
 
-    # Validate --max-colors requires --extract
-    if max_colors is not None and not extract:
+    # Validate --max-colors requires extraction to be enabled
+    if max_colors is not None and no_extract:
         click.echo(
-            "Error: --max-colors can only be used with --extract",
+            "Error: --max-colors cannot be used with --no-extract",
             err=True
         )
         sys.exit(1)
@@ -303,30 +311,34 @@ def _validate_inputs(input_path, extract, max_colors):
         sys.exit(1)
 
 
-def _handle_extraction(results, image_shape, extract, run_name, no_organize,
+def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
                        color_tolerance, max_colors, no_manifest, input_path,
                        min_radius, max_radius, min_distance, sensitivity,
                        min_confidence, convex_edge, palette, edge_sampling,
                        edge_samples, edge_method, format, debug):
-    """Handle extracting circles to images and generating manifest."""
+    """Handle extracting circles to images and generating manifest.
+
+    Returns:
+        Path to the run directory where files were written.
+    """
     from .run_manager import create_run_directory, copy_input_file
     from .image_extractor import extract_circles_to_images, generate_cmyk_layer_files
 
     # Create organized output directory (unless --no-organize)
-    output_dir = create_run_directory(
-        base_dir=extract,
+    run_dir = create_run_directory(
+        base_dir=output_dir,
         run_name=run_name,
         organize=not no_organize
     )
 
     if debug:
-        click.echo(f"Extracting circles to: {output_dir}", err=True)
+        click.echo(f"Extracting circles to: {run_dir}", err=True)
         if max_colors:
             click.echo(f"Using k-means clustering with max_colors={max_colors}", err=True)
 
     # Copy input file to run directory for reproducibility
     if input_path:
-        copied_input = copy_input_file(input_path, output_dir)
+        copied_input = copy_input_file(input_path, run_dir)
         if debug:
             click.echo(f"Copied input file to: {copied_input}", err=True)
 
@@ -338,12 +350,12 @@ def _handle_extraction(results, image_shape, extract, run_name, no_organize,
         layer_files = generate_cmyk_layer_files(
             results,
             image_shape=image_shape,
-            output_dir=output_dir,
+            output_dir=run_dir,
             tolerance=color_tolerance
         )
         extracted_files = list(layer_files.values())
 
-        click.echo(f"Generated {len(layer_files)} CMYK layer file(s) to {output_dir}/")
+        click.echo(f"Generated {len(layer_files)} CMYK layer file(s) to {run_dir}/")
         for layer_name, filepath in layer_files.items():
             click.echo(f"  - {layer_name}.png")
     else:
@@ -351,13 +363,13 @@ def _handle_extraction(results, image_shape, extract, run_name, no_organize,
         extracted_files = extract_circles_to_images(
             results,
             image_shape=image_shape,
-            output_dir=output_dir,
+            output_dir=run_dir,
             prefix="circles",
             tolerance=color_tolerance,
             max_colors=max_colors
         )
 
-        click.echo(f"Extracted {len(extracted_files)} color group(s) to {output_dir}/")
+        click.echo(f"Extracted {len(extracted_files)} color group(s) to {run_dir}/")
         for filepath in extracted_files:
             click.echo(f"  - {filepath.name}")
 
@@ -399,7 +411,7 @@ def _handle_extraction(results, image_shape, extract, run_name, no_organize,
             color_names=color_names,
         )
 
-        manifest_path = write_manifest(output_dir, manifest)
+        manifest_path = write_manifest(run_dir, manifest)
 
         if debug:
             click.echo(f"Manifest written to: {manifest_path}", err=True)
@@ -407,28 +419,48 @@ def _handle_extraction(results, image_shape, extract, run_name, no_organize,
     if debug:
         click.echo("Extraction complete!", err=True)
 
+    return run_dir
 
-def _format_and_output_results(results, format, output, extract, debug):
-    """Format results and write to output or stdout."""
+
+def _format_and_output_results(results, format, output, run_dir, no_extract, debug):
+    """Format results and write to output file.
+
+    Args:
+        results: Detection results
+        format: Output format ('json' or 'csv')
+        output: Explicit output path (overrides auto-generated path)
+        run_dir: Run directory for default output location (may be None if --no-extract)
+        no_extract: If True, print to stdout instead of file
+        debug: Enable debug output
+    """
     from .formatter import format_json, format_csv
 
-    # Format output (skip if only extracting)
-    if not extract or output or not extract:
-        if format.lower() == 'json':
-            formatted_output = format_json(results)
-        else:  # csv
-            formatted_output = format_csv(results)
+    if format.lower() == 'json':
+        formatted_output = format_json(results)
+        extension = '.json'
+    else:  # csv
+        formatted_output = format_csv(results)
+        extension = '.csv'
 
-        # Write to output or stdout
-        if output:
-            output.write_text(formatted_output)
-            if debug:
-                click.echo(f"Results written to: {output}", err=True)
-        elif not extract:  # Only print to stdout if not extracting
-            click.echo(formatted_output)
+    # Determine output location
+    if output:
+        # Explicit output path provided
+        output.write_text(formatted_output)
+        if debug:
+            click.echo(f"Results written to: {output}", err=True)
+    elif no_extract:
+        # No extraction mode: print to stdout
+        click.echo(formatted_output)
+    elif run_dir:
+        # Default: write to run directory
+        output_file = run_dir / f"results{extension}"
+        output_file.write_text(formatted_output)
+        click.echo(f"  - results{extension}")
+        if debug:
+            click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -447,7 +479,7 @@ def _do_detect(config, input, output, format, debug, extract, mode, min_radius, 
             cli_args = {}
 
             # Check all parameters - only add if explicitly provided by user
-            for param_name in ['input', 'output', 'format', 'debug', 'extract',
+            for param_name in ['input', 'output', 'format', 'debug', 'output_dir', 'no_extract',
                               'min_radius', 'max_radius', 'min_distance',
                               'color_tolerance', 'max_colors', 'sensitivity',
                               'min_confidence', 'edge_sampling', 'edge_samples',
@@ -468,7 +500,8 @@ def _do_detect(config, input, output, format, debug, extract, mode, min_radius, 
             output = merged.get('output', output)
             format = merged.get('format', format)
             debug = merged.get('debug', debug)
-            extract = merged.get('extract', extract)
+            output_dir = merged.get('output_dir', output_dir)
+            no_extract = merged.get('no_extract', no_extract)
             min_radius = merged.get('min_radius', min_radius)
             max_radius = merged.get('max_radius', max_radius)
             min_distance = merged.get('min_distance', min_distance)
@@ -505,7 +538,7 @@ def _do_detect(config, input, output, format, debug, extract, mode, min_radius, 
             sys.exit(1)
 
     # Validate inputs (exits on failure)
-    _validate_inputs(input, extract, max_colors)
+    _validate_inputs(input, no_extract, max_colors)
 
     if debug:
         click.echo(f"Debug mode enabled", err=True)
@@ -871,18 +904,19 @@ def _do_detect(config, input, output, format, debug, extract, mode, min_radius, 
 
                 results.append((circle, color))
 
-        # 4. Extract to separate PNG images if requested
-        if extract:
-            _handle_extraction(
-                results, image.shape[:2], extract, run_name, no_organize,
+        # 4. Extract to separate PNG images (default behavior, unless --no-extract)
+        run_dir = None
+        if not no_extract:
+            run_dir = _handle_extraction(
+                results, image.shape[:2], output_dir, run_name, no_organize,
                 color_tolerance, max_colors, no_manifest, input,
                 min_radius, max_radius, min_distance, sensitivity,
                 min_confidence, convex_edge, palette, edge_sampling,
                 edge_samples, edge_method, format, debug
             )
 
-        # 5. Format and output results
-        _format_and_output_results(results, format, output, extract, debug)
+        # 5. Format and output results (to file or stdout)
+        _format_and_output_results(results, format, output, run_dir, no_extract, debug)
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
