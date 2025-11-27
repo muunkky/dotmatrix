@@ -6,7 +6,12 @@ import tempfile
 from PIL import Image
 
 from dotmatrix.circle_detector import Circle
-from dotmatrix.image_extractor import group_circles_by_color, extract_circles_to_images
+from dotmatrix.image_extractor import (
+    group_circles_by_color,
+    extract_circles_to_images,
+    generate_cmyk_layer_files,
+    get_cmyk_layer_name,
+)
 
 
 class TestGroupCirclesByColor:
@@ -295,3 +300,143 @@ class TestExtractCirclesToImages:
             # K-means should create at most 4 groups (likely 2-4 since 4 unique colors)
             assert len(files_kmeans) <= 4
             assert len(files_kmeans) >= 1
+
+
+class TestCMYKLayerNameMapping:
+    """Test CMYK color to layer name mapping."""
+
+    def test_cyan_detection(self):
+        """Test cyan color detection."""
+        assert get_cmyk_layer_name((0, 255, 255)) == 'cyan'
+        assert get_cmyk_layer_name((0, 200, 200)) == 'cyan'
+
+    def test_magenta_detection(self):
+        """Test magenta color detection."""
+        assert get_cmyk_layer_name((255, 0, 255)) == 'magenta'
+        assert get_cmyk_layer_name((200, 0, 200)) == 'magenta'
+
+    def test_yellow_detection(self):
+        """Test yellow color detection."""
+        assert get_cmyk_layer_name((255, 255, 0)) == 'yellow'
+        assert get_cmyk_layer_name((200, 200, 0)) == 'yellow'
+
+    def test_black_detection(self):
+        """Test black color detection."""
+        assert get_cmyk_layer_name((0, 0, 0)) == 'black'
+        assert get_cmyk_layer_name((30, 30, 30)) == 'black'
+
+    def test_non_cmyk_returns_none(self):
+        """Test that non-CMYK colors return None."""
+        assert get_cmyk_layer_name((255, 0, 0)) is None  # Red
+        assert get_cmyk_layer_name((0, 255, 0)) is None  # Green
+        assert get_cmyk_layer_name((0, 0, 255)) is None  # Blue
+
+
+class TestGenerateCMYKLayerFiles:
+    """Test CMYK layer file generation."""
+
+    def test_generates_layer_files(self):
+        """Test that layer files are generated with correct names."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            circles = [
+                (Circle(100, 100, 50), (0, 255, 255)),    # Cyan
+                (Circle(200, 100, 50), (255, 0, 255)),    # Magenta
+                (Circle(100, 200, 50), (255, 255, 0)),    # Yellow
+                (Circle(200, 200, 50), (0, 0, 0)),        # Black
+            ]
+
+            layer_files = generate_cmyk_layer_files(
+                circles,
+                image_shape=(300, 300),
+                output_dir=Path(tmpdir)
+            )
+
+            # Should create 4 layer files
+            assert len(layer_files) == 4
+            assert 'cyan' in layer_files
+            assert 'magenta' in layer_files
+            assert 'yellow' in layer_files
+            assert 'black' in layer_files
+
+            # Each file should exist with correct name
+            for name, path in layer_files.items():
+                assert path.exists()
+                assert path.name == f"{name}.png"
+
+    def test_partial_cmyk(self):
+        """Test with only some CMYK colors present."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            circles = [
+                (Circle(100, 100, 50), (0, 255, 255)),    # Cyan
+                (Circle(200, 100, 50), (255, 255, 0)),    # Yellow
+            ]
+
+            layer_files = generate_cmyk_layer_files(
+                circles,
+                image_shape=(300, 300),
+                output_dir=Path(tmpdir)
+            )
+
+            # Should only create 2 layer files
+            assert len(layer_files) == 2
+            assert 'cyan' in layer_files
+            assert 'yellow' in layer_files
+            assert 'magenta' not in layer_files
+            assert 'black' not in layer_files
+
+    def test_multiple_circles_per_layer(self):
+        """Test multiple circles of same color in one layer."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            circles = [
+                (Circle(50, 50, 20), (0, 255, 255)),    # Cyan
+                (Circle(100, 50, 20), (0, 255, 255)),   # Cyan
+                (Circle(150, 50, 20), (0, 255, 255)),   # Cyan
+            ]
+
+            layer_files = generate_cmyk_layer_files(
+                circles,
+                image_shape=(200, 200),
+                output_dir=Path(tmpdir)
+            )
+
+            # Should create 1 layer file with all circles
+            assert len(layer_files) == 1
+            assert 'cyan' in layer_files
+
+            # Load image and verify circles are present
+            img = Image.open(layer_files['cyan'])
+            pixels = img.load()
+
+            # Check each circle center is filled
+            assert pixels[50, 50][3] == 255  # First circle opaque
+            assert pixels[100, 50][3] == 255  # Second circle opaque
+            assert pixels[150, 50][3] == 255  # Third circle opaque
+
+    def test_transparent_background(self):
+        """Test that layer images have transparent backgrounds."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            circles = [(Circle(100, 100, 30), (0, 255, 255))]  # Cyan
+
+            layer_files = generate_cmyk_layer_files(
+                circles,
+                image_shape=(200, 200),
+                output_dir=Path(tmpdir)
+            )
+
+            img = Image.open(layer_files['cyan'])
+            assert img.mode == 'RGBA'
+
+            pixels = img.load()
+            # Corner should be transparent
+            assert pixels[0, 0][3] == 0
+
+    def test_empty_circles_list(self):
+        """Test with empty circles list."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            layer_files = generate_cmyk_layer_files(
+                [],
+                image_shape=(200, 200),
+                output_dir=Path(tmpdir)
+            )
+
+            assert len(layer_files) == 0

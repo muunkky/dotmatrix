@@ -12,6 +12,8 @@ from dotmatrix.run_manager import (
     generate_timestamp,
     create_run_directory,
     get_run_info,
+    copy_input_file,
+    get_default_output_dir,
 )
 
 
@@ -181,3 +183,65 @@ class TestGetRunInfo:
 
             # Should be parseable as ISO datetime
             datetime.fromisoformat(info['created'])
+
+
+class TestCopyInputFile:
+    """Tests for copy_input_file function."""
+
+    def test_copies_file_to_run_dir(self):
+        """Test that input file is copied to run directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a source file
+            source_dir = Path(tmpdir) / "source"
+            source_dir.mkdir()
+            source_file = source_dir / "test_image.png"
+            source_file.write_text("test content")
+
+            # Create run directory
+            run_dir = Path(tmpdir) / "run"
+            run_dir.mkdir()
+
+            # Copy input file
+            copied_path = copy_input_file(source_file, run_dir)
+
+            # Verify
+            assert copied_path.exists()
+            assert copied_path.name == "input_test_image.png"
+            assert copied_path.read_text() == "test content"
+
+    def test_preserves_original(self):
+        """Test that original file is not modified."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_file = Path(tmpdir) / "original.png"
+            source_file.write_text("original content")
+
+            run_dir = Path(tmpdir) / "run"
+            run_dir.mkdir()
+
+            copy_input_file(source_file, run_dir)
+
+            # Original should still exist and be unchanged
+            assert source_file.exists()
+            assert source_file.read_text() == "original content"
+
+    def test_input_prefix_added(self):
+        """Test that 'input_' prefix is added to copied file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_file = Path(tmpdir) / "my_file.png"
+            source_file.write_text("test")
+
+            run_dir = Path(tmpdir) / "run"
+            run_dir.mkdir()
+
+            copied_path = copy_input_file(source_file, run_dir)
+
+            assert copied_path.name.startswith("input_")
+
+
+class TestGetDefaultOutputDir:
+    """Tests for get_default_output_dir function."""
+
+    def test_returns_output_path(self):
+        """Test that default output directory is 'output'."""
+        default_dir = get_default_output_dir()
+        assert default_dir == Path('output')

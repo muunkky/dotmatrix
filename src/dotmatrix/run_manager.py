@@ -1,9 +1,13 @@
 """Run management for DotMatrix - organized output directories."""
 
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+# Default output directory
+DEFAULT_OUTPUT_DIR = Path('output')
 
 
 def sanitize_filename(name: str, max_length: int = 50) -> str:
@@ -100,3 +104,34 @@ def get_run_info(run_dir: Path) -> dict:
         'name': run_dir.name,
         'created': datetime.fromtimestamp(run_dir.stat().st_ctime).isoformat(),
     }
+
+
+def copy_input_file(input_path: Path, run_dir: Path) -> Path:
+    """Copy the input file to the run directory for reproducibility.
+
+    Args:
+        input_path: Path to the original input file
+        run_dir: Path to the run directory
+
+    Returns:
+        Path to the copied file in the run directory
+    """
+    input_path = Path(input_path)
+    run_dir = Path(run_dir)
+
+    # Copy with original filename prefixed with 'input_'
+    dest_name = f"input_{input_path.name}"
+    dest_path = run_dir / dest_name
+
+    shutil.copy2(input_path, dest_path)
+
+    return dest_path
+
+
+def get_default_output_dir() -> Path:
+    """Get the default output directory.
+
+    Returns:
+        Path to default output directory ('output/')
+    """
+    return DEFAULT_OUTPUT_DIR

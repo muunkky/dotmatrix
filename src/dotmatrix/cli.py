@@ -309,8 +309,8 @@ def _handle_extraction(results, image_shape, extract, run_name, no_organize,
                        min_confidence, convex_edge, palette, edge_sampling,
                        edge_samples, edge_method, format, debug):
     """Handle extracting circles to images and generating manifest."""
-    from .run_manager import create_run_directory
-    from .image_extractor import extract_circles_to_images
+    from .run_manager import create_run_directory, copy_input_file
+    from .image_extractor import extract_circles_to_images, generate_cmyk_layer_files
 
     # Create organized output directory (unless --no-organize)
     output_dir = create_run_directory(
@@ -324,18 +324,42 @@ def _handle_extraction(results, image_shape, extract, run_name, no_organize,
         if max_colors:
             click.echo(f"Using k-means clustering with max_colors={max_colors}", err=True)
 
-    extracted_files = extract_circles_to_images(
-        results,
-        image_shape=image_shape,
-        output_dir=output_dir,
-        prefix="circles",
-        tolerance=color_tolerance,
-        max_colors=max_colors
-    )
+    # Copy input file to run directory for reproducibility
+    if input_path:
+        copied_input = copy_input_file(input_path, output_dir)
+        if debug:
+            click.echo(f"Copied input file to: {copied_input}", err=True)
 
-    click.echo(f"Extracted {len(extracted_files)} color group(s) to {output_dir}/")
-    for filepath in extracted_files:
-        click.echo(f"  - {filepath.name}")
+    # Check if using CMYK mode (cmyk or cmyk-sep palette with convex_edge)
+    use_cmyk_layers = convex_edge and palette in ('cmyk', 'cmyk-sep')
+
+    if use_cmyk_layers:
+        # Generate named CMYK layer files (cyan.png, magenta.png, yellow.png, black.png)
+        layer_files = generate_cmyk_layer_files(
+            results,
+            image_shape=image_shape,
+            output_dir=output_dir,
+            tolerance=color_tolerance
+        )
+        extracted_files = list(layer_files.values())
+
+        click.echo(f"Generated {len(layer_files)} CMYK layer file(s) to {output_dir}/")
+        for layer_name, filepath in layer_files.items():
+            click.echo(f"  - {layer_name}.png")
+    else:
+        # Use color-grouped extraction for non-CMYK modes
+        extracted_files = extract_circles_to_images(
+            results,
+            image_shape=image_shape,
+            output_dir=output_dir,
+            prefix="circles",
+            tolerance=color_tolerance,
+            max_colors=max_colors
+        )
+
+        click.echo(f"Extracted {len(extracted_files)} color group(s) to {output_dir}/")
+        for filepath in extracted_files:
+            click.echo(f"  - {filepath.name}")
 
     # Generate manifest unless disabled
     if not no_manifest:
