@@ -40,9 +40,10 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Enable debug output'
 )
 @click.option(
-    '--extract',
+    '--extract', '-e',
     type=click.Path(path_type=Path),
-    help='Extract circles to separate PNG images by color (directory path)'
+    default=None,
+    help='Extract circles to separate PNG images by color. If path not given, uses output/'
 )
 @click.option(
     '--min-radius',
@@ -125,7 +126,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     '--palette',
     type=str,
     default='cmyk',
-    help='Color palette for convex-edge mode: "auto" (detect from image), preset (cmyk, rgb), or custom "R,G,B;R,G,B" (default: cmyk)'
+    help='Color palette for convex-edge mode: "auto" (detect from image), "cmyk-sep" (CMYK ink separation with AND logic for overlapping halftones), preset (cmyk, rgb), or custom "R,G,B;R,G,B" (default: cmyk)'
 )
 @click.option(
     '--num-colors',
@@ -379,7 +380,8 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             from .convex_detector import (
                 detect_all_circles, parse_palette, get_color_name,
                 process_chunked, calculate_chunk_size, PALETTES,
-                detect_with_calibration
+                detect_with_calibration, detect_circles_cmyk_separation,
+                CMYK_INK_COLORS
             )
 
             # Show progress message for convex detection (can be slow for large images)
@@ -392,8 +394,35 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
             # Convert BGR to RGB for convex detector (needed for both auto and preset)
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+            # Track if we're in CMYK separation mode (uses different processing path)
+            cmyk_sep_mode = palette.lower() == 'cmyk-sep'
+
+            # Handle CMYK separation mode (special palette for overlapping CMYK halftones)
+            if cmyk_sep_mode:
+                click.echo("Using CMYK ink separation mode (AND logic for overlapping colors)", err=True)
+
+                # Debug callback for CMYK separation
+                def cmyk_debug_cb(ink_name, mask, circles):
+                    if debug:
+                        click.echo(f"  {ink_name}: {len(circles)} circle(s) detected", err=True)
+
+                detected_circles = detect_circles_cmyk_separation(
+                    image_rgb,
+                    min_radius=min_radius,
+                    max_radius=max_radius,
+                    ink_threshold=100,  # Could make this configurable
+                    debug_callback=cmyk_debug_cb if debug else None,
+                    sensitive_mode=sensitive_occlusion,
+                    morphological_enhance=morph_enhance
+                )
+                quantized = None  # No quantized image in separation mode
+                color_palette = list(CMYK_INK_COLORS.values())  # For compatibility
+
+                if debug:
+                    click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)
+
             # Handle auto-palette detection
-            if palette.lower() == 'auto':
+            elif palette.lower() == 'auto':
                 from .color_palette_detector import (
                     detect_palette_for_convex, format_detected_palette
                 )
@@ -416,102 +445,106 @@ def _do_detect(config, input, output, format, debug, extract, min_radius, max_ra
                     click.echo(f"Error: {e}", err=True)
                     sys.exit(1)
 
-            if debug:
-                click.echo(f"Palette colors: {len(color_palette)}", err=True)
-                for i, color in enumerate(color_palette):
-                    click.echo(f"  {i+1}. {get_color_name(color)} RGB{color}", err=True)
-
-            # Determine chunk size for processing
-            use_chunked = False
-            actual_chunk_size = 0
-            if chunk_size != '0':
-                if chunk_size == 'auto':
-                    # Auto: use chunking for images > 20 MP
-                    if megapixels > LARGE_IMAGE_THRESHOLD_MP:
-                        actual_chunk_size = calculate_chunk_size(image_rgb.shape, max_radius)
-                        use_chunked = True
-                else:
-                    # Explicit size
-                    try:
-                        actual_chunk_size = int(chunk_size)
-                        use_chunked = True
-                    except ValueError:
-                        click.echo(f"Error: Invalid chunk-size '{chunk_size}'. Use 'auto', '0', or a pixel size.", err=True)
-                        sys.exit(1)
-
-            if use_chunked:
-                # Use chunked processing for large images
+            # Skip palette-based processing if already processed in cmyk-sep mode
+            if not cmyk_sep_mode:
                 if debug:
-                    click.echo(f"Using chunked processing with chunk size: {actual_chunk_size}px", err=True)
+                    click.echo(f"Palette colors: {len(color_palette)}", err=True)
+                    for i, color in enumerate(color_palette):
+                        click.echo(f"  {i+1}. {get_color_name(color)} RGB{color}", err=True)
 
-                # Progress callback to show tile progress
-                def progress_cb(tile_num, total_tiles):
-                    click.echo(f"Processing tile {tile_num}/{total_tiles}...", err=True)
-
-                detected_circles = process_chunked(
-                    image_rgb,
-                    palette=color_palette,
-                    chunk_size=actual_chunk_size,
-                    max_radius=max_radius,
-                    min_radius=min_radius,
-                    exclude_background=True,
-                    progress_callback=progress_cb if not debug else None,
-                    debug_callback=None,
-                    sensitive_mode=sensitive_occlusion,
-                    morphological_enhance=morph_enhance
-                )
-                quantized = None  # Not available in chunked mode
-            else:
-                # Debug callback to show per-color progress
-                def debug_cb(color, mask, circles):
-                    if debug:
-                        click.echo(f"  {get_color_name(color)}: {len(circles)} circle(s) detected", err=True)
-
-                # Use calibration mode if requested
-                if auto_calibrate or calibrate_from:
-                    if debug:
-                        if calibrate_from:
-                            click.echo(f"Calibrating radius from color: {calibrate_from}", err=True)
-                        else:
-                            click.echo("Auto-calibrating radius from reference color...", err=True)
-
-                    # Detect with calibration
-                    detected_circles, quantized, calibration = detect_with_calibration(
-                        image_rgb,
-                        color_palette,
-                        initial_min_radius=min_radius,
-                        initial_max_radius=max_radius,
-                        calibrate_from=calibrate_from,
-                        auto_calibrate=auto_calibrate,
-                        exclude_background=True,
-                        debug_callback=debug_cb if debug else None,
-                        sensitive_mode=sensitive_occlusion,
-                        morphological_enhance=morph_enhance
-                    )
-
-                    # Report calibration results
-                    if calibration:
-                        click.echo(
-                            f"Calibration: {get_color_name(calibration.reference_color)} reference "
-                            f"({calibration.reference_count} circles), "
-                            f"radius {calibration.min_radius}-{calibration.max_radius}px "
-                            f"(mean={calibration.mean_radius:.1f}, std={calibration.std_radius:.1f})",
-                            err=True
-                        )
+            # Run palette-based detection (skip if already processed in cmyk-sep mode)
+            if not cmyk_sep_mode:
+                # Determine chunk size for processing
+                use_chunked = False
+                actual_chunk_size = 0
+                if chunk_size != '0':
+                    if chunk_size == 'auto':
+                        # Auto: use chunking for images > 20 MP
+                        if megapixels > LARGE_IMAGE_THRESHOLD_MP:
+                            actual_chunk_size = calculate_chunk_size(image_rgb.shape, max_radius)
+                            use_chunked = True
                     else:
-                        click.echo("Warning: Calibration failed (insufficient reference circles), using original radius bounds", err=True)
-                else:
-                    # Standard detection without calibration
-                    detected_circles, quantized = detect_all_circles(
+                        # Explicit size
+                        try:
+                            actual_chunk_size = int(chunk_size)
+                            use_chunked = True
+                        except ValueError:
+                            click.echo(f"Error: Invalid chunk-size '{chunk_size}'. Use 'auto', '0', or a pixel size.", err=True)
+                            sys.exit(1)
+
+                if use_chunked:
+                    # Use chunked processing for large images
+                    if debug:
+                        click.echo(f"Using chunked processing with chunk size: {actual_chunk_size}px", err=True)
+
+                    # Progress callback to show tile progress
+                    def progress_cb(tile_num, total_tiles):
+                        click.echo(f"Processing tile {tile_num}/{total_tiles}...", err=True)
+
+                    detected_circles = process_chunked(
                         image_rgb,
-                        color_palette,
-                        min_radius=min_radius,
+                        palette=color_palette,
+                        chunk_size=actual_chunk_size,
                         max_radius=max_radius,
+                        min_radius=min_radius,
                         exclude_background=True,
-                        debug_callback=debug_cb if debug else None,
+                        progress_callback=progress_cb if not debug else None,
+                        debug_callback=None,
                         sensitive_mode=sensitive_occlusion,
                         morphological_enhance=morph_enhance
                     )
+                    quantized = None  # Not available in chunked mode
+                else:
+                    # Debug callback to show per-color progress
+                    def debug_cb(color, mask, circles):
+                        if debug:
+                            click.echo(f"  {get_color_name(color)}: {len(circles)} circle(s) detected", err=True)
+
+                    # Use calibration mode if requested
+                    if auto_calibrate or calibrate_from:
+                        if debug:
+                            if calibrate_from:
+                                click.echo(f"Calibrating radius from color: {calibrate_from}", err=True)
+                            else:
+                                click.echo("Auto-calibrating radius from reference color...", err=True)
+
+                        # Detect with calibration
+                        detected_circles, quantized, calibration = detect_with_calibration(
+                            image_rgb,
+                            color_palette,
+                            initial_min_radius=min_radius,
+                            initial_max_radius=max_radius,
+                            calibrate_from=calibrate_from,
+                            auto_calibrate=auto_calibrate,
+                            exclude_background=True,
+                            debug_callback=debug_cb if debug else None,
+                            sensitive_mode=sensitive_occlusion,
+                            morphological_enhance=morph_enhance
+                        )
+
+                        # Report calibration results
+                        if calibration:
+                            click.echo(
+                                f"Calibration: {get_color_name(calibration.reference_color)} reference "
+                                f"({calibration.reference_count} circles), "
+                                f"radius {calibration.min_radius}-{calibration.max_radius}px "
+                                f"(mean={calibration.mean_radius:.1f}, std={calibration.std_radius:.1f})",
+                                err=True
+                            )
+                        else:
+                            click.echo("Warning: Calibration failed (insufficient reference circles), using original radius bounds", err=True)
+                    else:
+                        # Standard detection without calibration
+                        detected_circles, quantized = detect_all_circles(
+                            image_rgb,
+                            color_palette,
+                            min_radius=min_radius,
+                            max_radius=max_radius,
+                            exclude_background=True,
+                            debug_callback=debug_cb if debug else None,
+                            sensitive_mode=sensitive_occlusion,
+                            morphological_enhance=morph_enhance
+                        )
 
             if debug:
                 click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)

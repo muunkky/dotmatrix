@@ -45,6 +45,140 @@ PALETTES = {
     ],
 }
 
+# CMYK ink colors for separation mode (pure print colors)
+CMYK_INK_COLORS = {
+    'cyan': (0, 255, 255),
+    'magenta': (255, 0, 255),
+    'yellow': (255, 255, 0),
+    'black': (0, 0, 0),
+}
+
+
+def separate_cmyk_inks(
+    image: np.ndarray,
+    ink_threshold: int = 100,
+    black_threshold: int = 60,
+    white_threshold: int = 240
+) -> Dict[str, np.ndarray]:
+    """Separate image into CMYK ink masks using subtractive color model.
+
+    Unlike palette quantization (which assigns each pixel to ONE color),
+    this uses the AND logic: overlapping colors are included in BOTH
+    component ink masks. For example:
+    - Red pixels (M+Y overlap) → counted in BOTH magenta AND yellow masks
+    - Blue pixels (C+M overlap) → counted in BOTH cyan AND magenta masks
+    - Green pixels (C+Y overlap) → counted in BOTH cyan AND yellow masks
+
+    This is essential for CMYK halftone separation where circles overlap.
+
+    Args:
+        image: RGB image as numpy array (H, W, 3)
+        ink_threshold: Channel value below which ink is considered present
+                      (lower = more selective, higher = more inclusive)
+        black_threshold: Max channel value for black ink detection
+        white_threshold: Min channel value for white/background detection
+
+    Returns:
+        Dictionary mapping ink names to binary masks (255=ink present, 0=absent):
+        {
+            'cyan': mask,    # Pixels where cyan ink contributes
+            'magenta': mask, # Pixels where magenta ink contributes
+            'yellow': mask,  # Pixels where yellow ink contributes
+            'black': mask,   # Pixels where black ink is present
+        }
+
+    CMYK Color Theory:
+        In subtractive CMYK printing on white:
+        - Cyan absorbs RED → if R is low, cyan ink is present
+        - Magenta absorbs GREEN → if G is low, magenta ink is present
+        - Yellow absorbs BLUE → if B is low, yellow ink is present
+        - Black absorbs ALL → if R, G, B all low, black ink is present
+    """
+    r = image[:, :, 0].astype(np.float32)
+    g = image[:, :, 1].astype(np.float32)
+    b = image[:, :, 2].astype(np.float32)
+
+    # Background (white/transparent) - no ink
+    white_mask = (r > white_threshold) & (g > white_threshold) & (b > white_threshold)
+
+    # Black ink: all channels very low
+    black_mask = (r < black_threshold) & (g < black_threshold) & (b < black_threshold)
+
+    # For CMY, detect based on which channel is absorbed (low)
+    # Exclude very dark pixels (those are black, not CMY)
+    not_black = ~black_mask
+    not_white = ~white_mask
+    colored = not_black & not_white
+
+    # Cyan ink present: red channel is absorbed (low R)
+    cyan_mask = colored & (r < ink_threshold)
+
+    # Magenta ink present: green channel is absorbed (low G)
+    magenta_mask = colored & (g < ink_threshold)
+
+    # Yellow ink present: blue channel is absorbed (low B)
+    yellow_mask = colored & (b < ink_threshold)
+
+    return {
+        'cyan': (cyan_mask * 255).astype(np.uint8),
+        'magenta': (magenta_mask * 255).astype(np.uint8),
+        'yellow': (yellow_mask * 255).astype(np.uint8),
+        'black': (black_mask * 255).astype(np.uint8),
+    }
+
+
+def detect_circles_cmyk_separation(
+    image: np.ndarray,
+    min_radius: int = 10,
+    max_radius: int = 50,
+    ink_threshold: int = 100,
+    debug_callback: Optional[callable] = None,
+    sensitive_mode: bool = False,
+    morphological_enhance: bool = False
+) -> List['DetectedCircle']:
+    """Detect circles using CMYK ink separation with AND logic.
+
+    Alternative to detect_all_circles() for CMYK halftone images where
+    overlapping colored circles need to be detected in multiple layers.
+
+    Args:
+        image: RGB image as numpy array (H, W, 3)
+        min_radius: Minimum circle radius in pixels
+        max_radius: Maximum circle radius in pixels
+        ink_threshold: Channel threshold for ink detection (see separate_cmyk_inks)
+        debug_callback: Optional function(ink_name, mask, circles) for debugging
+        sensitive_mode: Use lower thresholds for partial circles
+        morphological_enhance: Apply dilation/erosion to connect fragments
+
+    Returns:
+        List of DetectedCircle objects with CMYK ink colors
+    """
+    # Separate into ink masks
+    ink_masks = separate_cmyk_inks(image, ink_threshold=ink_threshold)
+
+    all_circles = []
+
+    # Process each ink layer
+    for ink_name, mask in ink_masks.items():
+        color = CMYK_INK_COLORS[ink_name]
+
+        # Detect circles from this ink mask
+        circles = detect_circles_from_convex_edges(
+            mask,
+            color,
+            min_radius=min_radius,
+            max_radius=max_radius,
+            sensitive_mode=sensitive_mode,
+            morphological_enhance=morphological_enhance
+        )
+
+        if debug_callback:
+            debug_callback(ink_name, mask, circles)
+
+        all_circles.extend(circles)
+
+    return all_circles
+
 
 @dataclass
 class DetectedCircle:
