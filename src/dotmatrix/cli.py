@@ -1,6 +1,7 @@
 """Command-line interface for DotMatrix."""
 
 import click
+from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 from pathlib import Path
 import sys
 import cv2
@@ -13,6 +14,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.version_option(version=__version__, prog_name='dotmatrix')
+# Core Options (always shown first)
 @click.option(
     '--config', '-c',
     type=click.Path(exists=True, path_type=Path),
@@ -40,156 +42,170 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Enable debug output'
 )
 @click.option(
-    '--extract', '-e',
-    type=click.Path(path_type=Path),
-    default=None,
-    help='Extract circles to separate PNG images by color. If path not given, uses output/'
-)
-@click.option(
     '--mode', '-m',
     type=click.Choice(['standard', 'halftone', 'cmyk-sep'], case_sensitive=False),
     default=None,
     help='Detection preset: standard (simple circles), halftone (overlapping CMYK), cmyk-sep (ink separation)'
 )
-@click.option(
+# Detection Options
+@optgroup.group('Detection Options', help='Circle detection parameters')
+@optgroup.option(
     '--min-radius',
     type=int,
     default=10,
     help='Minimum circle radius in pixels (default: 10)'
 )
-@click.option(
+@optgroup.option(
     '--max-radius',
     type=int,
     default=500,
     help='Maximum circle radius in pixels (default: 500)'
 )
-@click.option(
+@optgroup.option(
     '--min-distance',
     type=int,
     default=20,
-    help='Minimum distance between circle centers in pixels (default: 20)'
+    help='Minimum distance between circle centers (default: 20)'
 )
-@click.option(
-    '--color-tolerance',
-    type=int,
-    default=20,
-    help='RGB distance threshold for color grouping (default: 20, range: 0-100)'
-)
-@click.option(
-    '--max-colors',
-    type=int,
-    help='Maximum number of color groups using k-means clustering (only with --extract)'
-)
-@click.option(
+@optgroup.option(
     '--sensitivity',
     type=click.Choice(['strict', 'normal', 'relaxed'], case_sensitive=False),
     default='normal',
     help='Detection sensitivity preset (default: normal)'
 )
-@click.option(
+@optgroup.option(
     '--min-confidence',
     type=click.IntRange(0, 100),
-    help='Minimum confidence score to include detection (0-100)'
+    help='Minimum confidence score (0-100)'
 )
-@click.option(
-    '--edge-sampling',
-    is_flag=True,
-    help='Use edge-based color sampling for better accuracy with overlapping circles'
-)
-@click.option(
-    '--edge-samples',
-    type=int,
-    default=36,
-    help='Number of sample points around circle edge for edge sampling (default: 36)'
-)
-@click.option(
-    '--edge-method',
-    type=click.Choice(['circumference', 'canny', 'exposed', 'band'], case_sensitive=False),
-    default='circumference',
-    help='Edge sampling method: circumference (default), canny (edge pixels), exposed (visible arcs), band (pixel band)'
-)
-@click.option(
-    '--exclude-background',
-    is_flag=True,
-    help='Exclude near-white background colors (RGB > 240) from extraction'
-)
-@click.option(
-    '--use-histogram',
-    is_flag=True,
-    help='Use histogram-based color palette extraction (recommended for CMYK)'
-)
-@click.option(
-    '--color-separation',
-    is_flag=True,
-    help='Separate image by color first, then detect circles independently per color (best for overlapping)'
-)
-@click.option(
+# Detection Methods
+@optgroup.group('Detection Methods', help='Algorithm selection for different image types')
+@optgroup.option(
     '--convex-edge',
     is_flag=True,
-    help='Use convex edge detection for heavily overlapping circles (best accuracy for CMYK/halftone)'
+    help='Convex edge detection for overlapping circles (best for CMYK/halftone)'
 )
-@click.option(
+@optgroup.option(
+    '--color-separation',
+    is_flag=True,
+    help='Separate by color first, then detect per color (good for overlapping)'
+)
+@optgroup.option(
+    '--use-histogram',
+    is_flag=True,
+    help='Histogram-based color palette extraction (recommended for CMYK)'
+)
+@optgroup.option(
+    '--sensitive-occlusion',
+    is_flag=True,
+    help='Lower thresholds for heavily occluded circles'
+)
+@optgroup.option(
+    '--morph-enhance',
+    is_flag=True,
+    help='Morphological enhancement for fragmented regions'
+)
+# Color Options
+@optgroup.group('Color Options', help='Color detection and grouping')
+@optgroup.option(
     '--palette',
     type=str,
     default='cmyk',
-    help='Color palette for convex-edge mode: "auto" (detect from image), "cmyk-sep" (CMYK ink separation with AND logic for overlapping halftones), preset (cmyk, rgb), or custom "R,G,B;R,G,B" (default: cmyk)'
+    help='Color palette: auto, cmyk, cmyk-sep, rgb, or custom "R,G,B;R,G,B"'
 )
-@click.option(
+@optgroup.option(
     '--num-colors',
     type=int,
     default=6,
-    help='Number of colors to detect when using --palette auto (default: 6)'
+    help='Colors to detect with --palette auto (default: 6)'
 )
-@click.option(
-    '--quantize-output',
+@optgroup.option(
+    '--color-tolerance',
+    type=int,
+    default=20,
+    help='RGB distance for color grouping (default: 20)'
+)
+@optgroup.option(
+    '--max-colors',
+    type=int,
+    help='Maximum color groups with k-means (only with --extract)'
+)
+@optgroup.option(
+    '--exclude-background',
+    is_flag=True,
+    help='Exclude near-white background (RGB > 240)'
+)
+# Edge Sampling Options
+@optgroup.group('Edge Sampling', help='Edge-based color sampling for overlapping circles')
+@optgroup.option(
+    '--edge-sampling',
+    is_flag=True,
+    help='Enable edge-based color sampling'
+)
+@optgroup.option(
+    '--edge-samples',
+    type=int,
+    default=36,
+    help='Sample points around edge (default: 36)'
+)
+@optgroup.option(
+    '--edge-method',
+    type=click.Choice(['circumference', 'canny', 'exposed', 'band'], case_sensitive=False),
+    default='circumference',
+    help='Sampling method (default: circumference)'
+)
+# Output/Extract Options
+@optgroup.group('Output Options', help='Extraction and output settings')
+@optgroup.option(
+    '--extract', '-e',
     type=click.Path(path_type=Path),
-    help='Save quantized image to this path (for debugging convex-edge mode)'
+    default=None,
+    help='Extract circles to PNGs by color'
 )
-@click.option(
+@optgroup.option(
     '--run-name',
     type=str,
-    help='Custom name for this run (creates named subdirectory in extract folder)'
+    help='Custom name for this run'
 )
-@click.option(
+@optgroup.option(
     '--no-organize',
     is_flag=True,
-    help='Disable automatic subdirectory creation for --extract (flat output)'
+    help='Disable subdirectory creation for --extract'
 )
-@click.option(
-    '--save-config',
-    type=click.Path(path_type=Path),
-    help='Save current settings to config file (YAML or JSON)'
-)
-@click.option(
+@optgroup.option(
     '--no-manifest',
     is_flag=True,
-    help='Disable automatic manifest.json generation when using --extract'
+    help='Disable manifest.json generation'
 )
-@click.option(
+@optgroup.option(
+    '--quantize-output',
+    type=click.Path(path_type=Path),
+    help='Save quantized image (debug)'
+)
+@optgroup.option(
+    '--save-config',
+    type=click.Path(path_type=Path),
+    help='Save settings to config file'
+)
+# Performance Options
+@optgroup.group('Performance', help='Processing performance settings')
+@optgroup.option(
     '--chunk-size',
     type=str,
     default='auto',
-    help='Tile size for chunked processing: "auto" (default), pixel size (e.g. "2000"), or "0" to disable'
+    help='Tile size: "auto", pixel size, or "0" to disable'
 )
-@click.option(
-    '--sensitive-occlusion',
-    is_flag=True,
-    help='Enable sensitive detection mode for heavily occluded circles (lower HoughCircles thresholds)'
-)
-@click.option(
-    '--morph-enhance',
-    is_flag=True,
-    help='Apply morphological enhancement to connect fragmented color regions (helps with occluded circles)'
-)
-@click.option(
+# Calibration Options
+@optgroup.group('Calibration', help='Radius calibration from reference')
+@optgroup.option(
     '--auto-calibrate',
     is_flag=True,
-    help='Auto-calibrate radius from reference color (darkest color, typically black)'
+    help='Auto-calibrate radius from darkest color'
 )
-@click.option(
+@optgroup.option(
     '--calibrate-from',
     type=str,
-    help='Calibrate radius from specific color (e.g., "black", "cyan")'
+    help='Calibrate from specific color (e.g., "black")'
 )
 def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
     """DotMatrix: Detect circles in images.
@@ -197,11 +213,25 @@ def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, ma
     Identifies the center coordinates, radius, and color of circles in images,
     even when circles overlap.
 
-    Example:
-        dotmatrix --input image.png --format json
-        dotmatrix --config config.json --input image.png
+    \b
+    QUICK START:
+      dotmatrix -i image.png                    # Basic detection, JSON output
+      dotmatrix -i image.png -e output/         # Extract circles to PNGs by color
+      dotmatrix -i image.png -m halftone        # Halftone/overlapping circles
 
-    Use 'dotmatrix runs' to list and manage past runs.
+    \b
+    COMMON USE CASES:
+      Simple circles:     -m standard
+      CMYK halftone:      -m halftone (or --convex-edge --palette cmyk)
+      Ink separation:     -m cmyk-sep (extracts each ink color plate)
+
+    \b
+    PRESETS (--mode):
+      standard   - Simple non-overlapping circles (fastest)
+      halftone   - Overlapping CMYK halftone dots
+      cmyk-sep   - CMYK ink separation with subtractive color logic
+
+    Use 'dotmatrix runs list' to view past detection runs.
     """
     # If no subcommand invoked, run detect (for backward compatibility)
     if ctx.invoked_subcommand is None:
@@ -213,31 +243,174 @@ def cli(ctx, config, input, output, format, debug, extract, mode, min_radius, ma
                    auto_calibrate, calibrate_from)
 
 
+# ============================================================================
+# Helper functions for _do_detect (extracted for readability)
+# ============================================================================
+
+def _apply_mode_presets(mode, convex_edge, palette, sensitive_occlusion, morph_enhance, debug):
+    """Apply mode preset settings, returning updated values."""
+    if not mode:
+        return convex_edge, palette, sensitive_occlusion, morph_enhance
+
+    mode_lower = mode.lower()
+    if mode_lower == 'standard':
+        # Standard mode: simple Hough circle detection (default behavior)
+        if convex_edge is None or not convex_edge:
+            convex_edge = False
+    elif mode_lower == 'halftone':
+        # Halftone mode: convex edge detection with CMYK palette
+        convex_edge = True
+        if palette == 'cmyk':  # Only override if not explicitly set
+            palette = 'cmyk'
+        sensitive_occlusion = True
+        morph_enhance = True
+    elif mode_lower == 'cmyk-sep':
+        # CMYK separation mode: ink separation with AND logic
+        convex_edge = True
+        palette = 'cmyk-sep'
+        sensitive_occlusion = True
+        morph_enhance = True
+
+    if debug:
+        click.echo(f"Mode '{mode}' preset applied", err=True)
+
+    return convex_edge, palette, sensitive_occlusion, morph_enhance
+
+
+def _validate_inputs(input_path, extract, max_colors):
+    """Validate input parameters, exit with error if invalid."""
+    # Validate required --input parameter
+    if not input_path:
+        click.echo("Error: --input is required (either via CLI or config file)", err=True)
+        sys.exit(1)
+
+    # Validate --max-colors requires --extract
+    if max_colors is not None and not extract:
+        click.echo(
+            "Error: --max-colors can only be used with --extract",
+            err=True
+        )
+        sys.exit(1)
+
+    # Validate file extension
+    valid_extensions = {'.png', '.jpg', '.jpeg'}
+    if input_path.suffix.lower() not in valid_extensions:
+        click.echo(
+            f"Error: Invalid file format '{input_path.suffix}'. "
+            f"Supported formats: {', '.join(valid_extensions)}",
+            err=True
+        )
+        sys.exit(1)
+
+
+def _handle_extraction(results, image_shape, extract, run_name, no_organize,
+                       color_tolerance, max_colors, no_manifest, input_path,
+                       min_radius, max_radius, min_distance, sensitivity,
+                       min_confidence, convex_edge, palette, edge_sampling,
+                       edge_samples, edge_method, format, debug):
+    """Handle extracting circles to images and generating manifest."""
+    from .run_manager import create_run_directory
+    from .image_extractor import extract_circles_to_images
+
+    # Create organized output directory (unless --no-organize)
+    output_dir = create_run_directory(
+        base_dir=extract,
+        run_name=run_name,
+        organize=not no_organize
+    )
+
+    if debug:
+        click.echo(f"Extracting circles to: {output_dir}", err=True)
+        if max_colors:
+            click.echo(f"Using k-means clustering with max_colors={max_colors}", err=True)
+
+    extracted_files = extract_circles_to_images(
+        results,
+        image_shape=image_shape,
+        output_dir=output_dir,
+        prefix="circles",
+        tolerance=color_tolerance,
+        max_colors=max_colors
+    )
+
+    click.echo(f"Extracted {len(extracted_files)} color group(s) to {output_dir}/")
+    for filepath in extracted_files:
+        click.echo(f"  - {filepath.name}")
+
+    # Generate manifest unless disabled
+    if not no_manifest:
+        from .manifest import generate_manifest, write_manifest
+
+        # Build color names mapping for convex-edge mode
+        color_names = None
+        if convex_edge:
+            from .convex_detector import get_color_name
+            color_names = {
+                color: get_color_name(color)
+                for _, color in results
+            }
+
+        # Collect settings for manifest
+        manifest_settings = {
+            'min_radius': min_radius,
+            'max_radius': max_radius,
+            'min_distance': min_distance,
+            'sensitivity': sensitivity,
+            'min_confidence': min_confidence,
+            'convex_edge': convex_edge,
+            'palette': palette if convex_edge else None,
+            'color_tolerance': color_tolerance,
+            'max_colors': max_colors,
+            'edge_sampling': edge_sampling,
+            'edge_samples': edge_samples,
+            'edge_method': edge_method,
+            'format': format,
+        }
+
+        manifest = generate_manifest(
+            source_file=input_path,
+            settings=manifest_settings,
+            results=results,
+            output_files=extracted_files,
+            color_names=color_names,
+        )
+
+        manifest_path = write_manifest(output_dir, manifest)
+
+        if debug:
+            click.echo(f"Manifest written to: {manifest_path}", err=True)
+
+    if debug:
+        click.echo("Extraction complete!", err=True)
+
+
+def _format_and_output_results(results, format, output, extract, debug):
+    """Format results and write to output or stdout."""
+    from .formatter import format_json, format_csv
+
+    # Format output (skip if only extracting)
+    if not extract or output or not extract:
+        if format.lower() == 'json':
+            formatted_output = format_json(results)
+        else:  # csv
+            formatted_output = format_csv(results)
+
+        # Write to output or stdout
+        if output:
+            output.write_text(formatted_output)
+            if debug:
+                click.echo(f"Results written to: {output}", err=True)
+        elif not extract:  # Only print to stdout if not extracting
+            click.echo(formatted_output)
+
+
 def _do_detect(config, input, output, format, debug, extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
-    if mode:
-        mode_lower = mode.lower()
-        if mode_lower == 'standard':
-            # Standard mode: simple Hough circle detection (default behavior)
-            if convex_edge is None or not convex_edge:
-                convex_edge = False
-        elif mode_lower == 'halftone':
-            # Halftone mode: convex edge detection with CMYK palette
-            convex_edge = True
-            if palette == 'cmyk':  # Only override if not explicitly set
-                palette = 'cmyk'
-            sensitive_occlusion = True
-            morph_enhance = True
-        elif mode_lower == 'cmyk-sep':
-            # CMYK separation mode: ink separation with AND logic
-            convex_edge = True
-            palette = 'cmyk-sep'
-            sensitive_occlusion = True
-            morph_enhance = True
+    convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
+        mode, convex_edge, palette, sensitive_occlusion, morph_enhance, debug
+    )
 
-        if debug:
-            click.echo(f"Mode '{mode}' preset applied", err=True)
     # Load configuration file if provided
     if config:
         try:
@@ -307,34 +480,14 @@ def _do_detect(config, input, output, format, debug, extract, mode, min_radius, 
             click.echo(f"Error loading config: {e}", err=True)
             sys.exit(1)
 
-    # Validate required --input parameter
-    if not input:
-        click.echo("Error: --input is required (either via CLI or config file)", err=True)
-        sys.exit(1)
+    # Validate inputs (exits on failure)
+    _validate_inputs(input, extract, max_colors)
 
     if debug:
         click.echo(f"Debug mode enabled", err=True)
         click.echo(f"Input: {input}", err=True)
         click.echo(f"Output: {output or 'stdout'}", err=True)
         click.echo(f"Format: {format}", err=True)
-
-    # Validate --max-colors requires --extract
-    if max_colors is not None and not extract:
-        click.echo(
-            "Error: --max-colors can only be used with --extract",
-            err=True
-        )
-        sys.exit(1)
-
-    # Validate file extension
-    valid_extensions = {'.png', '.jpg', '.jpeg'}
-    if input.suffix.lower() not in valid_extensions:
-        click.echo(
-            f"Error: Invalid file format '{input.suffix}'. "
-            f"Supported formats: {', '.join(valid_extensions)}",
-            err=True
-        )
-        sys.exit(1)
 
     # Save config if requested
     if save_config:
@@ -696,93 +849,16 @@ def _do_detect(config, input, output, format, debug, extract, mode, min_radius, 
 
         # 4. Extract to separate PNG images if requested
         if extract:
-            from .run_manager import create_run_directory
-
-            # Create organized output directory (unless --no-organize)
-            output_dir = create_run_directory(
-                base_dir=extract,
-                run_name=run_name,
-                organize=not no_organize
+            _handle_extraction(
+                results, image.shape[:2], extract, run_name, no_organize,
+                color_tolerance, max_colors, no_manifest, input,
+                min_radius, max_radius, min_distance, sensitivity,
+                min_confidence, convex_edge, palette, edge_sampling,
+                edge_samples, edge_method, format, debug
             )
 
-            if debug:
-                click.echo(f"Extracting circles to: {output_dir}", err=True)
-                if max_colors:
-                    click.echo(f"Using k-means clustering with max_colors={max_colors}", err=True)
-
-            extracted_files = extract_circles_to_images(
-                results,
-                image_shape=image.shape[:2],
-                output_dir=output_dir,
-                prefix="circles",
-                tolerance=color_tolerance,
-                max_colors=max_colors
-            )
-
-            click.echo(f"Extracted {len(extracted_files)} color group(s) to {output_dir}/")
-            for filepath in extracted_files:
-                click.echo(f"  - {filepath.name}")
-
-            # Generate manifest unless disabled
-            if not no_manifest:
-                from .manifest import generate_manifest, write_manifest
-
-                # Build color names mapping for convex-edge mode
-                color_names = None
-                if convex_edge:
-                    from .convex_detector import get_color_name
-                    color_names = {
-                        color: get_color_name(color)
-                        for _, color in results
-                    }
-
-                # Collect settings for manifest
-                manifest_settings = {
-                    'min_radius': min_radius,
-                    'max_radius': max_radius,
-                    'min_distance': min_distance,
-                    'sensitivity': sensitivity,
-                    'min_confidence': min_confidence,
-                    'convex_edge': convex_edge,
-                    'palette': palette if convex_edge else None,
-                    'color_tolerance': color_tolerance,
-                    'max_colors': max_colors,
-                    'edge_sampling': edge_sampling,
-                    'edge_samples': edge_samples,
-                    'edge_method': edge_method,
-                    'format': format,
-                }
-
-                manifest = generate_manifest(
-                    source_file=input,
-                    settings=manifest_settings,
-                    results=results,
-                    output_files=extracted_files,
-                    color_names=color_names,
-                )
-
-                manifest_path = write_manifest(output_dir, manifest)
-
-                if debug:
-                    click.echo(f"Manifest written to: {manifest_path}", err=True)
-
-            if debug:
-                click.echo("Extraction complete!", err=True)
-
-        # 5. Format output (skip if only extracting)
-        if not extract or output or not extract:
-            if format.lower() == 'json':
-                formatted_output = format_json(results)
-            else:  # csv
-                formatted_output = format_csv(results)
-
-            # 6. Write to output or stdout
-            if output:
-                output.write_text(formatted_output)
-                if debug:
-                    click.echo(f"Results written to: {output}", err=True)
-            elif not extract:  # Only print to stdout if not extracting
-                click.echo(formatted_output)
+        # 5. Format and output results
+        _format_and_output_results(results, format, output, extract, debug)
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
