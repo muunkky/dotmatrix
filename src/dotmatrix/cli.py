@@ -1175,6 +1175,141 @@ def runs_replay(run_name, dir, dry_run):
         sys.exit(result.returncode)
 
 
+# ============================================================================
+# Calibrate command for auto-calibrating radius parameters
+# ============================================================================
+
+@cli.command('calibrate')
+@click.option(
+    '--input', '-i',
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help='Input image file path (PNG, JPG, JPEG)'
+)
+@click.option(
+    '--initial-min',
+    type=int,
+    default=10,
+    help='Initial minimum radius bound (default: 10)'
+)
+@click.option(
+    '--initial-max',
+    type=int,
+    default=300,
+    help='Initial maximum radius bound (default: 300)'
+)
+@click.option(
+    '--tolerance',
+    type=float,
+    default=2.0,
+    help='Convergence tolerance in pixels (default: 2.0)'
+)
+@click.option(
+    '--max-iterations',
+    type=int,
+    default=20,
+    help='Maximum optimization iterations (default: 20)'
+)
+@click.option(
+    '--target-radius',
+    type=float,
+    default=None,
+    help='Target mean radius to optimize toward (optional)'
+)
+@click.option(
+    '--format', '-f',
+    type=click.Choice(['text', 'json'], case_sensitive=False),
+    default='text',
+    help='Output format (default: text)'
+)
+@click.option(
+    '--verbose', '-v',
+    is_flag=True,
+    help='Show iteration history'
+)
+def calibrate(input, initial_min, initial_max, tolerance, max_iterations, target_radius, format, verbose):
+    """Auto-calibrate radius parameters using black dot ground truth.
+
+    Runs iterative optimization to find optimal min_radius and max_radius
+    settings for circle detection. Uses black dots as ground truth since
+    they are always printed on top (never occluded) and provide reliable
+    radius measurements.
+
+    \b
+    EXAMPLES:
+      dotmatrix calibrate -i image.png
+      dotmatrix calibrate -i image.png --tolerance 1.0
+      dotmatrix calibrate -i image.png --format json
+      dotmatrix calibrate -i image.png --initial-min 50 --initial-max 200
+
+    \b
+    OUTPUT:
+      Displays optimal --min-radius and --max-radius values to use
+      with the detect command for best results.
+    """
+    import json as json_module
+
+    from .calibration import calibrate_radius, format_calibration_output
+
+    # Validate file extension
+    valid_extensions = {'.png', '.jpg', '.jpeg'}
+    if input.suffix.lower() not in valid_extensions:
+        click.echo(
+            f"Error: Invalid file format '{input.suffix}'. "
+            f"Supported formats: {', '.join(valid_extensions)}",
+            err=True
+        )
+        sys.exit(1)
+
+    try:
+        # Load image
+        image = cv2.imread(str(input))
+        if image is None:
+            click.echo(f"Error: Could not load image: {input}", err=True)
+            sys.exit(1)
+
+        # Convert BGR to RGB
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        click.echo(f"Calibrating radius parameters for: {input.name}", err=True)
+        click.echo(f"Image size: {image.shape[1]}x{image.shape[0]}", err=True)
+
+        # Progress callback
+        def on_iteration(step):
+            click.echo(
+                f"  Iteration {step.iteration}: "
+                f"radius [{step.min_radius}, {step.max_radius}], "
+                f"detected {step.detected_count} circles, "
+                f"error={step.error:.2f}",
+                err=True
+            )
+
+        # Run calibration
+        result = calibrate_radius(
+            image_rgb,
+            initial_min=initial_min,
+            initial_max=initial_max,
+            tolerance=tolerance,
+            max_iterations=max_iterations,
+            target_mean_radius=target_radius,
+            on_iteration=on_iteration
+        )
+
+        # Output results
+        if format.lower() == 'json':
+            click.echo(json_module.dumps(result.to_dict(), indent=2))
+        else:
+            click.echo(format_calibration_output(result, verbose=verbose))
+
+        # Exit with error code if calibration failed
+        if not result.converged and result.iterations == 0:
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
 # For backward compatibility, expose cli as main
 main = cli
 
