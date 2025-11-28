@@ -268,7 +268,8 @@ def calibrate_radius(
             on_iteration(step)
 
         # Track best result
-        if error < best_error:
+        # Use <= to prefer tighter bounds when error is equal
+        if error <= best_error:
             best_error = error
             best_min = min_r
             best_max = max_r
