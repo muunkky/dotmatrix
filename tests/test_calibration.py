@@ -165,24 +165,25 @@ class TestCalibrateRadius:
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
     def test_already_optimal(self, mock_verify):
-        """Test when initial params are already optimal."""
-        # Mock verification returns good results
+        """Test when initial params are already optimal (near-zero error)."""
+        # Mock verification returns perfect results (zero std)
         mock_verify.return_value = self._create_mock_verification(
-            count=10, mean=100.0, std=2.0, r_min=95, r_max=105
+            count=10, mean=100.0, std=0.0, r_min=100, r_max=100
         )
 
         image = np.zeros((500, 500, 3), dtype=np.uint8)
 
-        # With tolerance=5, initial error of 1.0 (std=2.0 * 0.5) should converge
+        # With near-zero std, error will be 0, which is < 0.1 tolerance
         result = calibrate_radius(
             image,
             initial_min=90,
             initial_max=110,
-            tolerance=5.0
+            tolerance=0.1
         )
 
         assert result.converged is True
-        assert "Already optimal" in result.message or result.iterations <= 1
+        assert result.final_error < 0.1
+        assert "Optimal" in result.message or result.iterations == 1
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
     def test_max_iterations_limit(self, mock_verify):
@@ -321,15 +322,32 @@ class TestFormatCalibrationOutput:
             iterations=3,
             converged=True,
             history=[],
-            message="Converged successfully"
+            message="Minimum found"
         )
 
         output = format_calibration_output(result)
 
-        assert "✓ Converged" in output
+        assert "✓ Minimum found" in output
         assert "--min-radius 80" in output
         assert "--max-radius 120" in output
         assert "Iterations: 3" in output
+
+    def test_optimal_output(self):
+        """Test output formatting for near-zero error (optimal)."""
+        result = CalibrationResult(
+            optimal_min_radius=80,
+            optimal_max_radius=120,
+            final_error=0.05,  # Near-zero error
+            iterations=3,
+            converged=True,
+            history=[],
+            message="Optimal achieved"
+        )
+
+        output = format_calibration_output(result)
+
+        assert "✓ Optimal (near-zero error)" in output
+        assert "--min-radius 80" in output
 
     def test_not_converged_output(self):
         """Test output formatting for non-converged result."""
@@ -345,7 +363,7 @@ class TestFormatCalibrationOutput:
 
         output = format_calibration_output(result)
 
-        assert "⚠ Did not converge" in output
+        assert "⚠ Could not minimize further" in output
         assert "--min-radius 50" in output
         assert "--max-radius 200" in output
 

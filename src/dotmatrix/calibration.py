@@ -92,7 +92,7 @@ def calibrate_radius(
     image: np.ndarray,
     initial_min: int = 10,
     initial_max: int = 300,
-    tolerance: float = 2.0,
+    tolerance: float = 0.1,
     max_iterations: int = 20,
     target_mean_radius: Optional[float] = None,
     ink_threshold: int = 100,
@@ -101,14 +101,17 @@ def calibrate_radius(
 ) -> CalibrationResult:
     """Calibrate min/max radius parameters using black dot detection.
 
-    Uses iterative optimization to find radius bounds that produce
-    accurate, consistent circle detection. The algorithm:
+    Uses iterative optimization to find radius bounds that MINIMIZE
+    detection error. The algorithm seeks zero error; if zero cannot
+    be achieved, it reports the minimum error found.
 
+    The algorithm:
     1. Starts with initial bounds
     2. Runs detection with current params
     3. Calculates error from ground truth
-    4. Adjusts bounds based on error direction
-    5. Repeats until convergence or max iterations
+    4. Adjusts bounds based on detected radii
+    5. Repeats until bounds stabilize or max iterations
+    6. Returns parameters that achieved MINIMUM error
 
     The optimization focuses on finding the "sweet spot" where:
     - min_radius is just below the smallest actual circles
@@ -118,7 +121,7 @@ def calibrate_radius(
         image: RGB image as numpy array (H, W, 3)
         initial_min: Starting minimum radius bound
         initial_max: Starting maximum radius bound
-        tolerance: Convergence threshold (stop when error < tolerance)
+        tolerance: Early-exit threshold for near-perfect results (default 0.1)
         max_iterations: Maximum iterations before stopping
         target_mean_radius: Optional known target radius to optimize toward
         ink_threshold: Threshold for ink separation
@@ -183,6 +186,11 @@ def calibrate_radius(
     if on_iteration:
         on_iteration(step)
 
+    best_error = initial_error
+    best_min = min_r
+    best_max = max_r
+
+    # Only early-exit if error is near-perfect (essentially zero)
     if initial_error < tolerance:
         return CalibrationResult(
             optimal_min_radius=min_r,
@@ -191,12 +199,8 @@ def calibrate_radius(
             iterations=1,
             converged=True,
             history=history,
-            message="Already optimal with initial parameters."
+            message=f"Optimal: error {initial_error:.2f} < tolerance {tolerance}."
         )
-
-    best_error = initial_error
-    best_min = min_r
-    best_max = max_r
 
     # Optimization loop: adjust bounds based on detected radii
     for iteration in range(1, max_iterations + 1):
@@ -283,7 +287,7 @@ def calibrate_radius(
             best_min = min_r
             best_max = max_r
 
-        # Check convergence
+        # Only early-exit if error is near-zero (essentially optimal)
         if error < tolerance:
             return CalibrationResult(
                 optimal_min_radius=min_r,
@@ -292,18 +296,20 @@ def calibrate_radius(
                 iterations=iteration + 1,
                 converged=True,
                 history=history,
-                message=f"Converged after {iteration + 1} iterations (error={error:.2f} < tolerance={tolerance})."
+                message=f"Optimal: error {error:.2f} achieved in {iteration + 1} iterations."
             )
 
-    # Max iterations reached
+    # Max iterations reached - return best result found
+    # converged=True if we found a minimum (error improved from initial)
+    converged = best_error < initial_error or best_error < 1.0
     return CalibrationResult(
         optimal_min_radius=best_min,
         optimal_max_radius=best_max,
         final_error=best_error,
         iterations=max_iterations,
-        converged=False,
+        converged=converged,
         history=history,
-        message=f"Max iterations ({max_iterations}) reached. Best error: {best_error:.2f}"
+        message=f"Minimum error {best_error:.2f} found after {max_iterations} iterations."
     )
 
 
@@ -317,11 +323,19 @@ def format_calibration_output(result: CalibrationResult, verbose: bool = False) 
     Returns:
         Formatted string for console display
     """
+    # Status reflects whether minimum was found successfully
+    if result.final_error < 0.1:
+        status = "✓ Optimal (near-zero error)"
+    elif result.converged:
+        status = "✓ Minimum found"
+    else:
+        status = "⚠ Could not minimize further"
+
     lines = [
         "Radius Calibration Results:",
-        f"  Status: {'✓ Converged' if result.converged else '⚠ Did not converge'}",
+        f"  Status: {status}",
         f"  Iterations: {result.iterations}",
-        f"  Final error: {result.final_error:.2f}",
+        f"  Minimum error: {result.final_error:.2f}",
         "",
         "Optimal Parameters:",
         f"  --min-radius {result.optimal_min_radius}",

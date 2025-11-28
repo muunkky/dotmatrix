@@ -1201,8 +1201,8 @@ def runs_replay(run_name, dir, dry_run):
 @click.option(
     '--tolerance',
     type=float,
-    default=2.0,
-    help='Convergence tolerance in pixels (default: 2.0)'
+    default=0.1,
+    help='Early-exit threshold for near-perfect results (default: 0.1)'
 )
 @click.option(
     '--max-iterations',
