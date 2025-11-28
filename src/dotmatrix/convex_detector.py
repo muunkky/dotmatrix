@@ -53,6 +53,12 @@ CMYK_INK_COLORS = {
     'black': (0, 0, 0),
 }
 
+# Radius padding to compensate for HoughCircles underestimation.
+# HoughCircles detects circles at the gradient maximum, which is typically
+# a few pixels inside the actual circle boundary (especially for partial arcs).
+# Empirical testing shows ~3px underestimation for partial circles.
+HOUGH_RADIUS_PADDING = 3
+
 
 def separate_cmyk_inks(
     image: np.ndarray,
@@ -134,7 +140,8 @@ def detect_circles_cmyk_separation(
     ink_threshold: int = 100,
     debug_callback: Optional[callable] = None,
     sensitive_mode: bool = False,
-    morphological_enhance: bool = False
+    morphological_enhance: bool = False,
+    dedup_distance: int = 0
 ) -> List['DetectedCircle']:
     """Detect circles using CMYK ink separation with AND logic.
 
@@ -169,7 +176,8 @@ def detect_circles_cmyk_separation(
             min_radius=min_radius,
             max_radius=max_radius,
             sensitive_mode=sensitive_mode,
-            morphological_enhance=morphological_enhance
+            morphological_enhance=morphological_enhance,
+            dedup_distance=dedup_distance
         )
 
         if debug_callback:
@@ -289,7 +297,7 @@ def filter_by_color(
 def deduplicate_circles_kdtree(
     circles: List[Tuple[int, int, int]],
     color: Tuple[int, int, int],
-    dedup_distance: int = 20
+    dedup_distance: int = 0
 ) -> List[DetectedCircle]:
     """Deduplicate circles using KD-tree for O(n log n) performance.
 
@@ -380,7 +388,7 @@ def detect_circles_from_convex_edges(
     min_blob_area: Optional[int] = None,
     defect_depth_threshold: int = 5,
     non_convex_margin: int = 20,
-    dedup_distance: int = 20,
+    dedup_distance: int = 0,
     min_convex_points: int = 20,
     morphological_enhance: bool = False,
     sensitive_mode: bool = False
@@ -539,7 +547,9 @@ def detect_circles_from_convex_edges(
 
             if normalized_score > best_score:
                 best_score = normalized_score
-                best_circle = (int(cx), int(cy), int(r))
+                # Apply radius padding to compensate for HoughCircles underestimation
+                padded_radius = int(r) + HOUGH_RADIUS_PADDING
+                best_circle = (int(cx), int(cy), padded_radius)
 
         if best_circle is not None:
             candidate_circles.append(best_circle)
@@ -556,7 +566,8 @@ def detect_all_circles(
     exclude_background: bool = True,
     debug_callback: Optional[callable] = None,
     sensitive_mode: bool = False,
-    morphological_enhance: bool = False
+    morphological_enhance: bool = False,
+    dedup_distance: int = 0
 ) -> Tuple[List[DetectedCircle], np.ndarray]:
     """Detect all circles using convex edge analysis.
 
@@ -595,7 +606,8 @@ def detect_all_circles(
             min_radius=min_radius,
             max_radius=max_radius,
             sensitive_mode=sensitive_mode,
-            morphological_enhance=morphological_enhance
+            morphological_enhance=morphological_enhance,
+            dedup_distance=dedup_distance
         )
 
         if debug_callback:
@@ -758,7 +770,8 @@ def detect_with_calibration(
     exclude_background: bool = True,
     debug_callback: Optional[callable] = None,
     sensitive_mode: bool = False,
-    morphological_enhance: bool = False
+    morphological_enhance: bool = False,
+    dedup_distance: int = 0
 ) -> Tuple[List[DetectedCircle], np.ndarray, Optional[RadiusCalibration]]:
     """Detect circles with optional auto-calibration from reference color.
 
@@ -817,7 +830,8 @@ def detect_with_calibration(
                 min_radius=initial_min_radius,
                 max_radius=initial_max_radius,
                 sensitive_mode=sensitive_mode,
-                morphological_enhance=morphological_enhance
+                morphological_enhance=morphological_enhance,
+                dedup_distance=dedup_distance
             )
 
             if debug_callback:
@@ -846,7 +860,8 @@ def detect_with_calibration(
             min_radius=min_radius,
             max_radius=max_radius,
             sensitive_mode=sensitive_mode,
-            morphological_enhance=morphological_enhance
+            morphological_enhance=morphological_enhance,
+            dedup_distance=dedup_distance
         )
 
         if debug_callback and color != reference_color:

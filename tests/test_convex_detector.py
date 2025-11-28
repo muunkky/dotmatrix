@@ -179,6 +179,50 @@ class TestDetectCirclesFromConvexEdges:
         assert abs(circle.radius - 50) < 10
         assert circle.color == (255, 0, 0)
 
+    def test_radius_accuracy_partial_arc(self):
+        """Test radius accuracy for partial arc detection (Bug w1yevk).
+
+        When detecting from partial arcs (common with overlapping halftone dots),
+        HoughCircles tends to underestimate the radius because it detects
+        the gradient maximum slightly inside the true boundary.
+
+        This test creates a half-circle (extreme partial case) and verifies
+        that the detected radius is compensated to match the true radius.
+        """
+        img_size = 300
+        true_radius = 40
+        cx, cy = 100, 100
+
+        # Create a half-circle mask (simulating heavy overlap scenario)
+        mask = np.zeros((img_size, img_size), dtype=np.uint8)
+        cv2.circle(mask, (cx, cy), true_radius, 255, -1)
+
+        # Cut off the right half to create a partial arc
+        mask[:, cx:] = 0
+
+        # Detect circles from the partial arc
+        circles = detect_circles_from_convex_edges(
+            mask, (255, 0, 0),
+            min_radius=true_radius - 15,
+            max_radius=true_radius + 15,
+            defect_depth_threshold=3,
+            min_convex_points=10
+        )
+
+        # Should detect the circle
+        assert len(circles) >= 1, f"Expected to detect circle from partial arc, got {len(circles)}"
+
+        detected = circles[0]
+        radius_error = detected.radius - true_radius
+
+        # Radius should be accurate within 2px (strict tolerance)
+        # Without compensation, this typically shows -3 to -6px error
+        assert abs(radius_error) <= 2, (
+            f"Radius error {radius_error}px for partial arc "
+            f"(true={true_radius}, detected={detected.radius}). "
+            f"Expected within +/-2px. Negative error indicates underestimation bug."
+        )
+
     def test_no_circles_in_empty_mask(self):
         """Test no circles detected in empty mask."""
         mask = np.zeros((200, 200), dtype=np.uint8)
