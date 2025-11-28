@@ -57,6 +57,7 @@ def generate_manifest(
     results: List[Tuple[Any, Tuple[int, int, int]]],
     output_files: List[Path],
     color_names: Optional[Dict[Tuple[int, int, int], str]] = None,
+    verification: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Generate a manifest dictionary for a detection run.
 
@@ -66,6 +67,7 @@ def generate_manifest(
         results: List of (circle, color) detection results
         output_files: List of generated output file paths
         color_names: Optional mapping of RGB tuples to color names
+        verification: Optional verification result from black dot verification
 
     Returns:
         Manifest dictionary ready to be serialized to JSON
@@ -88,6 +90,10 @@ def generate_manifest(
         },
         "output_files": [f.name for f in output_files],
     }
+
+    # Add verification data if provided
+    if verification is not None:
+        manifest["verification"] = verification
 
     return manifest
 

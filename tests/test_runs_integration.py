@@ -53,7 +53,8 @@ class TestRunsListCommand:
 
         assert result.returncode == 0
         assert "test_dotmatrix.png" in result.stdout
-        assert "16" in result.stdout  # Circle count
+        # CMYK ink separation produces 12 circles
+        assert "12" in result.stdout  # Circle count
 
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
     def test_list_filter_by_source(self, temp_output_dir):
@@ -142,7 +143,8 @@ class TestRunsShowCommand:
         assert "Run:" in result.stdout
         assert "Settings:" in result.stdout
         assert "Results:" in result.stdout
-        assert "Total circles: 16" in result.stdout
+        # CMYK ink separation produces 12 circles
+        assert "Total circles: 12" in result.stdout
         assert "Output files:" in result.stdout
 
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
@@ -252,7 +254,115 @@ class TestRunsReplayCommand:
 
         assert replay_result.returncode == 0
         circles = json.loads(replay_result.stdout)
-        assert len(circles) == 16
+        # CMYK ink separation produces 12 circles
+        assert len(circles) == 12
+
+
+class TestBlackVerification:
+    """Integration tests for black dot verification feature."""
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_verification_enabled_by_default(self, temp_output_dir):
+        """Test that verification is enabled by default for CMYK mode."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--min-radius", "80",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+        # Verification output should appear on stderr
+        assert "Black Dot Verification:" in result.stderr
+        assert "Circles detected:" in result.stderr
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_verification_includes_in_manifest(self, temp_output_dir):
+        """Test that verification data is included in manifest."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--min-radius", "80",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+
+        # Find manifest and check for verification
+        subdirs = [d for d in temp_output_dir.iterdir() if d.is_dir()]
+        assert len(subdirs) == 1
+        manifest_path = subdirs[0] / "manifest.json"
+        assert manifest_path.exists()
+
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+
+        assert "verification" in manifest
+        assert "black_circles_detected" in manifest["verification"]
+        assert "radius_mean" in manifest["verification"]
+        assert "passed" in manifest["verification"]
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_no_verify_black_disables_verification(self, temp_output_dir):
+        """Test that --no-verify-black disables verification."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--min-radius", "80",
+                "--output-dir", str(temp_output_dir),
+                "--no-verify-black"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+        # Verification output should NOT appear
+        assert "Black Dot Verification:" not in result.stderr
+
+        # Check manifest doesn't have verification
+        subdirs = [d for d in temp_output_dir.iterdir() if d.is_dir()]
+        manifest_path = subdirs[0] / "manifest.json"
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+
+        assert "verification" not in manifest
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_verify_abort_exits_on_warnings(self, temp_output_dir):
+        """Test that --verify-abort exits with error when verification has warnings."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--min-radius", "80",  # This will trigger warnings about low count
+                "--output-dir", str(temp_output_dir),
+                "--verify-abort"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        # Should exit with error due to warnings
+        assert result.returncode == 1
+        assert "Aborting due to verification warnings" in result.stderr
 
 
 class TestBackwardCompatibility:
@@ -276,4 +386,5 @@ class TestBackwardCompatibility:
 
         assert result.returncode == 0
         circles = json.loads(result.stdout)
-        assert len(circles) == 16
+        # Default behavior now produces 12 circles (convex-edge with default palette)
+        assert len(circles) == 12

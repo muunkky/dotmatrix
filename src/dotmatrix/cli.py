@@ -78,6 +78,12 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=click.IntRange(0, 100),
     help='Minimum confidence score (0-100)'
 )
+@optgroup.option(
+    '--dedup-distance',
+    type=int,
+    default=0,
+    help='Deduplicate circles with centers within N pixels (default: 0 = no dedup)'
+)
 # Detection Methods
 @optgroup.group('Detection Methods', help='Algorithm selection for different image types')
 @optgroup.option(
@@ -110,8 +116,8 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @optgroup.option(
     '--palette',
     type=str,
-    default='cmyk',
-    help='Color palette: auto, cmyk, cmyk-sep, rgb, or custom "R,G,B;R,G,B"'
+    default='cmyk-sep',
+    help='Color palette: cmyk-sep (default, proper ink separation), cmyk, rgb, auto, or custom "R,G,B;R,G,B"'
 )
 @optgroup.option(
     '--num-colors',
@@ -183,6 +189,11 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Disable manifest.json generation'
 )
 @optgroup.option(
+    '--no-composite',
+    is_flag=True,
+    help='Disable composite.png generation (reconstituted image for QA)'
+)
+@optgroup.option(
     '--quantize-output',
     type=click.Path(path_type=Path),
     help='Save quantized image (debug)'
@@ -212,7 +223,19 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=str,
     help='Calibrate from specific color (e.g., "black")'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from):
+# Verification Options
+@optgroup.group('Verification', help='Black dot verification for detection quality')
+@optgroup.option(
+    '--no-verify-black',
+    is_flag=True,
+    help='Disable black dot verification (enabled by default for CMYK)'
+)
+@optgroup.option(
+    '--verify-abort',
+    is_flag=True,
+    help='Abort with error if verification produces warnings'
+)
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -244,11 +267,11 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
     # If no subcommand invoked, run detect (for backward compatibility)
     if ctx.invoked_subcommand is None:
         _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius,
-                   min_distance, color_tolerance, max_colors, sensitivity, min_confidence,
+                   min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, chunk_size, sensitive_occlusion, morph_enhance,
-                   auto_calibrate, calibrate_from)
+                   no_organize, save_config, no_manifest, no_composite, chunk_size, sensitive_occlusion, morph_enhance,
+                   auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
 # ============================================================================
@@ -312,17 +335,17 @@ def _validate_inputs(input_path, no_extract, max_colors):
 
 
 def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
-                       color_tolerance, max_colors, no_manifest, input_path,
+                       color_tolerance, max_colors, no_manifest, no_composite, input_path,
                        min_radius, max_radius, min_distance, sensitivity,
                        min_confidence, convex_edge, palette, edge_sampling,
-                       edge_samples, edge_method, format, debug):
+                       edge_samples, edge_method, format, debug, verification=None):
     """Handle extracting circles to images and generating manifest.
 
     Returns:
         Path to the run directory where files were written.
     """
     from .run_manager import create_run_directory, copy_input_file
-    from .image_extractor import extract_circles_to_images, generate_cmyk_layer_files
+    from .image_extractor import extract_circles_to_images, generate_cmyk_layer_files, generate_composite_image
 
     # Create organized output directory (unless --no-organize)
     run_dir = create_run_directory(
@@ -358,6 +381,16 @@ def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
         click.echo(f"Generated {len(layer_files)} CMYK layer file(s) to {run_dir}/")
         for layer_name, filepath in layer_files.items():
             click.echo(f"  - {layer_name}.png")
+
+        # Generate composite image for visual QA (unless disabled)
+        if not no_composite:
+            composite_path = generate_composite_image(
+                results,
+                image_shape=image_shape,
+                output_dir=run_dir
+            )
+            extracted_files.append(composite_path)
+            click.echo(f"  - composite.png (for visual comparison)")
     else:
         # Use color-grouped extraction for non-CMYK modes
         extracted_files = extract_circles_to_images(
@@ -409,6 +442,7 @@ def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
             results=results,
             output_files=extracted_files,
             color_names=color_names,
+            verification=verification,
         )
 
         manifest_path = write_manifest(run_dir, manifest)
@@ -460,7 +494,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -634,9 +668,14 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
             # Track if we're in CMYK separation mode (uses different processing path)
-            cmyk_sep_mode = palette.lower() == 'cmyk-sep'
+            # Both 'cmyk' and 'cmyk-sep' trigger ink separation - users expect CMYK to mean
+            # proper ink separation with subtractive color model, not literal color matching
+            cmyk_sep_mode = palette.lower() in ('cmyk-sep', 'cmyk')
 
-            # Handle CMYK separation mode (special palette for overlapping CMYK halftones)
+            # Initialize verification_result (only set in CMYK mode)
+            verification_result = None
+
+            # Handle CMYK separation mode (proper ink separation for overlapping CMYK halftones)
             if cmyk_sep_mode:
                 click.echo("Using CMYK ink separation mode (AND logic for overlapping colors)", err=True)
 
@@ -652,13 +691,37 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     ink_threshold=100,  # Could make this configurable
                     debug_callback=cmyk_debug_cb if debug else None,
                     sensitive_mode=sensitive_occlusion,
-                    morphological_enhance=morph_enhance
+                    morphological_enhance=morph_enhance,
+                    dedup_distance=dedup_distance
                 )
                 quantized = None  # No quantized image in separation mode
                 color_palette = list(CMYK_INK_COLORS.values())  # For compatibility
 
                 if debug:
                     click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)
+
+                # Run black dot verification (default enabled for CMYK)
+                verification_result = None
+                if not no_verify_black:
+                    from .black_verification import (
+                        verify_black_dot_detection,
+                        format_verification_output
+                    )
+
+                    verification_result = verify_black_dot_detection(
+                        image_rgb,
+                        min_radius=min_radius,
+                        max_radius=max_radius,
+                        dedup_distance=dedup_distance
+                    )
+
+                    # Display verification results
+                    click.echo(format_verification_output(verification_result), err=True)
+
+                    # Abort if verification failed and --verify-abort is set
+                    if verify_abort and not verification_result.passed:
+                        click.echo("Aborting due to verification warnings (--verify-abort)", err=True)
+                        sys.exit(1)
 
             # Handle auto-palette detection
             elif palette.lower() == 'auto':
@@ -758,7 +821,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             exclude_background=True,
                             debug_callback=debug_cb if debug else None,
                             sensitive_mode=sensitive_occlusion,
-                            morphological_enhance=morph_enhance
+                            morphological_enhance=morph_enhance,
+                            dedup_distance=dedup_distance
                         )
 
                         # Report calibration results
@@ -782,7 +846,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             exclude_background=True,
                             debug_callback=debug_cb if debug else None,
                             sensitive_mode=sensitive_occlusion,
-                            morphological_enhance=morph_enhance
+                            morphological_enhance=morph_enhance,
+                            dedup_distance=dedup_distance
                         )
 
             if debug:
@@ -909,10 +974,11 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
         if not no_extract:
             run_dir = _handle_extraction(
                 results, image.shape[:2], output_dir, run_name, no_organize,
-                color_tolerance, max_colors, no_manifest, input,
+                color_tolerance, max_colors, no_manifest, no_composite, input,
                 min_radius, max_radius, min_distance, sensitivity,
                 min_confidence, convex_edge, palette, edge_sampling,
-                edge_samples, edge_method, format, debug
+                edge_samples, edge_method, format, debug,
+                verification=verification_result.to_dict() if verification_result else None
             )
 
         # 5. Format and output results (to file or stdout)
