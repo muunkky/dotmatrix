@@ -1199,12 +1199,6 @@ def runs_replay(run_name, dir, dry_run):
     help='Initial maximum radius bound (default: 300)'
 )
 @click.option(
-    '--tolerance',
-    type=float,
-    default=0.1,
-    help='Early-exit threshold for near-perfect results (default: 0.1)'
-)
-@click.option(
     '--max-iterations',
     type=int,
     default=20,
@@ -1227,7 +1221,7 @@ def runs_replay(run_name, dir, dry_run):
     is_flag=True,
     help='Show iteration history'
 )
-def calibrate(input, initial_min, initial_max, tolerance, max_iterations, target_radius, format, verbose):
+def calibrate(input, initial_min, initial_max, max_iterations, target_radius, format, verbose):
     """Auto-calibrate radius parameters using black dot ground truth.
 
     Runs iterative optimization to find optimal min_radius and max_radius
@@ -1238,7 +1232,6 @@ def calibrate(input, initial_min, initial_max, tolerance, max_iterations, target
     \b
     EXAMPLES:
       dotmatrix calibrate -i image.png
-      dotmatrix calibrate -i image.png --tolerance 1.0
       dotmatrix calibrate -i image.png --format json
       dotmatrix calibrate -i image.png --initial-min 50 --initial-max 200
 
@@ -1289,7 +1282,6 @@ def calibrate(input, initial_min, initial_max, tolerance, max_iterations, target
             image_rgb,
             initial_min=initial_min,
             initial_max=initial_max,
-            tolerance=tolerance,
             max_iterations=max_iterations,
             target_mean_radius=target_radius,
             on_iteration=on_iteration

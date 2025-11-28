@@ -173,17 +173,16 @@ class TestCalibrateRadius:
 
         image = np.zeros((500, 500, 3), dtype=np.uint8)
 
-        # With near-zero std, error will be 0, which is < 0.1 tolerance
+        # With near-zero std, error will be 0 (perfect calibration)
         result = calibrate_radius(
             image,
             initial_min=90,
-            initial_max=110,
-            tolerance=0.1
+            initial_max=110
         )
 
         assert result.converged is True
         assert result.final_error < 0.1
-        assert "Optimal" in result.message or result.iterations == 1
+        # Algorithm converges when bounds stabilize (no more tolerance-based early exit)
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
     def test_max_iterations_limit(self, mock_verify):
@@ -199,7 +198,6 @@ class TestCalibrateRadius:
             image,
             initial_min=10,
             initial_max=300,
-            tolerance=0.1,  # Very tight tolerance
             max_iterations=5
         )
 
@@ -223,7 +221,6 @@ class TestCalibrateRadius:
             image,
             initial_min=10,
             initial_max=300,
-            tolerance=5.0,
             max_iterations=3,
             on_iteration=callback
         )
@@ -252,7 +249,6 @@ class TestCalibrateRadius:
             image,
             initial_min=10,
             initial_max=300,
-            tolerance=1.0,
             max_iterations=5
         )
 
@@ -280,7 +276,6 @@ class TestCalibrateRadius:
             image,
             initial_min=10,
             initial_max=300,
-            tolerance=5.0,
             target_mean_radius=100.0
         )
 
@@ -301,7 +296,6 @@ class TestCalibrateRadius:
             image,
             initial_min=10,
             initial_max=500,  # Very wide initial bounds
-            tolerance=5.0,
             max_iterations=10
         )
 
@@ -429,7 +423,6 @@ class TestCalibrationIntegration:
             image,
             initial_min=50,
             initial_max=300,
-            tolerance=10.0,
             max_iterations=10
         )
 

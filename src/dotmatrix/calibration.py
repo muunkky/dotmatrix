@@ -92,7 +92,6 @@ def calibrate_radius(
     image: np.ndarray,
     initial_min: int = 10,
     initial_max: int = 300,
-    tolerance: float = 0.1,
     max_iterations: int = 20,
     target_mean_radius: Optional[float] = None,
     ink_threshold: int = 100,
@@ -121,7 +120,6 @@ def calibrate_radius(
         image: RGB image as numpy array (H, W, 3)
         initial_min: Starting minimum radius bound
         initial_max: Starting maximum radius bound
-        tolerance: Early-exit threshold for near-perfect results (default 0.1)
         max_iterations: Maximum iterations before stopping
         target_mean_radius: Optional known target radius to optimize toward
         ink_threshold: Threshold for ink separation
@@ -189,18 +187,6 @@ def calibrate_radius(
     best_error = initial_error
     best_min = min_r
     best_max = max_r
-
-    # Only early-exit if error is near-perfect (essentially zero)
-    if initial_error < tolerance:
-        return CalibrationResult(
-            optimal_min_radius=min_r,
-            optimal_max_radius=max_r,
-            final_error=initial_error,
-            iterations=1,
-            converged=True,
-            history=history,
-            message=f"Optimal: error {initial_error:.2f} < tolerance {tolerance}."
-        )
 
     # Optimization loop: adjust bounds based on detected radii
     for iteration in range(1, max_iterations + 1):
@@ -286,18 +272,6 @@ def calibrate_radius(
             best_error = error
             best_min = min_r
             best_max = max_r
-
-        # Only early-exit if error is near-zero (essentially optimal)
-        if error < tolerance:
-            return CalibrationResult(
-                optimal_min_radius=min_r,
-                optimal_max_radius=max_r,
-                final_error=error,
-                iterations=iteration + 1,
-                converged=True,
-                history=history,
-                message=f"Optimal: error {error:.2f} achieved in {iteration + 1} iterations."
-            )
 
     # Max iterations reached - return best result found
     # converged=True if we found a minimum (error improved from initial)
