@@ -524,6 +524,14 @@ def detect_circles_from_convex_edges(
         )
 
         if circles is None:
+            # Fallback: use connected component centroid and area-derived radius
+            # This catches blobs where HoughCircles fails on sparse edge points
+            centroid = centroids[label_id]
+            fallback_radius = int(np.sqrt(area / np.pi)) + HOUGH_RADIUS_PADDING
+
+            # Only use fallback if radius is in acceptable range
+            if min_radius <= fallback_radius <= max_radius:
+                candidate_circles.append((int(centroid[0]), int(centroid[1]), fallback_radius))
             continue
 
         # Select best circle for this blob based on convex point coverage

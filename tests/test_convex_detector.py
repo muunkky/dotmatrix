@@ -581,3 +581,46 @@ class TestRadiusCalibration:
 
         # Should return circles
         assert isinstance(circles, list)
+
+    def test_fallback_detection_for_hough_failure(self):
+        """Test fallback detection when HoughCircles fails (Bug vhupgc).
+
+        HoughCircles fails to detect circles from partial arcs with many
+        convexity defects. This test creates a half-circle (realistic overlap
+        scenario) and verifies fallback detection works.
+
+        The fallback uses centroid and area-derived radius when HoughCircles
+        returns None but there's a valid blob above min_blob_area.
+        """
+        img_size = 300
+        true_radius = 40
+        cx, cy = 150, 150
+
+        # Create a half-circle filled blob (realistic overlap scenario)
+        mask = np.zeros((img_size, img_size), dtype=np.uint8)
+        cv2.circle(mask, (cx, cy), true_radius, 255, -1)
+
+        # Cut off half to simulate overlap
+        mask[:, cx:] = 0
+
+        blob_area = np.sum(mask > 0)
+        # Half circle area = pi*r^2/2 = pi*40^2/2 = ~2513 pixels
+        # Fallback radius from area = sqrt(2513/pi) = ~28.3
+        # But the area is for a half-circle, so the "apparent" radius is smaller
+
+        # Lower min_radius to allow area-based fallback to work
+        # For a half-circle, area-derived radius is sqrt(area/pi) ~= r * sqrt(0.5) ~= 28
+        circles = detect_circles_from_convex_edges(
+            mask, (0, 255, 255),  # Cyan color
+            min_radius=20,  # Low enough to accept fallback radius
+            max_radius=true_radius + 15,
+            defect_depth_threshold=3,
+            min_convex_points=10
+        )
+
+        # Should detect at least one circle via fallback or Hough
+        assert len(circles) >= 1, (
+            f"Expected detection for half-circle, got {len(circles)} circles. "
+            f"Blob area: {blob_area}px (expected ~{int(np.pi * true_radius**2 / 2)}). "
+            f"Either Hough or centroid fallback should work for half-circle."
+        )
