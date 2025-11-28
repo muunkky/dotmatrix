@@ -21,22 +21,22 @@ class TestCalibrationStep:
         """Test CalibrationStep serialization."""
         step = CalibrationStep(
             iteration=1,
+            parameter='min_radius',
             min_radius=50,
             max_radius=200,
             detected_count=10,
-            detected_mean_radius=100.5,
-            detected_std_radius=15.2,
-            error=5.3
+            target_count=10,
+            error=0
         )
         d = step.to_dict()
 
         assert d['iteration'] == 1
+        assert d['parameter'] == 'min_radius'
         assert d['min_radius'] == 50
         assert d['max_radius'] == 200
         assert d['detected_count'] == 10
-        assert d['detected_mean_radius'] == 100.5
-        assert d['detected_std_radius'] == 15.2
-        assert d['error'] == 5.3
+        assert d['target_count'] == 10
+        assert d['error'] == 0
 
 
 class TestCalibrationResult:
@@ -45,20 +45,20 @@ class TestCalibrationResult:
     def test_to_dict(self):
         """Test CalibrationResult serialization with history."""
         step1 = CalibrationStep(
-            iteration=0, min_radius=10, max_radius=300,
-            detected_count=5, detected_mean_radius=100.0,
-            detected_std_radius=10.0, error=10.0
+            iteration=0, parameter='baseline', min_radius=10, max_radius=300,
+            detected_count=5, target_count=5, error=0
         )
         step2 = CalibrationStep(
-            iteration=1, min_radius=80, max_radius=120,
-            detected_count=5, detected_mean_radius=100.0,
-            detected_std_radius=5.0, error=2.5
+            iteration=1, parameter='min_radius', min_radius=80, max_radius=300,
+            detected_count=5, target_count=5, error=0
         )
 
         result = CalibrationResult(
             optimal_min_radius=80,
             optimal_max_radius=120,
-            final_error=2.5,
+            target_count=5,
+            final_count=5,
+            final_error=0,
             iterations=2,
             converged=True,
             history=[step1, step2],
@@ -68,7 +68,9 @@ class TestCalibrationResult:
 
         assert d['optimal_min_radius'] == 80
         assert d['optimal_max_radius'] == 120
-        assert d['final_error'] == 2.5
+        assert d['target_count'] == 5
+        assert d['final_count'] == 5
+        assert d['final_error'] == 0
         assert d['iterations'] == 2
         assert d['converged'] is True
         assert len(d['history']) == 2
@@ -80,7 +82,9 @@ class TestCalibrationResult:
         result = CalibrationResult(
             optimal_min_radius=50,
             optimal_max_radius=150,
-            final_error=float('inf'),
+            target_count=0,
+            final_count=0,
+            final_error=0,
             iterations=0,
             converged=False,
             message="No circles found"
@@ -165,15 +169,15 @@ class TestCalibrateRadius:
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
     def test_already_optimal(self, mock_verify):
-        """Test when initial params are already optimal (near-zero error)."""
-        # Mock verification returns perfect results (zero std)
+        """Test when initial params already detect all circles (count-based error = 0)."""
+        # Mock verification always returns same count
         mock_verify.return_value = self._create_mock_verification(
             count=10, mean=100.0, std=0.0, r_min=100, r_max=100
         )
 
         image = np.zeros((500, 500, 3), dtype=np.uint8)
 
-        # With near-zero std, error will be 0 (perfect calibration)
+        # With count-based error, error will be 0 when all circles detected
         result = calibrate_radius(
             image,
             initial_min=90,
@@ -181,13 +185,14 @@ class TestCalibrateRadius:
         )
 
         assert result.converged is True
-        assert result.final_error < 0.1
-        # Algorithm converges when bounds stabilize (no more tolerance-based early exit)
+        assert result.final_error == 0
+        assert result.target_count == 10
+        assert result.final_count == 10
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
-    def test_max_iterations_limit(self, mock_verify):
-        """Test that max iterations prevents infinite loops."""
-        # Mock that always returns same result (won't converge)
+    def test_binary_search_converges_log_n(self, mock_verify):
+        """Test that binary search converges in O(log n) iterations."""
+        # Mock returns consistent results for binary search
         mock_verify.return_value = self._create_mock_verification(
             count=10, mean=100.0, std=50.0, r_min=50, r_max=150
         )
@@ -197,12 +202,14 @@ class TestCalibrateRadius:
         result = calibrate_radius(
             image,
             initial_min=10,
-            initial_max=300,
-            max_iterations=5
+            initial_max=300
         )
 
-        # Should stop at max iterations
-        assert result.iterations <= 5
+        # Binary search on range [10, 50] + [150, 300] should take ~log2(40)+log2(150) iterations
+        # Plus baseline = 1 iteration, roughly ~15 max
+        assert result.iterations <= 20
+        assert result.converged is True
+        assert result.final_error == 0
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
     def test_iteration_callback(self, mock_verify):
@@ -264,8 +271,8 @@ class TestCalibrateRadius:
             assert step.error >= 0
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
-    def test_converges_with_target(self, mock_verify):
-        """Test convergence with specific target mean."""
+    def test_converges_with_count_based_error(self, mock_verify):
+        """Test convergence with count-based error metric."""
         mock_verify.return_value = self._create_mock_verification(
             count=10, mean=100.0, std=2.0, r_min=95, r_max=105
         )
@@ -275,12 +282,13 @@ class TestCalibrateRadius:
         result = calibrate_radius(
             image,
             initial_min=10,
-            initial_max=300,
-            target_mean_radius=100.0
+            initial_max=300
         )
 
-        # Should converge with reasonable error
-        assert result.final_error < 10.0
+        # Should converge with error = 0 (all circles detected)
+        assert result.final_error == 0
+        assert result.target_count == 10
+        assert result.final_count == 10
 
     @patch('dotmatrix.calibration.verify_black_dot_detection')
     def test_bounds_tightening(self, mock_verify):
@@ -307,77 +315,85 @@ class TestCalibrateRadius:
 class TestFormatCalibrationOutput:
     """Tests for format_calibration_output function."""
 
+    def test_perfect_output(self):
+        """Test output formatting for perfect result (error=0)."""
+        result = CalibrationResult(
+            optimal_min_radius=80,
+            optimal_max_radius=120,
+            target_count=10,
+            final_count=10,
+            final_error=0,
+            iterations=3,
+            converged=True,
+            history=[],
+            message="Calibration complete"
+        )
+
+        output = format_calibration_output(result)
+
+        assert "✓ Perfect (error=0)" in output
+        assert "--min-radius 80" in output
+        assert "--max-radius 120" in output
+        assert "Iterations: 3" in output
+        assert "Target circles: 10" in output
+        assert "Detected circles: 10" in output
+
     def test_converged_output(self):
         """Test output formatting for converged result."""
         result = CalibrationResult(
             optimal_min_radius=80,
             optimal_max_radius=120,
-            final_error=1.5,
+            target_count=10,
+            final_count=10,
+            final_error=0,
             iterations=3,
             converged=True,
             history=[],
-            message="Minimum found"
+            message="Complete"
         )
 
         output = format_calibration_output(result)
 
-        assert "✓ Minimum found" in output
-        assert "--min-radius 80" in output
-        assert "--max-radius 120" in output
-        assert "Iterations: 3" in output
-
-    def test_optimal_output(self):
-        """Test output formatting for near-zero error (optimal)."""
-        result = CalibrationResult(
-            optimal_min_radius=80,
-            optimal_max_radius=120,
-            final_error=0.05,  # Near-zero error
-            iterations=3,
-            converged=True,
-            history=[],
-            message="Optimal achieved"
-        )
-
-        output = format_calibration_output(result)
-
-        assert "✓ Optimal (near-zero error)" in output
+        assert "✓ Perfect (error=0)" in output
         assert "--min-radius 80" in output
 
-    def test_not_converged_output(self):
-        """Test output formatting for non-converged result."""
+    def test_count_mismatch_output(self):
+        """Test output formatting for count mismatch (error > 0)."""
         result = CalibrationResult(
             optimal_min_radius=50,
             optimal_max_radius=200,
-            final_error=15.0,
+            target_count=10,
+            final_count=8,
+            final_error=2,
             iterations=20,
             converged=False,
             history=[],
-            message="Max iterations reached"
+            message="Count mismatch"
         )
 
         output = format_calibration_output(result)
 
-        assert "⚠ Could not minimize further" in output
+        assert "⚠ Count mismatch (error=2)" in output
         assert "--min-radius 50" in output
         assert "--max-radius 200" in output
 
     def test_verbose_with_history(self):
         """Test verbose output includes history."""
         step1 = CalibrationStep(
-            iteration=0, min_radius=10, max_radius=300,
-            detected_count=5, detected_mean_radius=100.0,
-            detected_std_radius=10.0, error=10.0
+            iteration=0, parameter='baseline', min_radius=10, max_radius=300,
+            detected_count=5, target_count=5, error=0
         )
         step2 = CalibrationStep(
-            iteration=1, min_radius=80, max_radius=120,
-            detected_count=5, detected_mean_radius=100.0,
-            detected_std_radius=5.0, error=2.5
+            iteration=1, parameter='min_radius', min_radius=80, max_radius=300,
+            detected_count=5, target_count=5, error=0
         )
 
         result = CalibrationResult(
             optimal_min_radius=80,
             optimal_max_radius=120,
-            final_error=2.5,
+            target_count=5,
+            final_count=5,
+            final_error=0,
             iterations=2,
             converged=True,
             history=[step1, step2],
@@ -391,6 +407,7 @@ class TestFormatCalibrationOutput:
         assert "Iter" in output
         assert "MinR" in output
         assert "MaxR" in output
+        assert "Param" in output
 
 
 class TestCalibrationIntegration:

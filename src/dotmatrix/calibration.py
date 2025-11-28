@@ -1,15 +1,15 @@
 """Auto-calibration for radius parameters using black dot ground truth.
 
-Uses an iterative optimization algorithm to find optimal min_radius and max_radius
-settings by comparing detected black dots against actual measurements. Black dots
-serve as ground truth because they're always printed on top (never occluded).
+Uses binary search optimization to find optimal min_radius and max_radius
+settings by detecting black dots and tightening bounds while maintaining
+the same count. Black dots serve as ground truth because they're always
+printed on top (never occluded).
 
-The algorithm uses binary search optimization to minimize the error between
-detected and actual circle radii.
+The algorithm uses count-based error: error = 0 when detected_count == target_count.
 """
 
 from dataclasses import dataclass, asdict, field
-from typing import List, Dict, Optional, Callable
+from typing import List, Dict, Optional, Callable, Tuple
 import numpy as np
 
 from .black_verification import verify_black_dot_detection, VerificationResult
@@ -19,12 +19,12 @@ from .black_verification import verify_black_dot_detection, VerificationResult
 class CalibrationStep:
     """Single iteration of the calibration process."""
     iteration: int
+    parameter: str  # 'min_radius' or 'max_radius' or 'baseline'
     min_radius: int
     max_radius: int
     detected_count: int
-    detected_mean_radius: float
-    detected_std_radius: float
-    error: float
+    target_count: int
+    error: int  # abs(detected_count - target_count)
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
@@ -36,11 +36,17 @@ class CalibrationResult:
     """Result of radius calibration process."""
     optimal_min_radius: int
     optimal_max_radius: int
-    final_error: float
+    target_count: int
+    final_count: int
+    final_error: int  # 0 means perfect calibration
     iterations: int
     converged: bool
     history: List[CalibrationStep] = field(default_factory=list)
     message: str = ""
+    # Additional stats from ground truth detection
+    detected_radius_min: int = 0
+    detected_radius_max: int = 0
+    detected_radius_mean: float = 0.0
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
@@ -49,79 +55,181 @@ class CalibrationResult:
         return result
 
 
-def calculate_calibration_error(
-    detected_mean: float,
-    detected_std: float,
-    target_mean: Optional[float] = None,
-    target_std: Optional[float] = None,
-) -> float:
-    """Calculate error metric for calibration.
-
-    The error metric combines:
-    - Deviation from target mean radius (if provided)
-    - Standard deviation (penalizes inconsistent detection)
-
-    Lower error = better calibration.
+def _binary_search_min_radius(
+    image: np.ndarray,
+    target_count: int,
+    low: int,
+    high: int,
+    fixed_max: int,
+    ink_threshold: int,
+    black_threshold: int,
+    on_iteration: Optional[Callable[[CalibrationStep], None]] = None,
+    history: Optional[List[CalibrationStep]] = None,
+    iteration_offset: int = 0,
+) -> Tuple[int, int]:
+    """Binary search for the largest min_radius that still detects target_count circles.
 
     Args:
-        detected_mean: Mean radius of detected circles
-        detected_std: Standard deviation of detected radii
-        target_mean: Optional target mean radius to match
-        target_std: Optional target standard deviation
+        image: RGB image
+        target_count: Number of circles we must detect
+        low: Lower bound of search (start here, known to work)
+        high: Upper bound of search (may lose circles)
+        fixed_max: Fixed max_radius during this search
+        ink_threshold: Threshold for ink separation
+        black_threshold: Threshold for black detection
+        on_iteration: Optional callback
+        history: Optional list to append steps to
+        iteration_offset: Offset for iteration numbering
 
     Returns:
-        Error value (lower is better)
+        Tuple of (optimal_min_radius, iterations_used)
     """
-    if detected_mean == 0:
-        return float('inf')  # No circles detected = worst error
+    iterations = 0
+    best_min = low
 
-    error = 0.0
+    while low <= high:
+        mid = (low + high) // 2
+        iterations += 1
 
-    # If we have a target, penalize deviation from it
-    if target_mean is not None:
-        error += abs(detected_mean - target_mean)
+        verification = verify_black_dot_detection(
+            image,
+            min_radius=mid,
+            max_radius=fixed_max,
+            ink_threshold=ink_threshold,
+            black_threshold=black_threshold,
+        )
 
-    # Always penalize high variance (inconsistent detection)
-    # Weight std less than mean error to prioritize accuracy
-    error += detected_std * 0.5
+        count = verification.black_circles_detected
+        error = abs(count - target_count)
 
-    return error
+        step = CalibrationStep(
+            iteration=iteration_offset + iterations,
+            parameter='min_radius',
+            min_radius=mid,
+            max_radius=fixed_max,
+            detected_count=count,
+            target_count=target_count,
+            error=error,
+        )
+
+        if history is not None:
+            history.append(step)
+        if on_iteration:
+            on_iteration(step)
+
+        if count >= target_count:
+            # Still detecting all circles, try higher min_radius
+            best_min = mid
+            low = mid + 1
+        else:
+            # Lost circles, min_radius too high
+            high = mid - 1
+
+    return best_min, iterations
+
+
+def _binary_search_max_radius(
+    image: np.ndarray,
+    target_count: int,
+    low: int,
+    high: int,
+    fixed_min: int,
+    ink_threshold: int,
+    black_threshold: int,
+    on_iteration: Optional[Callable[[CalibrationStep], None]] = None,
+    history: Optional[List[CalibrationStep]] = None,
+    iteration_offset: int = 0,
+) -> Tuple[int, int]:
+    """Binary search for the smallest max_radius that still detects target_count circles.
+
+    Args:
+        image: RGB image
+        target_count: Number of circles we must detect
+        low: Lower bound of search (may lose circles)
+        high: Upper bound of search (start here, known to work)
+        fixed_min: Fixed min_radius during this search
+        ink_threshold: Threshold for ink separation
+        black_threshold: Threshold for black detection
+        on_iteration: Optional callback
+        history: Optional list to append steps to
+        iteration_offset: Offset for iteration numbering
+
+    Returns:
+        Tuple of (optimal_max_radius, iterations_used)
+    """
+    iterations = 0
+    best_max = high
+
+    while low <= high:
+        mid = (low + high) // 2
+        iterations += 1
+
+        verification = verify_black_dot_detection(
+            image,
+            min_radius=fixed_min,
+            max_radius=mid,
+            ink_threshold=ink_threshold,
+            black_threshold=black_threshold,
+        )
+
+        count = verification.black_circles_detected
+        error = abs(count - target_count)
+
+        step = CalibrationStep(
+            iteration=iteration_offset + iterations,
+            parameter='max_radius',
+            min_radius=fixed_min,
+            max_radius=mid,
+            detected_count=count,
+            target_count=target_count,
+            error=error,
+        )
+
+        if history is not None:
+            history.append(step)
+        if on_iteration:
+            on_iteration(step)
+
+        if count >= target_count:
+            # Still detecting all circles, try lower max_radius
+            best_max = mid
+            high = mid - 1
+        else:
+            # Lost circles, max_radius too low
+            low = mid + 1
+
+    return best_max, iterations
 
 
 def calibrate_radius(
     image: np.ndarray,
-    initial_min: int = 10,
+    initial_min: int = 1,
     initial_max: int = 300,
-    max_iterations: int = 20,
-    target_mean_radius: Optional[float] = None,
+    max_iterations: int = 50,
+    target_mean_radius: Optional[float] = None,  # Kept for API compatibility, unused
     ink_threshold: int = 100,
     black_threshold: int = 60,
     on_iteration: Optional[Callable[[CalibrationStep], None]] = None,
 ) -> CalibrationResult:
     """Calibrate min/max radius parameters using black dot detection.
 
-    Uses iterative optimization to find radius bounds that MINIMIZE
-    detection error. The algorithm seeks zero error; if zero cannot
-    be achieved, it reports the minimum error found.
+    Uses binary search to find the TIGHTEST radius bounds that detect
+    all black circles. The algorithm:
 
-    The algorithm:
-    1. Starts with initial bounds
-    2. Runs detection with current params
-    3. Calculates error from ground truth
-    4. Adjusts bounds based on detected radii
-    5. Repeats until bounds stabilize or max iterations
-    6. Returns parameters that achieved MINIMUM error
+    1. Detect with wide bounds to establish ground truth count
+    2. Binary search min_radius: find LARGEST value where count == target
+    3. Binary search max_radius: find SMALLEST value where count == target
+    4. Return bounds with error = 0 (all circles detected)
 
-    The optimization focuses on finding the "sweet spot" where:
-    - min_radius is just below the smallest actual circles
-    - max_radius is just above the largest actual circles
+    Error metric: abs(detected_count - target_count)
+    Goal: error = 0
 
     Args:
         image: RGB image as numpy array (H, W, 3)
-        initial_min: Starting minimum radius bound
-        initial_max: Starting maximum radius bound
-        max_iterations: Maximum iterations before stopping
-        target_mean_radius: Optional known target radius to optimize toward
+        initial_min: Starting minimum radius bound (default: 1)
+        initial_max: Starting maximum radius bound (default: 300)
+        max_iterations: Maximum total iterations (for both searches)
+        target_mean_radius: DEPRECATED - kept for API compatibility, unused
         ink_threshold: Threshold for ink separation
         black_threshold: Threshold for black detection
         on_iteration: Optional callback called after each iteration
@@ -131,160 +239,112 @@ def calibrate_radius(
     """
     history: List[CalibrationStep] = []
 
-    # Current search bounds
-    min_r = initial_min
-    max_r = initial_max
-
-    best_error = float('inf')
-    best_min = min_r
-    best_max = max_r
-
-    # First pass: detect with wide bounds to establish baseline
+    # Step 1: Establish ground truth with wide bounds
     verification = verify_black_dot_detection(
         image,
-        min_radius=min_r,
-        max_radius=max_r,
+        min_radius=initial_min,
+        max_radius=initial_max,
         ink_threshold=ink_threshold,
         black_threshold=black_threshold,
     )
 
-    if verification.black_circles_detected == 0:
+    target_count = verification.black_circles_detected
+
+    if target_count == 0:
         return CalibrationResult(
             optimal_min_radius=initial_min,
             optimal_max_radius=initial_max,
-            final_error=float('inf'),
+            target_count=0,
+            final_count=0,
+            final_error=0,
             iterations=0,
             converged=False,
             history=[],
             message="No black circles detected. Cannot calibrate without ground truth."
         )
 
-    # Use detected radii as reference if no target provided
-    if target_mean_radius is None:
-        target_mean_radius = verification.radius_mean
-
-    # Record initial state
-    initial_error = calculate_calibration_error(
-        verification.radius_mean,
-        verification.radius_std,
-        target_mean_radius
-    )
-
-    step = CalibrationStep(
+    # Record baseline
+    baseline_step = CalibrationStep(
         iteration=0,
-        min_radius=min_r,
-        max_radius=max_r,
-        detected_count=verification.black_circles_detected,
-        detected_mean_radius=verification.radius_mean,
-        detected_std_radius=verification.radius_std,
-        error=initial_error
+        parameter='baseline',
+        min_radius=initial_min,
+        max_radius=initial_max,
+        detected_count=target_count,
+        target_count=target_count,
+        error=0,
     )
-    history.append(step)
-
+    history.append(baseline_step)
     if on_iteration:
-        on_iteration(step)
+        on_iteration(baseline_step)
 
-    best_error = initial_error
-    best_min = min_r
-    best_max = max_r
+    # Get detected radius range for search bounds
+    detected_min_r = verification.radius_min
+    detected_max_r = verification.radius_max
+    detected_mean_r = verification.radius_mean
 
-    # Optimization loop: adjust bounds based on detected radii
-    for iteration in range(1, max_iterations + 1):
-        # Strategy: tighten bounds toward detected mean
-        # This assumes detected_mean is close to actual but bounds may be too wide
+    # Step 2: Binary search for optimal min_radius
+    # Search from initial_min up to detected_min_r (can't be higher than smallest circle)
+    optimal_min, min_iters = _binary_search_min_radius(
+        image=image,
+        target_count=target_count,
+        low=initial_min,
+        high=detected_min_r,
+        fixed_max=initial_max,
+        ink_threshold=ink_threshold,
+        black_threshold=black_threshold,
+        on_iteration=on_iteration,
+        history=history,
+        iteration_offset=1,
+    )
 
-        detected_min = verification.radius_min
-        detected_max = verification.radius_max
-        detected_mean = verification.radius_mean
+    # Step 3: Binary search for optimal max_radius
+    # Search from detected_max_r up to initial_max (can't be lower than largest circle)
+    optimal_max, max_iters = _binary_search_max_radius(
+        image=image,
+        target_count=target_count,
+        low=detected_max_r,
+        high=initial_max,
+        fixed_min=optimal_min,
+        ink_threshold=ink_threshold,
+        black_threshold=black_threshold,
+        on_iteration=on_iteration,
+        history=history,
+        iteration_offset=1 + min_iters,
+    )
 
-        # Add margin around detected range (10% padding)
-        margin = max(5, int((detected_max - detected_min) * 0.1))
+    # Step 4: Final verification
+    final_verification = verify_black_dot_detection(
+        image,
+        min_radius=optimal_min,
+        max_radius=optimal_max,
+        ink_threshold=ink_threshold,
+        black_threshold=black_threshold,
+    )
 
-        # Tighten min_radius toward detected minimum (with margin)
-        new_min = max(initial_min, detected_min - margin)
+    final_count = final_verification.black_circles_detected
+    final_error = abs(final_count - target_count)
 
-        # Tighten max_radius toward detected maximum (with margin)
-        new_max = min(initial_max, detected_max + margin)
+    total_iterations = 1 + min_iters + max_iters
+    converged = final_error == 0
 
-        # Ensure valid bounds
-        if new_max <= new_min:
-            new_max = new_min + margin * 2
+    if converged:
+        message = f"Calibration complete. Found tightest bounds [{optimal_min}, {optimal_max}] for {target_count} circles."
+    else:
+        message = f"Warning: Final count {final_count} differs from target {target_count}."
 
-        # Check if bounds changed significantly
-        if abs(new_min - min_r) < 1 and abs(new_max - max_r) < 1:
-            # Converged - bounds not changing
-            return CalibrationResult(
-                optimal_min_radius=best_min,
-                optimal_max_radius=best_max,
-                final_error=best_error,
-                iterations=iteration,
-                converged=True,
-                history=history,
-                message=f"Converged after {iteration} iterations."
-            )
-
-        min_r = new_min
-        max_r = new_max
-
-        # Re-run detection with tightened bounds
-        verification = verify_black_dot_detection(
-            image,
-            min_radius=min_r,
-            max_radius=max_r,
-            ink_threshold=ink_threshold,
-            black_threshold=black_threshold,
-        )
-
-        if verification.black_circles_detected == 0:
-            # Lost all circles - revert and stop
-            return CalibrationResult(
-                optimal_min_radius=best_min,
-                optimal_max_radius=best_max,
-                final_error=best_error,
-                iterations=iteration,
-                converged=False,
-                history=history,
-                message=f"Stopped at iteration {iteration}: tightening bounds lost all circles."
-            )
-
-        error = calculate_calibration_error(
-            verification.radius_mean,
-            verification.radius_std,
-            target_mean_radius
-        )
-
-        step = CalibrationStep(
-            iteration=iteration,
-            min_radius=min_r,
-            max_radius=max_r,
-            detected_count=verification.black_circles_detected,
-            detected_mean_radius=verification.radius_mean,
-            detected_std_radius=verification.radius_std,
-            error=error
-        )
-        history.append(step)
-
-        if on_iteration:
-            on_iteration(step)
-
-        # Track best result
-        # Use <= to prefer tighter bounds when error is equal
-        if error <= best_error:
-            best_error = error
-            best_min = min_r
-            best_max = max_r
-
-    # Max iterations reached - return best result found
-    # converged=True if we found a minimum (error improved from initial)
-    converged = best_error < initial_error or best_error < 1.0
     return CalibrationResult(
-        optimal_min_radius=best_min,
-        optimal_max_radius=best_max,
-        final_error=best_error,
-        iterations=max_iterations,
+        optimal_min_radius=optimal_min,
+        optimal_max_radius=optimal_max,
+        target_count=target_count,
+        final_count=final_count,
+        final_error=final_error,
+        iterations=total_iterations,
         converged=converged,
         history=history,
-        message=f"Minimum error {best_error:.2f} found after {max_iterations} iterations."
+        message=message,
+        detected_radius_min=detected_min_r,
+        detected_radius_max=detected_max_r,
+        detected_radius_mean=detected_mean_r,
     )
 
 
@@ -298,37 +358,66 @@ def format_calibration_output(result: CalibrationResult, verbose: bool = False) 
     Returns:
         Formatted string for console display
     """
-    # Status reflects whether minimum was found successfully
-    if result.final_error < 0.1:
-        status = "✓ Optimal (near-zero error)"
+    if result.final_error == 0:
+        status = "✓ Perfect (error=0)"
     elif result.converged:
-        status = "✓ Minimum found"
+        status = "✓ Converged"
     else:
-        status = "⚠ Could not minimize further"
+        status = f"⚠ Count mismatch (error={result.final_error})"
 
     lines = [
         "Radius Calibration Results:",
         f"  Status: {status}",
+        f"  Target circles: {result.target_count}",
+        f"  Detected circles: {result.final_count}",
         f"  Iterations: {result.iterations}",
-        f"  Minimum error: {result.final_error:.2f}",
         "",
         "Optimal Parameters:",
         f"  --min-radius {result.optimal_min_radius}",
         f"  --max-radius {result.optimal_max_radius}",
     ]
 
+    if result.detected_radius_min > 0:
+        lines.extend([
+            "",
+            "Detected Circle Stats:",
+            f"  Smallest radius: {result.detected_radius_min}",
+            f"  Largest radius: {result.detected_radius_max}",
+            f"  Mean radius: {result.detected_radius_mean:.1f}",
+        ])
+
     if result.message:
         lines.extend(["", f"Note: {result.message}"])
 
     if verbose and result.history:
         lines.extend(["", "Iteration History:"])
-        lines.append("  Iter  MinR  MaxR  Count   Mean   Std   Error")
-        lines.append("  " + "-" * 50)
+        lines.append("  Iter  Param       MinR  MaxR  Count  Target  Error")
+        lines.append("  " + "-" * 55)
         for step in result.history:
+            param_str = step.parameter[:10].ljust(10)
             lines.append(
-                f"  {step.iteration:4d}  {step.min_radius:4d}  {step.max_radius:4d}  "
-                f"{step.detected_count:5d}  {step.detected_mean_radius:5.1f}  "
-                f"{step.detected_std_radius:5.1f}  {step.error:5.2f}"
+                f"  {step.iteration:4d}  {param_str}  {step.min_radius:4d}  {step.max_radius:4d}  "
+                f"{step.detected_count:5d}  {step.target_count:6d}  {step.error:5d}"
             )
 
     return "\n".join(lines)
+
+
+# Backward compatibility: keep old function signature working
+def calculate_calibration_error(
+    detected_mean: float,
+    detected_std: float,
+    target_mean: Optional[float] = None,
+    target_std: Optional[float] = None,
+) -> float:
+    """DEPRECATED: Old error metric based on std.
+
+    Kept for backward compatibility. New code should use count-based error.
+    """
+    if detected_mean == 0:
+        return float('inf')
+    error = 0.0
+    if target_mean is not None:
+        error += abs(detected_mean - target_mean)
+    error += detected_std * 0.5
+    return error
