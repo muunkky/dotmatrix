@@ -204,6 +204,11 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Output pixel counts per cluster instead of circle geometry (CMYK mode only)'
 )
 @optgroup.option(
+    '--reconstitute',
+    is_flag=True,
+    help='Generate reconstituted bullseye pattern image from clusters (CMYK mode only)'
+)
+@optgroup.option(
     '--diff-mode',
     type=click.Choice(['mask', 'highlight'], case_sensitive=False),
     default='mask',
@@ -251,7 +256,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -286,7 +291,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -522,7 +527,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -541,6 +546,22 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
         if not convex_edge:
             click.echo(
                 "Error: --cluster-count requires convex edge detection (--convex-edge or -m halftone)",
+                err=True
+            )
+            sys.exit(1)
+
+    # Validate --reconstitute requires CMYK mode
+    if reconstitute:
+        palette_lower = palette.lower() if palette else ''
+        if palette_lower not in ('cmyk', 'cmyk-sep'):
+            click.echo(
+                "Error: --reconstitute requires CMYK palette (--palette cmyk or --palette cmyk-sep)",
+                err=True
+            )
+            sys.exit(1)
+        if not convex_edge:
+            click.echo(
+                "Error: --reconstitute requires convex edge detection (--convex-edge or -m halftone)",
                 err=True
             )
             sys.exit(1)
@@ -767,8 +788,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                         click.echo("Aborting due to verification warnings (--verify-abort)", err=True)
                         sys.exit(1)
 
-                # Cluster counting mode: output pixel counts per cluster instead of circles
-                if cluster_count:
+                # Cluster counting and/or reconstitute mode
+                if cluster_count or reconstitute:
                     from .cluster_pixel_counter import cluster_and_count_pixels
                     from .convex_detector import separate_cmyk_inks
                     import json as json_module
@@ -794,25 +815,72 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     if partial_count > 0:
                         click.echo(f"  ({partial_count} partial/edge clusters)", err=True)
 
-                    # Output as JSON or CSV
-                    if format.lower() == 'json':
-                        output_data = [r.to_dict() for r in cluster_results]
-                        formatted_output = json_module.dumps(output_data, indent=2)
-                    else:  # CSV
-                        # Flat CSV format: x,y,C,M,Y,K,R,G,B,partial
-                        lines = ['center_x,center_y,cyan,magenta,yellow,black,red,green,blue,partial']
-                        for r in cluster_results:
-                            lines.append(f'{r.x},{r.y},{r.cyan},{r.magenta},{r.yellow},{r.black},{r.red},{r.green},{r.blue},{int(r.partial)}')
-                        formatted_output = '\n'.join(lines)
+                    # Generate reconstituted image if requested
+                    if reconstitute:
+                        from .cluster_renderer import render_bullseye
 
-                    # Output to file or stdout
-                    if output:
-                        output.write_text(formatted_output)
-                        click.echo(f"Cluster data written to: {output}", err=True)
-                    else:
-                        click.echo(formatted_output)
+                        click.echo("Generating reconstituted image...", err=True)
 
-                    # Exit early - cluster mode is a separate output path
+                        # Render bullseye pattern
+                        reconstituted = render_bullseye(
+                            cluster_results,
+                            image_rgb.shape[:2]
+                        )
+
+                        # Determine output path
+                        if output_dir and not no_extract:
+                            # Create run directory if needed
+                            from .run_manager import create_run_directory
+                            run_dir = create_run_directory(output_dir, run_name, no_organize)
+
+                            reconstituted_path = run_dir / 'reconstituted.png'
+                            # Convert RGB to BGR for cv2.imwrite
+                            bgr_output = cv2.cvtColor(reconstituted, cv2.COLOR_RGB2BGR)
+                            cv2.imwrite(str(reconstituted_path), bgr_output)
+                            click.echo(f"  - reconstituted.png (bullseye pattern visualization)")
+
+                            # Create manifest if not disabled
+                            if not no_manifest:
+                                from .manifest import generate_manifest, write_manifest
+                                manifest_data = generate_manifest(
+                                    source_file=input,
+                                    settings={
+                                        'mode': mode or 'halftone',
+                                        'palette': palette,
+                                        'convex_edge': convex_edge,
+                                        'cluster_count': len(cluster_results),
+                                        'partial_clusters': partial_count,
+                                    },
+                                    results=[],  # No circle data for reconstitute mode
+                                    output_files=[reconstituted_path],
+                                )
+                                write_manifest(run_dir, manifest_data)
+
+                            click.echo(f"Generated reconstituted.png", err=True)
+                        else:
+                            click.echo("Warning: --reconstitute requires --output-dir (not --no-extract)", err=True)
+
+                    # Output cluster data if cluster_count flag is set
+                    if cluster_count:
+                        # Output as JSON or CSV
+                        if format.lower() == 'json':
+                            output_data = [r.to_dict() for r in cluster_results]
+                            formatted_output = json_module.dumps(output_data, indent=2)
+                        else:  # CSV
+                            # Flat CSV format: x,y,C,M,Y,K,R,G,B,partial
+                            lines = ['center_x,center_y,cyan,magenta,yellow,black,red,green,blue,partial']
+                            for r in cluster_results:
+                                lines.append(f'{r.x},{r.y},{r.cyan},{r.magenta},{r.yellow},{r.black},{r.red},{r.green},{r.blue},{int(r.partial)}')
+                            formatted_output = '\n'.join(lines)
+
+                        # Output to file or stdout
+                        if output:
+                            output.write_text(formatted_output)
+                            click.echo(f"Cluster data written to: {output}", err=True)
+                        else:
+                            click.echo(formatted_output)
+
+                    # Exit early - cluster/reconstitute mode is a separate output path
                     sys.exit(0)
 
             # Handle auto-palette detection

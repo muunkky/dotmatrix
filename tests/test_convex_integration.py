@@ -427,3 +427,148 @@ class TestCompositeImageCLI:
         assert result.returncode == 0
         # Should mention composite in output
         assert "composite.png" in result.stdout
+
+
+class TestReconstituteCLI:
+    """Integration tests for --reconstitute CLI flag."""
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_reconstitute_creates_output_file(self, temp_output_dir):
+        """Test that --reconstitute creates reconstituted.png."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--reconstitute",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+
+        # reconstituted.png should exist in output dir
+        reconstituted_path = temp_output_dir / "reconstituted.png"
+        assert reconstituted_path.exists(), "reconstituted.png not created"
+        assert reconstituted_path.stat().st_size > 0, "reconstituted.png is empty"
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_reconstitute_valid_png(self, temp_output_dir):
+        """Test that reconstituted.png is a valid PNG image."""
+        import cv2
+
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--reconstitute",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+
+        reconstituted_path = temp_output_dir / "reconstituted.png"
+        img = cv2.imread(str(reconstituted_path))
+        assert img is not None, "cv2 could not load reconstituted.png"
+        assert img.shape[2] == 3, "Image should have 3 channels"
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_reconstitute_manifest_includes_file(self, temp_output_dir):
+        """Test that manifest.json includes reconstituted.png in output_files."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--reconstitute",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+
+        manifest_path = temp_output_dir / "manifest.json"
+        assert manifest_path.exists(), "manifest.json not created"
+
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+
+        assert "reconstituted.png" in manifest["output_files"], \
+            "reconstituted.png not in manifest output_files"
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_reconstitute_output_message(self, temp_output_dir):
+        """Test that CLI output mentions reconstituted.png generation."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--reconstitute",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0
+        # Should mention reconstituted.png in output (stderr or stdout)
+        output = result.stdout + result.stderr
+        assert "reconstituted.png" in output
+
+    def test_reconstitute_requires_cmyk(self, temp_output_dir):
+        """Test that --reconstitute requires CMYK palette."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "rgb",
+                "--reconstitute",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode != 0
+        assert "requires CMYK" in result.stderr
+
+    @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
+    def test_reconstitute_with_cluster_count(self, temp_output_dir):
+        """Test that --reconstitute works alongside --cluster-count."""
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(TEST_IMAGE),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--reconstitute",
+                "--cluster-count",
+                "--output-dir", str(temp_output_dir)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+
+        # Both outputs should be created
+        reconstituted_path = temp_output_dir / "reconstituted.png"
+        assert reconstituted_path.exists(), "reconstituted.png not created"
+
+        # cluster-count should output JSON data to stdout
+        # (will appear as JSON array)
+        assert "[" in result.stdout or "center" in result.stdout
