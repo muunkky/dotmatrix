@@ -753,7 +753,6 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     image_rgb,
                     min_radius=min_radius,
                     max_radius=max_radius,
-                    ink_threshold=100,  # Could make this configurable
                     debug_callback=cmyk_debug_cb if debug else None,
                     sensitive_mode=sensitive_occlusion,
                     morphological_enhance=morph_enhance,
@@ -796,8 +795,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                     click.echo("Running cluster pixel counting...", err=True)
 
-                    # Get ink masks using same threshold as detection
-                    ink_masks = separate_cmyk_inks(image_rgb, ink_threshold=100)
+                    # Get ink masks (with quantization for clean separation)
+                    ink_masks = separate_cmyk_inks(image_rgb)
 
                     # Run cluster counting
                     cluster_results = cluster_and_count_pixels(
@@ -830,20 +829,31 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                         # Determine output path
                         if output_dir and not no_extract:
                             # Create run directory if needed
-                            from .run_manager import create_run_directory
-                            run_dir = create_run_directory(output_dir, run_name, no_organize)
+                            from .run_manager import create_run_directory, copy_input_file
+                            run_dir = create_run_directory(output_dir, run_name, organize=not no_organize)
+
+                            # Copy input file to run directory
+                            copy_input_file(Path(input), run_dir)
+
+                            # Save CMYK ink mask images (intermediate outputs)
+                            output_files = []
+                            for color_name, mask in ink_masks.items():
+                                mask_path = run_dir / f'{color_name}.png'
+                                cv2.imwrite(str(mask_path), mask)
+                                output_files.append(mask_path)
 
                             reconstituted_path = run_dir / 'reconstituted.png'
                             # Convert RGB to BGR for cv2.imwrite
                             bgr_output = cv2.cvtColor(reconstituted, cv2.COLOR_RGB2BGR)
                             cv2.imwrite(str(reconstituted_path), bgr_output)
                             click.echo(f"  - reconstituted.png (bullseye pattern visualization)")
+                            output_files.append(reconstituted_path)
 
                             # Create manifest if not disabled
                             if not no_manifest:
                                 from .manifest import generate_manifest, write_manifest
                                 manifest_data = generate_manifest(
-                                    source_file=input,
+                                    source_file=Path(input),
                                     settings={
                                         'mode': mode or 'halftone',
                                         'palette': palette,
@@ -852,11 +862,11 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                         'partial_clusters': partial_count,
                                     },
                                     results=[],  # No circle data for reconstitute mode
-                                    output_files=[reconstituted_path],
+                                    output_files=output_files,
                                 )
                                 write_manifest(run_dir, manifest_data)
 
-                            click.echo(f"Generated reconstituted.png", err=True)
+                            click.echo(f"Output saved to: {run_dir.resolve()}", err=True)
                         else:
                             click.echo("Warning: --reconstitute requires --output-dir (not --no-extract)", err=True)
 

@@ -73,12 +73,8 @@ def verify_black_dot_detection(
     Returns:
         VerificationResult with metrics and warnings
     """
-    # Extract black channel mask
-    ink_masks = separate_cmyk_inks(
-        image,
-        ink_threshold=ink_threshold,
-        black_threshold=black_threshold
-    )
+    # Extract black channel mask (with quantization for clean separation)
+    ink_masks = separate_cmyk_inks(image)
     black_mask = ink_masks['black']
 
     # Detect black circles

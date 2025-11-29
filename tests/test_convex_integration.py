@@ -44,9 +44,9 @@ class TestConvexEdgeCLI:
         assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
         circles = json.loads(result.stdout)
-        # CMYK ink separation produces 13 circles from the test image
-        # (Updated from 12 after PIXEL_BOUNDARY_OFFSET optimization: 3.0 -> 1.5)
-        assert len(circles) == 13, f"Expected 13 circles with ink separation, got {len(circles)}"
+        # CMYK ink separation produces 17 circles from the test image
+        # (Updated from 13 after adding color quantization before CMYK separation)
+        assert len(circles) == 17, f"Expected 17 circles with ink separation, got {len(circles)}"
 
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
     def test_convex_edge_ink_separation_colors(self):
@@ -165,9 +165,9 @@ class TestConvexEdgeCLI:
         assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
         lines = result.stdout.strip().split("\n")
-        # Header + 13 data rows (CMYK ink separation mode produces 13 circles)
-        # (Updated from 12 after PIXEL_BOUNDARY_OFFSET optimization: 3.0 -> 1.5)
-        assert len(lines) == 14, f"Expected 14 lines (header + 13 circles), got {len(lines)}"
+        # Header + 17 data rows (CMYK ink separation mode produces 17 circles)
+        # (Updated from 14 after adding color quantization before CMYK separation)
+        assert len(lines) == 18, f"Expected 18 lines (header + 17 circles), got {len(lines)}"
 
         # Check header
         header = lines[0]
@@ -432,6 +432,12 @@ class TestCompositeImageCLI:
 class TestReconstituteCLI:
     """Integration tests for --reconstitute CLI flag."""
 
+    def _find_run_dir(self, temp_output_dir):
+        """Find the run subdirectory in temp_output_dir."""
+        subdirs = [d for d in temp_output_dir.iterdir() if d.is_dir()]
+        assert len(subdirs) == 1, f"Expected 1 run dir, found {len(subdirs)}"
+        return subdirs[0]
+
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
     def test_reconstitute_creates_output_file(self, temp_output_dir):
         """Test that --reconstitute creates reconstituted.png."""
@@ -450,8 +456,9 @@ class TestReconstituteCLI:
 
         assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
-        # reconstituted.png should exist in output dir
-        reconstituted_path = temp_output_dir / "reconstituted.png"
+        # reconstituted.png should exist in run subdirectory
+        run_dir = self._find_run_dir(temp_output_dir)
+        reconstituted_path = run_dir / "reconstituted.png"
         assert reconstituted_path.exists(), "reconstituted.png not created"
         assert reconstituted_path.stat().st_size > 0, "reconstituted.png is empty"
 
@@ -475,7 +482,8 @@ class TestReconstituteCLI:
 
         assert result.returncode == 0
 
-        reconstituted_path = temp_output_dir / "reconstituted.png"
+        run_dir = self._find_run_dir(temp_output_dir)
+        reconstituted_path = run_dir / "reconstituted.png"
         img = cv2.imread(str(reconstituted_path))
         assert img is not None, "cv2 could not load reconstituted.png"
         assert img.shape[2] == 3, "Image should have 3 channels"
@@ -498,13 +506,16 @@ class TestReconstituteCLI:
 
         assert result.returncode == 0
 
-        manifest_path = temp_output_dir / "manifest.json"
+        run_dir = self._find_run_dir(temp_output_dir)
+        manifest_path = run_dir / "manifest.json"
         assert manifest_path.exists(), "manifest.json not created"
 
         with open(manifest_path) as f:
             manifest = json.load(f)
 
-        assert "reconstituted.png" in manifest["output_files"], \
+        # Check that reconstituted.png is in output_files (may have path prefix)
+        output_files_str = str(manifest["output_files"])
+        assert "reconstituted.png" in output_files_str, \
             "reconstituted.png not in manifest output_files"
 
     @pytest.mark.skipif(not TEST_IMAGE.exists(), reason="Test image not found")
@@ -566,7 +577,8 @@ class TestReconstituteCLI:
         assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
         # Both outputs should be created
-        reconstituted_path = temp_output_dir / "reconstituted.png"
+        run_dir = self._find_run_dir(temp_output_dir)
+        reconstituted_path = run_dir / "reconstituted.png"
         assert reconstituted_path.exists(), "reconstituted.png not created"
 
         # cluster-count should output JSON data to stdout

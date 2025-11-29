@@ -163,11 +163,60 @@ def fit_circle_least_squares(points: np.ndarray) -> Optional[Tuple[float, float,
     return (cx, cy, radius)
 
 
+def quantize_to_cmyk_rgb(image: np.ndarray) -> np.ndarray:
+    """Quantize image to nearest CMYK+RGB+white color.
+
+    Maps each pixel to the nearest color from the 8-color palette:
+    - White: (255, 255, 255)
+    - Black: (0, 0, 0)
+    - Cyan: (0, 255, 255)
+    - Magenta: (255, 0, 255)
+    - Yellow: (255, 255, 0)
+    - Red: (255, 0, 0)
+    - Green: (0, 255, 0)
+    - Blue: (0, 0, 255)
+
+    This preprocessing step ensures clean CMYK separation by removing
+    anti-aliasing gradients and noise from PNG compression.
+
+    Args:
+        image: BGR image as numpy array (H, W, 3)
+
+    Returns:
+        Quantized BGR image with only 8 possible colors
+    """
+    # Define palette in BGR format (for cv2 compatibility)
+    palette = np.array([
+        [255, 255, 255],  # White
+        [0, 0, 0],        # Black
+        [255, 255, 0],    # Cyan (BGR)
+        [255, 0, 255],    # Magenta (BGR)
+        [0, 255, 255],    # Yellow (BGR)
+        [0, 0, 255],      # Red (BGR)
+        [0, 255, 0],      # Green (BGR)
+        [255, 0, 0],      # Blue (BGR)
+    ], dtype=np.float32)
+
+    # Reshape image for broadcasting: (H*W, 1, 3)
+    h, w = image.shape[:2]
+    pixels = image.reshape(-1, 1, 3).astype(np.float32)
+
+    # Calculate squared distance to each palette color: (H*W, 8)
+    diff = pixels - palette  # Broadcasting: (H*W, 8, 3)
+    distances = np.sum(diff ** 2, axis=2)  # (H*W, 8)
+
+    # Find nearest color index for each pixel
+    nearest_idx = np.argmin(distances, axis=1)  # (H*W,)
+
+    # Map to palette colors
+    quantized = palette[nearest_idx].astype(np.uint8)
+
+    return quantized.reshape(h, w, 3)
+
+
 def separate_cmyk_inks(
     image: np.ndarray,
-    ink_threshold: int = 100,
-    black_threshold: int = 60,
-    white_threshold: int = 240
+    quantize: bool = True
 ) -> Dict[str, np.ndarray]:
     """Separate image into CMYK ink masks using subtractive color model.
 
@@ -181,11 +230,9 @@ def separate_cmyk_inks(
     This is essential for CMYK halftone separation where circles overlap.
 
     Args:
-        image: RGB image as numpy array (H, W, 3)
-        ink_threshold: Channel value below which ink is considered present
-                      (lower = more selective, higher = more inclusive)
-        black_threshold: Max channel value for black ink detection
-        white_threshold: Min channel value for white/background detection
+        image: BGR image as numpy array (H, W, 3)
+        quantize: If True, quantize to nearest CMYK+RGB color first (default: True)
+                 This removes anti-aliasing gradients for cleaner separation.
 
     Returns:
         Dictionary mapping ink names to binary masks (255=ink present, 0=absent):
@@ -203,30 +250,47 @@ def separate_cmyk_inks(
         - Yellow absorbs BLUE → if B is low, yellow ink is present
         - Black absorbs ALL → if R, G, B all low, black ink is present
     """
-    r = image[:, :, 0].astype(np.float32)
-    g = image[:, :, 1].astype(np.float32)
-    b = image[:, :, 2].astype(np.float32)
+    # Quantize to clean CMYK+RGB colors if requested
+    if quantize:
+        image = quantize_to_cmyk_rgb(image)
 
-    # Background (white/transparent) - no ink
-    white_mask = (r > white_threshold) & (g > white_threshold) & (b > white_threshold)
+    # Extract channels (BGR format)
+    b = image[:, :, 0]
+    g = image[:, :, 1]
+    r = image[:, :, 2]
 
-    # Black ink: all channels very low
-    black_mask = (r < black_threshold) & (g < black_threshold) & (b < black_threshold)
+    # With quantized input, we can use exact color matching
+    # After quantization, only 8 colors exist:
+    # White (255,255,255), Black (0,0,0), Cyan, Magenta, Yellow, Red, Green, Blue
 
-    # For CMY, detect based on which channel is absorbed (low)
-    # Exclude very dark pixels (those are black, not CMY)
+    # Black ink: all channels are 0
+    black_mask = (r == 0) & (g == 0) & (b == 0)
+
+    # White background: all channels are 255
+    white_mask = (r == 255) & (g == 255) & (b == 255)
+
+    # For CMY, detect based on which channel is absorbed (value = 0)
+    # In subtractive color: low channel value = that color's complement ink present
+    # - Cyan absorbs RED → R=0 means cyan ink
+    # - Magenta absorbs GREEN → G=0 means magenta ink
+    # - Yellow absorbs BLUE → B=0 means yellow ink
+
+    # Exclude black and white from CMY detection
     not_black = ~black_mask
     not_white = ~white_mask
     colored = not_black & not_white
 
-    # Cyan ink present: red channel is absorbed (low R)
-    cyan_mask = colored & (r < ink_threshold)
+    # Cyan ink present: red channel is absorbed (R=0)
+    # Includes: Cyan (0,255,255), Blue (0,0,255), Green (0,255,0)
+    cyan_mask = colored & (r == 0)
 
-    # Magenta ink present: green channel is absorbed (low G)
-    magenta_mask = colored & (g < ink_threshold)
+    # Magenta ink present: green channel is absorbed (G=0)
+    # Includes: Magenta (255,0,255), Blue (0,0,255), Red (255,0,0)
+    magenta_mask = colored & (g == 0)
 
-    # Yellow ink present: blue channel is absorbed (low B)
-    yellow_mask = colored & (b < ink_threshold)
+    # Yellow ink present: blue channel is absorbed (B=0)
+    # Includes: Yellow (255,255,0), Red (255,0,0), Green (0,255,0)
+    yellow_mask = colored & (b == 0)
 
     return {
         'cyan': (cyan_mask * 255).astype(np.uint8),
@@ -240,7 +304,6 @@ def detect_circles_cmyk_separation(
     image: np.ndarray,
     min_radius: int = 10,
     max_radius: int = 50,
-    ink_threshold: int = 100,
     debug_callback: Optional[callable] = None,
     sensitive_mode: bool = False,
     morphological_enhance: bool = False,
@@ -252,10 +315,9 @@ def detect_circles_cmyk_separation(
     overlapping colored circles need to be detected in multiple layers.
 
     Args:
-        image: RGB image as numpy array (H, W, 3)
+        image: BGR image as numpy array (H, W, 3)
         min_radius: Minimum circle radius in pixels
         max_radius: Maximum circle radius in pixels
-        ink_threshold: Channel threshold for ink detection (see separate_cmyk_inks)
         debug_callback: Optional function(ink_name, mask, circles) for debugging
         sensitive_mode: Use lower thresholds for partial circles
         morphological_enhance: Apply dilation/erosion to connect fragments
@@ -263,8 +325,8 @@ def detect_circles_cmyk_separation(
     Returns:
         List of DetectedCircle objects with CMYK ink colors
     """
-    # Separate into ink masks
-    ink_masks = separate_cmyk_inks(image, ink_threshold=ink_threshold)
+    # Separate into ink masks (with quantization for clean separation)
+    ink_masks = separate_cmyk_inks(image)
 
     all_circles = []
 
