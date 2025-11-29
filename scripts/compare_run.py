@@ -220,12 +220,20 @@ def normalize_path(path_str: str) -> Path:
 
 def main():
     """Main entry point."""
-    if len(sys.argv) != 2:
-        print("Usage: python scripts/compare_run.py <run_directory>")
-        print("Example: python scripts/compare_run.py output/run_20251129_142642")
-        sys.exit(1)
+    import argparse
 
-    run_dir = normalize_path(sys.argv[1])
+    parser = argparse.ArgumentParser(
+        description="Compare source and reconstituted images by color pixel counts."
+    )
+    parser.add_argument("run_dir", help="Path to run directory")
+    parser.add_argument(
+        "--margin", "-m", type=int, default=0,
+        help="Exclude border margin (pixels) from comparison. Use to ignore edge clusters."
+    )
+    args = parser.parse_args()
+
+    run_dir = normalize_path(args.run_dir)
+    margin = args.margin
 
     # Validate run directory
     if not run_dir.exists():
@@ -264,6 +272,16 @@ def main():
         print(f"Warning: Image dimensions differ!")
         print(f"  Source: {source_img.shape}")
         print(f"  Recon:  {recon_img.shape}")
+
+    # Apply margin crop if specified
+    if margin > 0:
+        h, w = source_img.shape[:2]
+        if margin * 2 >= h or margin * 2 >= w:
+            print(f"Error: Margin {margin} too large for image size {w}x{h}")
+            sys.exit(1)
+        source_img = source_img[margin:h-margin, margin:w-margin]
+        recon_img = recon_img[margin:h-margin, margin:w-margin]
+        print(f"Applied margin={margin}px crop: {w}x{h} -> {w-2*margin}x{h-2*margin}")
 
     # Count colors
     source_counts = count_colors(source_img)
