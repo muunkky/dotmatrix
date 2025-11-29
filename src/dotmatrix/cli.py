@@ -209,6 +209,18 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Generate reconstituted bullseye pattern image from clusters (CMYK mode only)'
 )
 @optgroup.option(
+    '--render-method',
+    type=click.Choice(['bullseye', 'block'], case_sensitive=False),
+    default='bullseye',
+    help='Reconstitution method: bullseye (circles, ~91%% accuracy) or block (bars, 100%% accuracy)'
+)
+@optgroup.option(
+    '--segment-height',
+    type=int,
+    default=10,
+    help='Height per color row in block renderer (default: 10)'
+)
+@optgroup.option(
     '--diff-mode',
     type=click.Choice(['mask', 'highlight'], case_sensitive=False),
     default='mask',
@@ -256,7 +268,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -291,7 +303,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -527,7 +539,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -796,7 +808,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     click.echo("Running cluster pixel counting...", err=True)
 
                     # Get ink masks (with quantization for clean separation)
-                    ink_masks = separate_cmyk_inks(image_rgb)
+                    # Note: separate_cmyk_inks expects BGR format (native cv2)
+                    ink_masks = separate_cmyk_inks(image)
 
                     # Run cluster counting
                     cluster_results = cluster_and_count_pixels(
@@ -816,15 +829,23 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                     # Generate reconstituted image if requested
                     if reconstitute:
-                        from .cluster_renderer import render_bullseye
+                        render_method_lower = render_method.lower() if render_method else 'bullseye'
 
-                        click.echo("Generating reconstituted image...", err=True)
-
-                        # Render bullseye pattern
-                        reconstituted = render_bullseye(
-                            cluster_results,
-                            image_rgb.shape[:2]
-                        )
+                        if render_method_lower == 'block':
+                            from .block_renderer import render_blocks
+                            click.echo(f"Generating reconstituted image (block, segment_height={segment_height})...", err=True)
+                            reconstituted = render_blocks(
+                                cluster_results,
+                                image_rgb.shape[:2],
+                                segment_height=segment_height
+                            )
+                        else:
+                            from .cluster_renderer import render_bullseye
+                            click.echo("Generating reconstituted image (bullseye)...", err=True)
+                            reconstituted = render_bullseye(
+                                cluster_results,
+                                image_rgb.shape[:2]
+                            )
 
                         # Determine output path
                         if output_dir and not no_extract:
@@ -843,24 +864,28 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 output_files.append(mask_path)
 
                             reconstituted_path = run_dir / 'reconstituted.png'
-                            # Convert RGB to BGR for cv2.imwrite
-                            bgr_output = cv2.cvtColor(reconstituted, cv2.COLOR_RGB2BGR)
-                            cv2.imwrite(str(reconstituted_path), bgr_output)
-                            click.echo(f"  - reconstituted.png (bullseye pattern visualization)")
+                            # Both renderers return BGR (cv2 native format), write directly
+                            cv2.imwrite(str(reconstituted_path), reconstituted)
+                            method_desc = f"{render_method_lower} pattern" + (f", segment_height={segment_height}" if render_method_lower == 'block' else "")
+                            click.echo(f"  - reconstituted.png ({method_desc})")
                             output_files.append(reconstituted_path)
 
                             # Create manifest if not disabled
                             if not no_manifest:
                                 from .manifest import generate_manifest, write_manifest
+                                manifest_settings = {
+                                    'mode': mode or 'halftone',
+                                    'palette': palette,
+                                    'convex_edge': convex_edge,
+                                    'cluster_count': len(cluster_results),
+                                    'partial_clusters': partial_count,
+                                    'render_method': render_method_lower,
+                                }
+                                if render_method_lower == 'block':
+                                    manifest_settings['segment_height'] = segment_height
                                 manifest_data = generate_manifest(
                                     source_file=Path(input),
-                                    settings={
-                                        'mode': mode or 'halftone',
-                                        'palette': palette,
-                                        'convex_edge': convex_edge,
-                                        'cluster_count': len(cluster_results),
-                                        'partial_clusters': partial_count,
-                                    },
+                                    settings=manifest_settings,
                                     results=[],  # No circle data for reconstitute mode
                                     output_files=output_files,
                                 )
