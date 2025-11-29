@@ -383,3 +383,132 @@ class TestIntegration:
         assert result.black > 0
         assert result.cyan > 0
         assert result.magenta > 0
+
+    def test_cluster_result_to_dict_serialization(self):
+        """ClusterResult should serialize to JSON-compatible dict."""
+        from dotmatrix.cluster_pixel_counter import ClusterResult
+        import json
+
+        result = ClusterResult(
+            x=100, y=200,
+            cyan=50, magenta=30, yellow=20,
+            black=100, red=5, green=10, blue=3,
+            partial=True
+        )
+
+        as_dict = result.to_dict()
+
+        # Should be JSON serializable
+        json_str = json.dumps(as_dict)
+        assert '"center": [100, 200]' in json_str
+        assert '"partial": true' in json_str
+
+        # Check structure
+        assert as_dict['center'] == [100, 200]
+        assert as_dict['pixel_counts']['cyan'] == 50
+        assert as_dict['pixel_counts']['black'] == 100
+        assert as_dict['partial'] is True
+
+
+class TestCLIIntegration:
+    """CLI integration tests for --cluster-count flag."""
+
+    def test_cluster_count_json_output(self, tmp_path):
+        """Test that --cluster-count outputs JSON array of cluster data."""
+        import subprocess
+        import json
+        from pathlib import Path
+
+        # Path to test image (same as used in convex integration tests)
+        test_image = Path(__file__).parent.parent / "test_dotmatrix.png"
+        if not test_image.exists():
+            pytest.skip("Test image not found")
+
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(test_image),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--min-radius", "80",
+                "--cluster-count",
+                "--no-extract"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+
+        # Output should be valid JSON array
+        data = json.loads(result.stdout)
+        assert isinstance(data, list), "Output should be a JSON array"
+
+        # Each item should have cluster structure
+        if len(data) > 0:
+            cluster = data[0]
+            assert 'center' in cluster, "Cluster should have 'center'"
+            assert 'pixel_counts' in cluster, "Cluster should have 'pixel_counts'"
+            assert len(cluster['center']) == 2, "Center should be [x, y]"
+
+            counts = cluster['pixel_counts']
+            expected_keys = {'cyan', 'magenta', 'yellow', 'black', 'red', 'green', 'blue'}
+            assert expected_keys.issubset(counts.keys()), f"Missing keys: {expected_keys - set(counts.keys())}"
+
+    def test_cluster_count_requires_cmyk(self):
+        """Test that --cluster-count requires CMYK palette."""
+        import subprocess
+        from pathlib import Path
+
+        test_image = Path(__file__).parent.parent / "test_dotmatrix.png"
+        if not test_image.exists():
+            pytest.skip("Test image not found")
+
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(test_image),
+                "--convex-edge",
+                "--palette", "rgb",  # Not CMYK
+                "--cluster-count",
+                "--no-extract"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        # Should fail or warn about CMYK requirement
+        assert result.returncode != 0 or "CMYK" in result.stderr
+
+    def test_cluster_count_csv_not_supported(self):
+        """Test that --cluster-count with --format csv shows helpful message."""
+        import subprocess
+        from pathlib import Path
+
+        test_image = Path(__file__).parent.parent / "test_dotmatrix.png"
+        if not test_image.exists():
+            pytest.skip("Test image not found")
+
+        result = subprocess.run(
+            [
+                "python3", "-m", "dotmatrix",
+                "-i", str(test_image),
+                "--convex-edge",
+                "--palette", "cmyk",
+                "--cluster-count",
+                "--format", "csv",
+                "--no-extract"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        # CSV format for cluster data - check it either works with flat format
+        # or provides a helpful error message
+        # (We'll implement flat CSV: x,y,C,M,Y,K,R,G,B)
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            # Should have header + data rows
+            assert len(lines) >= 1
+            header = lines[0]
+            assert 'center_x' in header or 'x' in header

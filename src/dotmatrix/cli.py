@@ -194,6 +194,22 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Disable composite.png generation (reconstituted image for QA)'
 )
 @optgroup.option(
+    '--no-diff',
+    is_flag=True,
+    help='Disable diff.png generation (shows missed regions)'
+)
+@optgroup.option(
+    '--cluster-count',
+    is_flag=True,
+    help='Output pixel counts per cluster instead of circle geometry (CMYK mode only)'
+)
+@optgroup.option(
+    '--diff-mode',
+    type=click.Choice(['mask', 'highlight'], case_sensitive=False),
+    default='mask',
+    help='Diff image mode: mask (default) shows original colors of missed regions on white; highlight shows grayscale with magenta overlay'
+)
+@optgroup.option(
     '--quantize-output',
     type=click.Path(path_type=Path),
     help='Save quantized image (debug)'
@@ -235,7 +251,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -270,7 +286,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -335,8 +351,8 @@ def _validate_inputs(input_path, no_extract, max_colors):
 
 
 def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
-                       color_tolerance, max_colors, no_manifest, no_composite, input_path,
-                       min_radius, max_radius, min_distance, sensitivity,
+                       color_tolerance, max_colors, no_manifest, no_composite, no_diff, diff_mode,
+                       input_path, source_image, min_radius, max_radius, min_distance, sensitivity,
                        min_confidence, convex_edge, palette, edge_sampling,
                        edge_samples, edge_method, format, debug, verification=None):
     """Handle extracting circles to images and generating manifest.
@@ -345,7 +361,7 @@ def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
         Path to the run directory where files were written.
     """
     from .run_manager import create_run_directory, copy_input_file
-    from .image_extractor import extract_circles_to_images, generate_cmyk_layer_files, generate_composite_image
+    from .image_extractor import extract_circles_to_images, generate_cmyk_layer_files, generate_composite_image, generate_diff_image
 
     # Create organized output directory (unless --no-organize)
     run_dir = create_run_directory(
@@ -405,6 +421,18 @@ def _handle_extraction(results, image_shape, output_dir, run_name, no_organize,
         click.echo(f"Extracted {len(extracted_files)} color group(s) to {run_dir}/")
         for filepath in extracted_files:
             click.echo(f"  - {filepath.name}")
+
+    # Generate diff image to show missed regions (unless disabled)
+    if not no_diff and source_image is not None:
+        diff_path = generate_diff_image(
+            source_image,
+            results,
+            output_dir=run_dir,
+            mode=diff_mode
+        )
+        extracted_files.append(diff_path)
+        mode_desc = "original colors of missed regions" if diff_mode == "mask" else "highlighted missed regions"
+        click.echo(f"  - diff.png ({mode_desc})")
 
     # Generate manifest unless disabled
     if not no_manifest:
@@ -494,12 +522,28 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
         mode, convex_edge, palette, sensitive_occlusion, morph_enhance, debug
     )
+
+    # Validate --cluster-count requires CMYK mode
+    if cluster_count:
+        palette_lower = palette.lower() if palette else ''
+        if palette_lower not in ('cmyk', 'cmyk-sep'):
+            click.echo(
+                "Error: --cluster-count requires CMYK palette (--palette cmyk or --palette cmyk-sep)",
+                err=True
+            )
+            sys.exit(1)
+        if not convex_edge:
+            click.echo(
+                "Error: --cluster-count requires convex edge detection (--convex-edge or -m halftone)",
+                err=True
+            )
+            sys.exit(1)
 
     # Load configuration file if provided
     if config:
@@ -722,6 +766,54 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     if verify_abort and not verification_result.passed:
                         click.echo("Aborting due to verification warnings (--verify-abort)", err=True)
                         sys.exit(1)
+
+                # Cluster counting mode: output pixel counts per cluster instead of circles
+                if cluster_count:
+                    from .cluster_pixel_counter import cluster_and_count_pixels
+                    from .convex_detector import separate_cmyk_inks
+                    import json as json_module
+
+                    click.echo("Running cluster pixel counting...", err=True)
+
+                    # Get ink masks using same threshold as detection
+                    ink_masks = separate_cmyk_inks(image_rgb, ink_threshold=100)
+
+                    # Run cluster counting
+                    cluster_results = cluster_and_count_pixels(
+                        cyan_mask=ink_masks['cyan'],
+                        magenta_mask=ink_masks['magenta'],
+                        yellow_mask=ink_masks['yellow'],
+                        black_mask=ink_masks['black'],
+                        image_shape=image_rgb.shape[:2]
+                    )
+
+                    click.echo(f"Found {len(cluster_results)} cluster(s)", err=True)
+
+                    # Count partial clusters
+                    partial_count = sum(1 for r in cluster_results if r.partial)
+                    if partial_count > 0:
+                        click.echo(f"  ({partial_count} partial/edge clusters)", err=True)
+
+                    # Output as JSON or CSV
+                    if format.lower() == 'json':
+                        output_data = [r.to_dict() for r in cluster_results]
+                        formatted_output = json_module.dumps(output_data, indent=2)
+                    else:  # CSV
+                        # Flat CSV format: x,y,C,M,Y,K,R,G,B,partial
+                        lines = ['center_x,center_y,cyan,magenta,yellow,black,red,green,blue,partial']
+                        for r in cluster_results:
+                            lines.append(f'{r.x},{r.y},{r.cyan},{r.magenta},{r.yellow},{r.black},{r.red},{r.green},{r.blue},{int(r.partial)}')
+                        formatted_output = '\n'.join(lines)
+
+                    # Output to file or stdout
+                    if output:
+                        output.write_text(formatted_output)
+                        click.echo(f"Cluster data written to: {output}", err=True)
+                    else:
+                        click.echo(formatted_output)
+
+                    # Exit early - cluster mode is a separate output path
+                    sys.exit(0)
 
             # Handle auto-palette detection
             elif palette.lower() == 'auto':
@@ -972,10 +1064,12 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
         # 4. Extract to separate PNG images (default behavior, unless --no-extract)
         run_dir = None
         if not no_extract:
+            # Convert image to RGB for diff generation (OpenCV loads as BGR)
+            source_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             run_dir = _handle_extraction(
                 results, image.shape[:2], output_dir, run_name, no_organize,
-                color_tolerance, max_colors, no_manifest, no_composite, input,
-                min_radius, max_radius, min_distance, sensitivity,
+                color_tolerance, max_colors, no_manifest, no_composite, no_diff, diff_mode,
+                input, source_rgb, min_radius, max_radius, min_distance, sensitivity,
                 min_confidence, convex_edge, palette, edge_sampling,
                 edge_samples, edge_method, format, debug,
                 verification=verification_result.to_dict() if verification_result else None
