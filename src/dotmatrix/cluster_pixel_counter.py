@@ -257,6 +257,56 @@ def count_cluster_pixels(
     )
 
 
+def count_cluster_pixels_cmyk(
+    cluster_id: int,
+    labels: np.ndarray,
+    cyan_mask: np.ndarray,
+    magenta_mask: np.ndarray,
+    yellow_mask: np.ndarray,
+    black_mask: np.ndarray,
+    center: Tuple[int, int]
+) -> ClusterResult:
+    """Count pixels in CMYK-only mode (no RGB overlap detection).
+
+    In CMYK mode, each ink channel is counted independently without
+    subtracting overlaps. This is useful for halftone separation printing
+    where overlaps occur naturally during physical printing.
+
+    Args:
+        cluster_id: The cluster label to count
+        labels: Cluster label image from create_cluster_labels()
+        cyan_mask: Original cyan ink mask
+        magenta_mask: Original magenta ink mask
+        yellow_mask: Original yellow ink mask
+        black_mask: Original black ink mask
+        center: (x, y) center of the black dot
+
+    Returns:
+        ClusterResult with CMYK counts only (RGB always 0)
+    """
+    # Mask for this cluster
+    cluster_mask = labels == cluster_id
+
+    # Count all pixels with each ink (no overlap subtraction)
+    cyan_count = int(np.sum(cluster_mask & (cyan_mask > 0)))
+    magenta_count = int(np.sum(cluster_mask & (magenta_mask > 0)))
+    yellow_count = int(np.sum(cluster_mask & (yellow_mask > 0)))
+    black_count = int(np.sum(cluster_mask & (black_mask > 0)))
+
+    return ClusterResult(
+        x=center[0],
+        y=center[1],
+        cyan=cyan_count,
+        magenta=magenta_count,
+        yellow=yellow_count,
+        black=black_count,
+        red=0,
+        green=0,
+        blue=0,
+        partial=False  # Will be set by caller if needed
+    )
+
+
 def is_edge_cluster(
     x: int,
     y: int,
@@ -302,7 +352,8 @@ def cluster_and_count_pixels(
     magenta_mask: np.ndarray,
     yellow_mask: np.ndarray,
     black_mask: np.ndarray,
-    image_shape: Optional[Tuple[int, int]] = None
+    image_shape: Optional[Tuple[int, int]] = None,
+    color_mode: str = 'full'
 ) -> List[ClusterResult]:
     """Main entry point: cluster CMYK pixels and count per cluster.
 
@@ -319,6 +370,8 @@ def cluster_and_count_pixels(
         yellow_mask: Binary mask of yellow ink pixels
         black_mask: Binary mask of black ink pixels
         image_shape: (height, width) for edge detection. If None, uses mask shape.
+        color_mode: 'full' for 7-color mode with RGB overlaps,
+                   'cmyk' for 4-color mode without overlap detection.
 
     Returns:
         List of ClusterResult, one per black dot cluster.
@@ -340,11 +393,17 @@ def cluster_and_count_pixels(
 
     labels = create_cluster_labels(black_mask)
 
+    # Choose counting function based on color mode
+    if color_mode == 'cmyk':
+        count_func = count_cluster_pixels_cmyk
+    else:
+        count_func = count_cluster_pixels
+
     # Phase 3: Count pixels per cluster
     results = []
 
     for i, center in enumerate(centers):
-        result = count_cluster_pixels(
+        result = count_func(
             cluster_id=i,
             labels=labels,
             cyan_mask=cyan_mask,

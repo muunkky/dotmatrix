@@ -36,6 +36,9 @@ COLORS = {
 # Yellow first (usually largest), black last
 LAYER_ORDER = ['yellow', 'red', 'green', 'magenta', 'blue', 'cyan', 'black']
 
+# CMYK-only mode: 4 colors without RGB overlaps
+LAYER_ORDER_CMYK = ['yellow', 'magenta', 'cyan', 'black']
+
 
 @dataclass
 class Rectangle:
@@ -168,7 +171,8 @@ def render_single_treemap(
     cluster: ClusterResult,
     image: np.ndarray,
     cluster_size: int = 20,
-    horizontal: bool = True
+    horizontal: bool = True,
+    color_mode: str = 'full'
 ) -> np.ndarray:
     """Render a single cluster as a treemap.
 
@@ -180,6 +184,7 @@ def render_single_treemap(
         image: BGR numpy array to draw on (modified in place)
         cluster_size: Size of the cluster rectangle
         horizontal: If True, first split is horizontal
+        color_mode: 'full' for 7 colors, 'cmyk' for 4 colors only
 
     Returns:
         The modified image (same array as input)
@@ -187,16 +192,24 @@ def render_single_treemap(
     # Get cluster bounds
     bounds = get_cluster_bounds(cluster, cluster_size)
 
-    # Get pixel counts for all colors
-    values = [
-        ('yellow', cluster.yellow),
-        ('red', cluster.red),
-        ('green', cluster.green),
-        ('magenta', cluster.magenta),
-        ('blue', cluster.blue),
-        ('cyan', cluster.cyan),
-        ('black', cluster.black),
-    ]
+    # Get pixel counts based on color mode
+    if color_mode == 'cmyk':
+        values = [
+            ('yellow', cluster.yellow),
+            ('magenta', cluster.magenta),
+            ('cyan', cluster.cyan),
+            ('black', cluster.black),
+        ]
+    else:
+        values = [
+            ('yellow', cluster.yellow),
+            ('red', cluster.red),
+            ('green', cluster.green),
+            ('magenta', cluster.magenta),
+            ('blue', cluster.blue),
+            ('cyan', cluster.cyan),
+            ('black', cluster.black),
+        ]
 
     # Subdivide using slice-and-dice
     subdivisions = slice_and_dice(bounds, values, horizontal=horizontal)
@@ -222,7 +235,8 @@ def render_treemap(
     image_shape: Tuple[int, int],
     cluster_size: int = 20,
     skip_partial: bool = False,
-    horizontal: bool = True
+    horizontal: bool = True,
+    color_mode: str = 'full'
 ) -> np.ndarray:
     """Render multiple clusters as treemap patterns.
 
@@ -235,6 +249,7 @@ def render_treemap(
         cluster_size: Size of each cluster rectangle
         skip_partial: If True, skip clusters marked as partial (at edges)
         horizontal: If True, first split is horizontal
+        color_mode: 'full' for 7 colors, 'cmyk' for 4 colors only
 
     Returns:
         BGR numpy array with all clusters rendered (cv2 native format)
@@ -252,6 +267,6 @@ def render_treemap(
         if skip_partial and cluster.partial:
             continue
 
-        render_single_treemap(cluster, output, cluster_size=cluster_size, horizontal=horizontal)
+        render_single_treemap(cluster, output, cluster_size=cluster_size, horizontal=horizontal, color_mode=color_mode)
 
     return output

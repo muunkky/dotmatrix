@@ -227,6 +227,12 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Size of cluster rectangle in treemap renderer (default: 20)'
 )
 @optgroup.option(
+    '--color-mode',
+    type=click.Choice(['full', 'cmyk'], case_sensitive=False),
+    default='full',
+    help='Color mode: full (7 colors with RGB overlaps) or cmyk (4 colors only, for halftone printing)'
+)
+@optgroup.option(
     '--diff-mode',
     type=click.Choice(['mask', 'highlight'], case_sensitive=False),
     default='mask',
@@ -274,7 +280,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, color_mode, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -309,7 +315,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, color_mode, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -545,7 +551,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, color_mode='full', diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -817,13 +823,17 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     # Note: separate_cmyk_inks expects BGR format (native cv2)
                     ink_masks = separate_cmyk_inks(image)
 
+                    # Normalize color_mode
+                    color_mode_lower = color_mode.lower() if color_mode else 'full'
+
                     # Run cluster counting
                     cluster_results = cluster_and_count_pixels(
                         cyan_mask=ink_masks['cyan'],
                         magenta_mask=ink_masks['magenta'],
                         yellow_mask=ink_masks['yellow'],
                         black_mask=ink_masks['black'],
-                        image_shape=image_rgb.shape[:2]
+                        image_shape=image_rgb.shape[:2],
+                        color_mode=color_mode_lower
                     )
 
                     click.echo(f"Found {len(cluster_results)} cluster(s)", err=True)
@@ -839,19 +849,21 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                         if render_method_lower == 'block':
                             from .block_renderer import render_blocks
-                            click.echo(f"Generating reconstituted image (block, segment_height={segment_height})...", err=True)
+                            click.echo(f"Generating reconstituted image (block, segment_height={segment_height}, color_mode={color_mode_lower})...", err=True)
                             reconstituted = render_blocks(
                                 cluster_results,
                                 image_rgb.shape[:2],
-                                segment_height=segment_height
+                                segment_height=segment_height,
+                                color_mode=color_mode_lower
                             )
                         elif render_method_lower == 'treemap':
                             from .treemap_renderer import render_treemap
-                            click.echo(f"Generating reconstituted image (treemap, cluster_size={cluster_size})...", err=True)
+                            click.echo(f"Generating reconstituted image (treemap, cluster_size={cluster_size}, color_mode={color_mode_lower})...", err=True)
                             reconstituted = render_treemap(
                                 cluster_results,
                                 image_rgb.shape[:2],
-                                cluster_size=cluster_size
+                                cluster_size=cluster_size,
+                                color_mode=color_mode_lower
                             )
                         else:
                             from .cluster_renderer import render_bullseye
@@ -899,6 +911,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                     'cluster_count': len(cluster_results),
                                     'partial_clusters': partial_count,
                                     'render_method': render_method_lower,
+                                    'color_mode': color_mode_lower,
                                 }
                                 if render_method_lower == 'block':
                                     manifest_settings['segment_height'] = segment_height
