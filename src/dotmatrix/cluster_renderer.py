@@ -18,12 +18,12 @@ import numpy as np
 from dotmatrix.cluster_pixel_counter import ClusterResult
 
 
-# CMYK colors in RGB format
+# CMYK colors in BGR format (for cv2 compatibility)
 COLORS = {
-    'yellow': (255, 255, 0),
-    'magenta': (255, 0, 255),
-    'cyan': (0, 255, 255),
-    'black': (0, 0, 0),
+    'yellow': (0, 255, 255),    # BGR: B=0, G=255, R=255
+    'magenta': (255, 0, 255),   # BGR: B=255, G=0, R=255
+    'cyan': (255, 255, 0),      # BGR: B=255, G=255, R=0
+    'black': (0, 0, 0),         # BGR: B=0, G=0, R=0
 }
 
 
@@ -108,8 +108,7 @@ def render_single_cluster(
         radius = int(round(radii[layer]))
         if radius > 0:
             color = COLORS[layer]
-            # cv2.circle uses BGR, but we want RGB output
-            # Since we're drawing to RGB array directly, use RGB color
+            # COLORS are defined in BGR format for cv2 compatibility
             cv2.circle(output, (cx, cy), radius, color, thickness=-1)
 
     return output

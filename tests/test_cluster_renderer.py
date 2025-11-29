@@ -143,16 +143,15 @@ class TestSingleClusterRendering:
         yellow_radius = math.sqrt(total_pixels / math.pi)
 
         # Sample point just inside yellow ring (but outside magenta)
-        # Yellow is (0, 255, 255) in BGR or (255, 255, 0) in RGB
-        # We use RGB format
+        # Yellow in BGR is (0, 255, 255)
         sample_distance = int(yellow_radius - 2)
         sample_x = 50 + sample_distance
         if sample_x < 100:
             sample_color = output[50, sample_x]
-            # Should be yellow (255, 255, 0) in RGB
-            assert sample_color[0] == 255  # R
+            # Should be yellow (0, 255, 255) in BGR
+            assert sample_color[0] == 0    # B
             assert sample_color[1] == 255  # G
-            assert sample_color[2] == 0    # B
+            assert sample_color[2] == 255  # R
 
     def test_white_background(self):
         """Test that areas outside cluster are white."""
@@ -317,10 +316,10 @@ class TestRGBOverlaps:
         sample_dist = (magenta_r + cyan_r) // 2
         if sample_dist > 0:
             sample_color = output[100, 100 + sample_dist]
-            # Should be magenta (255, 0, 255)
-            assert sample_color[0] == 255  # R
+            # Should be magenta (255, 0, 255) in BGR
+            assert sample_color[0] == 255  # B
             assert sample_color[1] == 0    # G
-            assert sample_color[2] == 255  # B
+            assert sample_color[2] == 255  # R
 
     def test_layer_order_creates_correct_colors(self):
         """Test that the Y→M→C→K layer order produces expected colors."""
@@ -338,12 +337,13 @@ class TestRGBOverlaps:
         assert tuple(output[100, 100]) == (0, 0, 0)
 
         # Just outside black radius should be cyan
+        # Cyan in BGR is (255, 255, 0)
         k_r = int(radii['black'])
         c_r = int(radii['cyan'])
         if c_r > k_r + 2:
             sample_dist = (k_r + c_r) // 2
             sample = output[100, 100 + sample_dist]
-            assert tuple(sample) == (0, 255, 255), f"Expected cyan, got {sample}"
+            assert tuple(sample) == (255, 255, 0), f"Expected cyan (255, 255, 0) BGR, got {sample}"
 
 
 class TestPerformance:
@@ -375,8 +375,12 @@ class TestPerformance:
 class TestOutputFormat:
     """Tests for output image format and properties."""
 
-    def test_output_is_rgb(self):
-        """Test that output is RGB format (not BGR)."""
+    def test_output_is_bgr_for_cv2(self):
+        """Test that output is BGR format for cv2.imwrite compatibility.
+
+        cv2 functions expect BGR format. The rendered output should be BGR
+        so that cv2.imwrite produces correct colors without conversion.
+        """
         cluster = ClusterResult(
             x=50, y=50,
             cyan=0, magenta=0, yellow=500, black=0,
@@ -386,11 +390,46 @@ class TestOutputFormat:
 
         output = render_single_cluster(cluster, image_shape)
 
-        # Yellow in RGB is (255, 255, 0)
+        # Yellow in BGR (for cv2) is (0, 255, 255)
+        # The array stores [B, G, R] so yellow = [0, 255, 255]
         center_color = output[50, 50]
-        assert center_color[0] == 255  # R
+        assert center_color[0] == 0    # B
         assert center_color[1] == 255  # G
-        assert center_color[2] == 0    # B
+        assert center_color[2] == 255  # R
+
+    def test_cyan_color_is_correct_bgr(self):
+        """Test that cyan renders as correct BGR values."""
+        cluster = ClusterResult(
+            x=50, y=50,
+            cyan=500, magenta=0, yellow=0, black=0,
+            red=0, green=0, blue=0
+        )
+        image_shape = (100, 100)
+
+        output = render_single_cluster(cluster, image_shape)
+
+        # Cyan in BGR is (255, 255, 0)
+        center_color = output[50, 50]
+        assert center_color[0] == 255  # B
+        assert center_color[1] == 255  # G
+        assert center_color[2] == 0    # R
+
+    def test_magenta_color_is_correct_bgr(self):
+        """Test that magenta renders as correct BGR values."""
+        cluster = ClusterResult(
+            x=50, y=50,
+            cyan=0, magenta=500, yellow=0, black=0,
+            red=0, green=0, blue=0
+        )
+        image_shape = (100, 100)
+
+        output = render_single_cluster(cluster, image_shape)
+
+        # Magenta in BGR is (255, 0, 255)
+        center_color = output[50, 50]
+        assert center_color[0] == 255  # B
+        assert center_color[1] == 0    # G
+        assert center_color[2] == 255  # R
 
     def test_output_dtype(self):
         """Test that output is uint8."""
@@ -454,11 +493,9 @@ class TestIntegration:
 
         output = render_bullseye(clusters, image_shape)
 
-        # Save to temp file
+        # Save to temp file - output is already BGR, so save directly
         output_path = tmp_path / "test_output.png"
-        # Convert RGB to BGR for cv2.imwrite
-        bgr_output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(str(output_path), bgr_output)
+        cv2.imwrite(str(output_path), output)
 
         # Load back
         loaded = cv2.imread(str(output_path))
