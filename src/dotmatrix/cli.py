@@ -910,12 +910,11 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             reconstituted = render_flower(
                                 cluster_results,
                                 image_rgb.shape[:2],
-                                petal_distance=0.7,
+                                petal_distance=0.5,  # Center petals inside black circle
                                 scale=render_scale,
                                 skip_partial=False,
                                 rotation_mode=rotation_mode,
                                 base_rotation=petal_offset,
-                                use_exposed_area=exposed_area_sizing,
                                 blend_overlaps=blend_overlaps
                             )
                         elif render_method_lower == 'cmyk-blend':

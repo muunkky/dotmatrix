@@ -106,6 +106,59 @@ def pixels_from_radius(radius: float) -> int:
     return int(math.pi * radius * radius)
 
 
+def find_best_radius_for_pixels(
+    target_pixels: int,
+    image_size: Tuple[int, int] = (100, 100),
+    center: Optional[Tuple[int, int]] = None
+) -> Tuple[int, int, int]:
+    """Find integer radius that draws closest to target pixel count.
+
+    cv2.circle with LINE_AA draws more pixels than theoretical area (π*r²).
+    This function tests actual cv2 rendering to find the best integer radius.
+
+    Args:
+        target_pixels: Desired number of pixels
+        image_size: Canvas size for testing (h, w)
+        center: Circle center for testing (defaults to image center)
+
+    Returns:
+        Tuple of (best_radius, actual_pixels, error) where error = actual - target
+    """
+    if target_pixels <= 0:
+        return (0, 0, 0)
+
+    h, w = image_size
+    if center is None:
+        cx, cy = w // 2, h // 2
+    else:
+        cx, cy = center
+
+    # Start with theoretical radius
+    theoretical_r = radius_from_pixels(target_pixels)
+    r_low = max(1, int(theoretical_r) - 2)
+    r_high = int(theoretical_r) + 2
+
+    best_radius = r_low
+    best_actual = 0
+    best_error = float('inf')
+
+    for r in range(r_low, r_high + 1):
+        if r <= 0:
+            continue
+        # Test actual pixel count
+        test_img = np.zeros((h, w), dtype=np.uint8)
+        cv2.circle(test_img, (cx, cy), r, 255, thickness=-1, lineType=cv2.LINE_AA)
+        actual = int(np.sum(test_img > 0))
+        error = abs(actual - target_pixels)
+
+        if error < best_error:
+            best_error = error
+            best_radius = r
+            best_actual = actual
+
+    return (best_radius, best_actual, best_actual - target_pixels)
+
+
 def lens_area(r1: float, r2: float, d: float) -> float:
     """Calculate intersection area of two overlapping circles.
 
@@ -190,9 +243,10 @@ def radius_for_exposed_pixels(
     # Minimum: radius that gives target area without any overlap
     r_min = radius_from_pixels(target_exposed)
 
-    # Maximum: assume worst case where half the circle is hidden
-    # Need radius that gives 2x the target area
-    r_max = radius_from_pixels(target_exposed * 3)
+    # Maximum: when petal center is inside black (petal_distance < 1),
+    # most of the petal is hidden. Need larger upper bound.
+    # 10x is safe for typical petal_distance=0.5 configurations.
+    r_max = radius_from_pixels(target_exposed * 10)
 
     for _ in range(max_iterations):
         r_mid = (r_min + r_max) / 2
@@ -272,27 +326,32 @@ def render_flower_cluster(
     image: np.ndarray,
     cluster: ClusterResult,
     used: np.ndarray,
-    petal_distance: float = 0.7,
+    petal_distance: float = 0.5,
     scale: int = 1,
     rotation_offset: float = 0.0,
-    use_exposed_area: bool = False,
     blend_overlaps: bool = False
 ) -> Dict[str, int]:
     """Render a single cluster as a flower pattern.
 
-    Black circle at center, CMY circles as petals around it.
-    Petals are positioned at 120° intervals, with distance from center
-    proportional to their radii.
+    Algorithm (CMYK Flower Rendering):
+        1. Decompose RGB overlaps into CMY primaries:
+           Co = cyan + green + blue (all pixels containing cyan ink)
+           Mo = magenta + red + blue (all pixels containing magenta ink)
+           Yo = yellow + red + green (all pixels containing yellow ink)
+        2. Black circle at center with radius Rb where π*Rb² = Ko
+        3. Petals placed at distance Rb * petal_distance (center inside black)
+        4. Each petal radius sized so EXPOSED area = target pixel count
+           (exposed area = petal area - lens overlap with black)
+        5. Draw petals with subtractive CMY blending (overlaps create RGB)
 
     Args:
         image: BGR image to draw on (modified in place)
-        cluster: Cluster data with pixel counts
+        cluster: Cluster data with CMYK and RGB pixel counts
         used: Boolean array tracking used pixels
-        petal_distance: How far petals extend (0.5 = touching, 1.0 = separated)
+        petal_distance: Fraction of black radius for petal center placement
+            (0.5 = center halfway to edge, inside black circle)
         scale: Scale factor for positioning
         rotation_offset: Angle offset in degrees to rotate all petals
-        use_exposed_area: If True, size petals based on visible area after
-            black overlap (requires larger radius to show same pixel count)
         blend_overlaps: If True, use subtractive CMY blending at petal overlaps
             (C+M=Blue, C+Y=Green, M+Y=Red, C+M+Y≈Black)
 
@@ -308,12 +367,22 @@ def render_flower_cluster(
     # Calculate black radius first (always uses simple formula)
     black_radius = radius_from_pixels(cluster.black)
 
+    # CMYK Decomposition: Add RGB overlaps to their parent CMY primaries
+    # Co = cyan + green (C∩Y) + blue (C∩M)
+    # Mo = magenta + red (M∩Y) + blue (C∩M)
+    # Yo = yellow + red (M∩Y) + green (C∩Y)
+    decomposed_counts = {
+        'cyan': cluster.cyan + cluster.green + cluster.blue,
+        'magenta': cluster.magenta + cluster.red + cluster.blue,
+        'yellow': cluster.yellow + cluster.red + cluster.green,
+    }
+
     # Calculate radii and positions for each color
     radii = {'black': black_radius}
     positions = {}
 
     for color in ['yellow', 'magenta', 'cyan']:
-        pixel_count = getattr(cluster, color)
+        pixel_count = decomposed_counts[color]
         if pixel_count <= 0:
             radii[color] = 0
             positions[color] = (cx, cy)
@@ -330,14 +399,16 @@ def render_flower_cluster(
         angle_deg = PETAL_ANGLES[color] + rotation_offset
         angle_rad = math.radians(angle_deg - 90)  # -90 to start from top
 
-        # Distance from center: black radius + petal radius * distance factor
-        dist = black_radius + preliminary_radius * petal_distance
+        # Distance from center: fraction of black radius (places petal center inside black)
+        dist = black_radius * petal_distance
 
-        # Now calculate the actual radius
-        if use_exposed_area and black_radius > 0:
-            # Use exposed area formula - radius needed so visible area = pixel_count
+        # Calculate petal radius so EXPOSED area equals target pixel count
+        # (exposed area = petal area - lens overlap with black circle)
+        if black_radius > 0 and dist < black_radius + preliminary_radius:
+            # Petal overlaps with black - use exposed area formula
             petal_radius = radius_for_exposed_pixels(pixel_count, black_radius, dist)
         else:
+            # No overlap with black - simple area formula
             petal_radius = preliminary_radius
 
         radii[color] = petal_radius
@@ -347,56 +418,96 @@ def render_flower_cluster(
 
     if blend_overlaps:
         # Subtractive CMY blending mode
-        # Create masks for each CMY color
-        def make_circle_mask(center_x, center_y, radius):
+        # CORRECT ORDER: Black first, then CMY petals around it (exposed crescent only)
+
+        def make_circle_mask_with_radius(center_x, center_y, int_radius):
+            """Create circle mask using pre-computed integer radius."""
             mask = np.zeros((h, w), dtype=bool)
-            if radius > 0:
+            if int_radius > 0:
                 temp = np.zeros((h, w), dtype=np.uint8)
                 cv2.circle(temp, (int(center_x), int(center_y)),
-                          int(radius), 255, thickness=-1, lineType=cv2.LINE_AA)
+                          int_radius, 255, thickness=-1, lineType=cv2.LINE_AA)
                 mask = temp > 0
             return mask
 
-        mask_c = make_circle_mask(*positions['cyan'], radii['cyan'])
-        mask_m = make_circle_mask(*positions['magenta'], radii['magenta'])
-        mask_y = make_circle_mask(*positions['yellow'], radii['yellow'])
+        # Find optimal integer radii that minimize pixel count error
+        # This accounts for cv2.circle drawing more pixels than theoretical area
+        black_int_r, black_actual, black_error = find_best_radius_for_pixels(
+            cluster.black, (h, w), (int(cx), int(cy))
+        )
 
-        # Start with white for blending region
-        any_cmy = mask_c | mask_m | mask_y
-        if np.any(any_cmy):
-            # Create local blend buffer
+        # 1. Draw black center FIRST
+        black_mask = make_circle_mask_with_radius(cx, cy, black_int_r)
+        if cluster.black > 0:
+            image[black_mask & ~used] = COLORS_BGR['black']
+            drawn['black'] = int(np.sum(black_mask & ~used))
+            used[black_mask] = True
+
+        # 2. Create CMY petal masks with optimized radii
+        # For petals, we need to find radii such that EXPOSED area = target
+        # This is more complex since exposed = petal_circle - black_circle intersection
+        petal_int_radii = {}
+        petal_errors = {}
+        for color in ['cyan', 'magenta', 'yellow']:
+            target = decomposed_counts[color]
+            if target <= 0:
+                petal_int_radii[color] = 0
+                petal_errors[color] = 0
+                continue
+            # Find radius that gives approximately correct exposed pixels
+            # Start with the theoretical radius and test nearby integer values
+            px, py = positions[color]
+            best_r, best_exposed, best_err = 0, 0, float('inf')
+            theoretical_r = radii[color]
+            for test_r in range(max(1, int(theoretical_r) - 3), int(theoretical_r) + 4):
+                # Compute actual exposed pixels with this integer radius
+                test_mask = make_circle_mask_with_radius(px, py, test_r)
+                exposed_count = int(np.sum(test_mask & ~black_mask))
+                err = abs(exposed_count - target)
+                if err < best_err:
+                    best_err = err
+                    best_r = test_r
+                    best_exposed = exposed_count
+            petal_int_radii[color] = best_r
+            petal_errors[color] = best_exposed - target
+
+        mask_c = make_circle_mask_with_radius(*positions['cyan'], petal_int_radii['cyan'])
+        mask_m = make_circle_mask_with_radius(*positions['magenta'], petal_int_radii['magenta'])
+        mask_y = make_circle_mask_with_radius(*positions['yellow'], petal_int_radii['yellow'])
+
+        # 3. Get EXPOSED area only (subtract black circle)
+        exposed_c = mask_c & ~black_mask
+        exposed_m = mask_m & ~black_mask
+        exposed_y = mask_y & ~black_mask
+
+        # 4. Apply subtractive CMY blending to exposed areas
+        any_exposed = exposed_c | exposed_m | exposed_y
+        if np.any(any_exposed):
+            # Create local blend buffer starting with white
             blend_result = np.full((h, w, 3), 255, dtype=np.uint8)
 
             # Subtractive: each ink removes its complementary RGB channel
             # Cyan removes Red (channel 2 in BGR)
-            blend_result[mask_c, 2] = 0
+            blend_result[exposed_c, 2] = 0
             # Magenta removes Green (channel 1 in BGR)
-            blend_result[mask_m, 1] = 0
+            blend_result[exposed_m, 1] = 0
             # Yellow removes Blue (channel 0 in BGR)
-            blend_result[mask_y, 0] = 0
+            blend_result[exposed_y, 0] = 0
 
-            # Copy blended result to image where any CMY ink was applied
-            # Only update pixels not already used
-            update_mask = any_cmy & ~used
+            # Copy blended result to image (only unused pixels)
+            update_mask = any_exposed & ~used
             image[update_mask] = blend_result[update_mask]
-            used[any_cmy] = True
+            used[any_exposed] = True
 
-            # Count drawn pixels per color (approximate from masks)
-            drawn['cyan'] = int(np.sum(mask_c & ~used)) if radii['cyan'] > 0 else 0
-            drawn['magenta'] = int(np.sum(mask_m & ~used)) if radii['magenta'] > 0 else 0
-            drawn['yellow'] = int(np.sum(mask_y & ~used)) if radii['yellow'] > 0 else 0
-
-        # Draw black center last (on top)
-        if cluster.black > 0:
-            drawn['black'] = draw_circle_exact(
-                image, cx, cy,
-                cluster.black, COLORS_BGR['black'], used
-            )
+            # Count drawn pixels per color (exposed area only)
+            drawn['cyan'] = int(np.sum(exposed_c)) if radii['cyan'] > 0 else 0
+            drawn['magenta'] = int(np.sum(exposed_m)) if radii['magenta'] > 0 else 0
+            drawn['yellow'] = int(np.sum(exposed_y)) if radii['yellow'] > 0 else 0
     else:
         # Original non-blending mode: draw each petal directly
         # Order: Y, M, C (so cyan is most visible, typically largest)
         for color in ['yellow', 'magenta', 'cyan']:
-            pixel_count = getattr(cluster, color)
+            pixel_count = decomposed_counts[color]
             if pixel_count <= 0:
                 continue
 
@@ -423,32 +534,34 @@ def render_flower_cluster(
 def render_flower(
     clusters: List[ClusterResult],
     image_shape: Tuple[int, int],
-    petal_distance: float = 0.7,
+    petal_distance: float = 0.5,
     scale: int = 1,
     skip_partial: bool = False,
     rotation_mode: str = 'fixed',
     base_rotation: float = 0.0,
     rotation_seed: Optional[int] = None,
-    use_exposed_area: bool = False,
-    blend_overlaps: bool = False
+    blend_overlaps: bool = False,
+    use_exposed_area: bool = True  # Deprecated, kept for backward compatibility
 ) -> np.ndarray:
     """Render all clusters as flower patterns.
 
     Each cluster becomes a flower with black center and CMY petals.
+    Petal radii are automatically sized so their EXPOSED area (after
+    black circle overlap) matches the target pixel count.
 
     Args:
         clusters: List of ClusterResult from detection
         image_shape: (height, width) of original image
-        petal_distance: How far petals extend from center (0.5-1.0)
+        petal_distance: Fraction of black radius for petal center placement
+            (0.5 = center halfway to edge of black, inside black circle)
         scale: Output scale factor
         skip_partial: If True, skip edge clusters
         rotation_mode: 'fixed', 'random', or 'cluster-hash'
         base_rotation: Base angle offset in degrees
         rotation_seed: Random seed for 'random' mode
-        use_exposed_area: If True, size petals based on visible area after
-            black overlap (more accurate visual proportions)
         blend_overlaps: If True, use subtractive CMY blending at petal overlaps
             (C+M=Blue, C+Y=Green, M+Y=Red, C+M+Y≈Black)
+        use_exposed_area: Deprecated - exposed area sizing is always used
 
     Returns:
         BGR numpy array with rendered flowers
@@ -479,7 +592,6 @@ def render_flower(
             petal_distance=petal_distance,
             scale=scale,
             rotation_offset=rotation,
-            use_exposed_area=use_exposed_area,
             blend_overlaps=blend_overlaps
         )
 
