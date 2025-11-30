@@ -262,6 +262,11 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Size flower petals based on visible area after black overlap (more accurate proportions)'
 )
 @optgroup.option(
+    '--blend-overlaps',
+    is_flag=True,
+    help='Use subtractive CMY blending for flower petals (C+M=Blue, C+Y=Green, M+Y=Red)'
+)
+@optgroup.option(
     '--quantize-output',
     type=click.Path(path_type=Path),
     help='Save quantized image (debug)'
@@ -303,7 +308,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, exposed_area_sizing, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, exposed_area_sizing, blend_overlaps, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -338,7 +343,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, exposed_area_sizing, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, exposed_area_sizing, blend_overlaps, chunk_size, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -574,7 +579,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, exposed_area_sizing=False, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -910,7 +915,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 skip_partial=False,
                                 rotation_mode=rotation_mode,
                                 base_rotation=petal_offset,
-                                use_exposed_area=exposed_area_sizing
+                                use_exposed_area=exposed_area_sizing,
+                                blend_overlaps=blend_overlaps
                             )
                         elif render_method_lower == 'cmyk-blend':
                             from .circle_renderer import render_cmyk_blend

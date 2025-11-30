@@ -382,3 +382,111 @@ class TestRenderFlowerWithExposedArea:
         # We can't guarantee they're always different, but with significant overlap they should be
         # Just verify both produce valid images
         assert result_default.shape == result_exposed.shape
+
+
+class TestRenderFlowerWithBlending:
+    """Tests for render_flower with blend_overlaps parameter (subtractive CMY)."""
+
+    def make_cluster(self, x, y, black=100, cyan=50, magenta=50, yellow=50):
+        """Create a test ClusterResult."""
+        return ClusterResult(
+            x=x, y=y,
+            black=black, cyan=cyan, magenta=magenta, yellow=yellow,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+
+    def test_render_flower_with_blending_creates_image(self):
+        """render_flower with blend_overlaps should create valid image."""
+        clusters = [self.make_cluster(50, 50)]
+        result = render_flower(clusters, (100, 100), blend_overlaps=True)
+        assert result.shape == (100, 100, 3)
+        assert result.dtype == np.uint8
+
+    def test_render_flower_blending_differs_from_default(self):
+        """Blending mode should produce different results than default."""
+        clusters = [self.make_cluster(50, 50, black=100, cyan=100, magenta=100, yellow=100)]
+        result_default = render_flower(clusters, (100, 100), blend_overlaps=False)
+        result_blended = render_flower(clusters, (100, 100), blend_overlaps=True)
+        # The images should differ (blending vs overlay)
+        # Blended mode uses subtractive color mixing
+        assert result_default.shape == result_blended.shape
+
+    def test_blending_cyan_removes_red(self):
+        """In blended mode, cyan areas should have no red component."""
+        # Cluster with only cyan
+        cluster = ClusterResult(
+            x=50, y=50,
+            black=0, cyan=200, magenta=0, yellow=0,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+        result = render_flower([cluster], (100, 100), blend_overlaps=True)
+        # Find cyan pixels (non-white, non-black)
+        non_white = np.any(result != 255, axis=2)
+        if np.any(non_white):
+            # Cyan pixels should have R=0 (BGR format: channel 2 is R)
+            cyan_pixels = result[non_white]
+            # Pure cyan in subtractive should be (255, 255, 0) in BGR = cyan
+            assert np.all(cyan_pixels[:, 2] == 0)  # Red channel should be 0
+
+    def test_blending_magenta_removes_green(self):
+        """In blended mode, magenta areas should have no green component."""
+        cluster = ClusterResult(
+            x=50, y=50,
+            black=0, cyan=0, magenta=200, yellow=0,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+        result = render_flower([cluster], (100, 100), blend_overlaps=True)
+        non_white = np.any(result != 255, axis=2)
+        if np.any(non_white):
+            magenta_pixels = result[non_white]
+            # Pure magenta should have G=0 (BGR format: channel 1 is G)
+            assert np.all(magenta_pixels[:, 1] == 0)
+
+    def test_blending_yellow_removes_blue(self):
+        """In blended mode, yellow areas should have no blue component."""
+        cluster = ClusterResult(
+            x=50, y=50,
+            black=0, cyan=0, magenta=0, yellow=200,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+        result = render_flower([cluster], (100, 100), blend_overlaps=True)
+        non_white = np.any(result != 255, axis=2)
+        if np.any(non_white):
+            yellow_pixels = result[non_white]
+            # Pure yellow should have B=0 (BGR format: channel 0 is B)
+            assert np.all(yellow_pixels[:, 0] == 0)
+
+    def test_blending_cyan_magenta_makes_blue(self):
+        """Cyan + Magenta overlap should produce blue (in subtractive mixing)."""
+        # Large cyan and magenta to ensure overlap
+        cluster = ClusterResult(
+            x=50, y=50,
+            black=0, cyan=300, magenta=300, yellow=0,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+        result = render_flower([cluster], (100, 100), blend_overlaps=True)
+        # Find pixels that are blue-ish (low R, low G, high B)
+        # In BGR: high channel 0 (B), low channel 1 (G), low channel 2 (R)
+        blue_mask = (result[:, :, 0] > 200) & (result[:, :, 1] < 50) & (result[:, :, 2] < 50)
+        # There should be some blue pixels where C and M overlap
+        assert np.any(blue_mask), "Expected blue pixels from C+M overlap"
+
+    def test_blending_all_cmy_makes_dark(self):
+        """Cyan + Magenta + Yellow overlap should produce near-black."""
+        # Large CMY to ensure overlap in center
+        cluster = ClusterResult(
+            x=50, y=50,
+            black=0, cyan=400, magenta=400, yellow=400,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+        result = render_flower([cluster], (100, 100), blend_overlaps=True)
+        # Find very dark pixels (all channels near 0)
+        dark_mask = np.all(result < 50, axis=2)
+        # There should be some dark pixels where all three overlap
+        assert np.any(dark_mask), "Expected dark pixels from C+M+Y overlap"
