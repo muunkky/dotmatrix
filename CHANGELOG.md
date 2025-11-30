@@ -224,6 +224,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **38 MP benchmark**: CMYK halftone image (6480×6000) processes in <5 minutes with ~8,000 circles detected
 - **Deduplication benchmark**: 50,000 circles deduplicate in <10 seconds with KD-tree (vs minutes with nested loops)
 
+### Added (Circle Renderer Enhancements - CIRCLERENDER Sprint)
+- **Petal rotation modes**: `--petal-rotation` CLI flag with three modes:
+  - `fixed` (default): All petals at same angle (base rotation)
+  - `random`: Random rotation per cluster (reproducible with `--rotation-seed`)
+  - `cluster-hash`: Deterministic rotation based on cluster position hash
+- **Exposed area circle sizing**: `--exposed-area-sizing` CLI flag for accurate petal proportions
+  - Uses lens area formula to calculate petal-black overlap
+  - Enlarges petal radius to compensate for hidden area behind black circle
+  - Binary search solver finds radius for target exposed pixel count
+- **Subtractive CMY blending**: `--blend-overlaps` CLI flag for realistic color mixing
+  - Cyan removes Red channel (C → no R)
+  - Magenta removes Green channel (M → no G)
+  - Yellow removes Blue channel (Y → no B)
+  - C+M overlap → Blue, C+Y overlap → Green, M+Y overlap → Red
+  - C+M+Y overlap → near-Black (subtractive mixing)
+- New functions in `circle_renderer.py`:
+  - `lens_area()`: Circle-circle intersection area using Wolfram MathWorld formula
+  - `exposed_area()`: Petal area visible after black overlap
+  - `radius_for_exposed_pixels()`: Binary search solver for target exposed area
+- 51 unit tests for circle renderer with comprehensive blending coverage
+
+### Technical Details (Circle Renderer Enhancements)
+- Cluster-hash rotation uses Python `hash()` on (x, y) tuple for deterministic pseudo-randomness
+- Lens area formula handles all edge cases: no overlap, full containment, partial intersection
+- Binary search converges in <20 iterations with 0.1 pixel tolerance
+- Blending uses numpy mask operations for efficient pixel-level color mixing
+- Black circle always rendered on top after CMY blending
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode
