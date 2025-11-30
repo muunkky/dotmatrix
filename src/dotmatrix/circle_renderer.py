@@ -106,6 +106,109 @@ def pixels_from_radius(radius: float) -> int:
     return int(math.pi * radius * radius)
 
 
+def lens_area(r1: float, r2: float, d: float) -> float:
+    """Calculate intersection area of two overlapping circles.
+
+    Args:
+        r1: Radius of first circle
+        r2: Radius of second circle
+        d: Distance between circle centers
+
+    Returns:
+        Area of the lens-shaped intersection region.
+    """
+    if d <= 0:
+        # Concentric circles - intersection is smaller circle
+        return math.pi * min(r1, r2) ** 2
+
+    if d >= r1 + r2:
+        # No overlap
+        return 0.0
+
+    if d <= abs(r1 - r2):
+        # One circle fully inside the other
+        return math.pi * min(r1, r2) ** 2
+
+    # General lens area formula (two circular segments)
+    # https://mathworld.wolfram.com/Circle-CircleIntersection.html
+    try:
+        part1 = r1**2 * math.acos((d**2 + r1**2 - r2**2) / (2 * d * r1))
+        part2 = r2**2 * math.acos((d**2 + r2**2 - r1**2) / (2 * d * r2))
+        part3 = 0.5 * math.sqrt((r1 + r2 - d) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2))
+        return part1 + part2 - part3
+    except (ValueError, ZeroDivisionError):
+        # Numerical edge cases
+        return 0.0
+
+
+def exposed_area(petal_radius: float, black_radius: float, distance: float) -> float:
+    """Calculate the visible area of a petal after overlap with black circle.
+
+    Args:
+        petal_radius: Radius of the petal circle
+        black_radius: Radius of the black center circle
+        distance: Distance between petal center and black center
+
+    Returns:
+        Exposed (visible) area of the petal circle.
+    """
+    total_area = math.pi * petal_radius ** 2
+    overlap = lens_area(petal_radius, black_radius, distance)
+    return max(0.0, total_area - overlap)
+
+
+def radius_for_exposed_pixels(
+    target_exposed: int,
+    black_radius: float,
+    distance: float,
+    tolerance: float = 0.5,
+    max_iterations: int = 50
+) -> float:
+    """Find petal radius such that exposed area equals target pixel count.
+
+    Uses binary search to find the radius that, after subtracting overlap
+    with the black circle, gives the target exposed area.
+
+    Args:
+        target_exposed: Target number of exposed (visible) pixels
+        black_radius: Radius of the black center circle
+        distance: Distance from petal center to black center
+        tolerance: Acceptable error in pixels (default 0.5)
+        max_iterations: Maximum binary search iterations (default 50)
+
+    Returns:
+        Radius that achieves the target exposed area.
+    """
+    if target_exposed <= 0:
+        return 0.0
+
+    if black_radius <= 0:
+        # No black circle to hide behind
+        return radius_from_pixels(target_exposed)
+
+    # Binary search bounds
+    # Minimum: radius that gives target area without any overlap
+    r_min = radius_from_pixels(target_exposed)
+
+    # Maximum: assume worst case where half the circle is hidden
+    # Need radius that gives 2x the target area
+    r_max = radius_from_pixels(target_exposed * 3)
+
+    for _ in range(max_iterations):
+        r_mid = (r_min + r_max) / 2
+        current_exposed = exposed_area(r_mid, black_radius, distance)
+
+        if abs(current_exposed - target_exposed) <= tolerance:
+            return r_mid
+
+        if current_exposed < target_exposed:
+            r_min = r_mid
+        else:
+            r_max = r_mid
+
+    return (r_min + r_max) / 2
+
+
 @dataclass
 class Circle:
     """A circle with position and radius."""
@@ -171,7 +274,8 @@ def render_flower_cluster(
     used: np.ndarray,
     petal_distance: float = 0.7,
     scale: int = 1,
-    rotation_offset: float = 0.0
+    rotation_offset: float = 0.0,
+    use_exposed_area: bool = False
 ) -> Dict[str, int]:
     """Render a single cluster as a flower pattern.
 
@@ -186,6 +290,8 @@ def render_flower_cluster(
         petal_distance: How far petals extend (0.5 = touching, 1.0 = separated)
         scale: Scale factor for positioning
         rotation_offset: Angle offset in degrees to rotate all petals
+        use_exposed_area: If True, size petals based on visible area after
+            black overlap (requires larger radius to show same pixel count)
 
     Returns:
         Dict of actual pixels drawn per color
@@ -195,18 +301,23 @@ def render_flower_cluster(
 
     drawn = {}
 
+    # Calculate black radius first (always uses simple formula)
+    black_radius = radius_from_pixels(cluster.black)
+
     # Calculate radii for each color
-    radii = {
-        'black': radius_from_pixels(cluster.black),
-        'cyan': radius_from_pixels(cluster.cyan),
-        'magenta': radius_from_pixels(cluster.magenta),
-        'yellow': radius_from_pixels(cluster.yellow),
-    }
+    # For petals, we need to know the distance to black center to use exposed area
+    radii = {'black': black_radius}
 
     # Draw petals first (behind black)
     # Order: Y, M, C (so cyan is most visible, typically largest)
     for color in ['yellow', 'magenta', 'cyan']:
-        if radii[color] <= 0:
+        pixel_count = getattr(cluster, color)
+        if pixel_count <= 0:
+            continue
+
+        # Calculate preliminary radius to compute distance
+        preliminary_radius = radius_from_pixels(pixel_count)
+        if preliminary_radius <= 0:
             continue
 
         # Position petal with rotation offset
@@ -214,14 +325,21 @@ def render_flower_cluster(
         angle_rad = math.radians(angle_deg - 90)  # -90 to start from top
 
         # Distance from center: black radius + petal radius * distance factor
-        dist = radii['black'] + radii[color] * petal_distance
+        dist = black_radius + preliminary_radius * petal_distance
+
+        # Now calculate the actual radius
+        if use_exposed_area and black_radius > 0:
+            # Use exposed area formula - radius needed so visible area = pixel_count
+            petal_radius = radius_for_exposed_pixels(pixel_count, black_radius, dist)
+        else:
+            petal_radius = preliminary_radius
+
+        radii[color] = petal_radius
 
         petal_x = cx + dist * math.cos(angle_rad)
         petal_y = cy + dist * math.sin(angle_rad)
 
-        # Get pixel count for this color
-        pixel_count = getattr(cluster, color)
-
+        # Draw with target pixel count (draw_circle_exact will draw up to this many)
         drawn[color] = draw_circle_exact(
             image, petal_x, petal_y,
             pixel_count, COLORS_BGR[color], used
@@ -245,7 +363,8 @@ def render_flower(
     skip_partial: bool = False,
     rotation_mode: str = 'fixed',
     base_rotation: float = 0.0,
-    rotation_seed: Optional[int] = None
+    rotation_seed: Optional[int] = None,
+    use_exposed_area: bool = False
 ) -> np.ndarray:
     """Render all clusters as flower patterns.
 
@@ -260,6 +379,8 @@ def render_flower(
         rotation_mode: 'fixed', 'random', or 'cluster-hash'
         base_rotation: Base angle offset in degrees
         rotation_seed: Random seed for 'random' mode
+        use_exposed_area: If True, size petals based on visible area after
+            black overlap (more accurate visual proportions)
 
     Returns:
         BGR numpy array with rendered flowers
@@ -289,7 +410,8 @@ def render_flower(
             output, cluster, used,
             petal_distance=petal_distance,
             scale=scale,
-            rotation_offset=rotation
+            rotation_offset=rotation,
+            use_exposed_area=use_exposed_area
         )
 
         for color, count in drawn.items():

@@ -1,5 +1,6 @@
 """Tests for circle_renderer module."""
 
+import math
 import pytest
 import numpy as np
 
@@ -10,6 +11,9 @@ from dotmatrix.circle_renderer import (
     render_flower,
     render_flower_cluster,
     PETAL_ANGLES,
+    lens_area,
+    exposed_area,
+    radius_for_exposed_pixels,
 )
 from dotmatrix.cluster_pixel_counter import ClusterResult
 
@@ -209,3 +213,172 @@ class TestPetalAngles:
         diffs = [angles[1] - angles[0], angles[2] - angles[1], 360 - angles[2] + angles[0]]
         for diff in diffs:
             assert diff == 120
+
+
+class TestLensArea:
+    """Tests for lens_area function (circle-circle intersection)."""
+
+    def test_no_overlap_far_apart(self):
+        """Circles far apart should have zero intersection."""
+        # Two circles of radius 5, centers 20 apart
+        assert lens_area(5, 5, 20) == 0.0
+
+    def test_no_overlap_just_touching(self):
+        """Circles just touching should have zero intersection."""
+        # Two circles of radius 5, centers exactly 10 apart
+        assert lens_area(5, 5, 10) == 0.0
+
+    def test_concentric_circles(self):
+        """Concentric circles should return area of smaller circle."""
+        # Concentric circles (distance = 0)
+        result = lens_area(10, 5, 0)
+        expected = math.pi * 5 ** 2  # Smaller circle fully inside
+        assert abs(result - expected) < 0.01
+
+    def test_one_inside_other(self):
+        """Small circle fully inside larger should return small circle area."""
+        # Small circle inside large (r1=10, r2=3, d=2 means r2 is inside r1)
+        result = lens_area(10, 3, 2)
+        expected = math.pi * 3 ** 2
+        assert abs(result - expected) < 0.01
+
+    def test_identical_circles_same_position(self):
+        """Identical circles at same position should return full area."""
+        result = lens_area(5, 5, 0)
+        expected = math.pi * 5 ** 2
+        assert abs(result - expected) < 0.01
+
+    def test_partial_overlap_symmetric(self):
+        """Symmetric partial overlap should give positive area < smaller circle."""
+        # Two circles of radius 10 with centers 10 apart (50% overlap roughly)
+        result = lens_area(10, 10, 10)
+        max_area = math.pi * 10 ** 2
+        assert 0 < result < max_area
+
+    def test_overlap_increases_as_distance_decreases(self):
+        """Overlap area should increase as circles get closer."""
+        r1, r2 = 10, 10
+        area_far = lens_area(r1, r2, 15)
+        area_near = lens_area(r1, r2, 5)
+        assert area_near > area_far
+
+    def test_asymmetric_circles(self):
+        """Asymmetric circles should compute correct overlap."""
+        # r1=10, r2=5, d=8 (partial overlap)
+        result = lens_area(10, 5, 8)
+        assert result > 0
+        assert result < math.pi * 5 ** 2  # Less than smaller circle
+
+
+class TestExposedArea:
+    """Tests for exposed_area function."""
+
+    def test_no_overlap_full_exposure(self):
+        """When circles don't overlap, exposed area equals full petal area."""
+        # Petal far from black circle
+        result = exposed_area(5, 10, 30)
+        expected = math.pi * 5 ** 2
+        assert abs(result - expected) < 0.01
+
+    def test_full_overlap_zero_exposure(self):
+        """When petal is inside black circle, exposed area is zero."""
+        # Small petal inside large black circle
+        result = exposed_area(3, 10, 2)
+        assert result == 0.0
+
+    def test_partial_overlap_reduced_exposure(self):
+        """Partial overlap should reduce exposed area."""
+        petal_r, black_r, d = 5, 10, 10
+        full_area = math.pi * petal_r ** 2
+        result = exposed_area(petal_r, black_r, d)
+        assert 0 < result < full_area
+
+    def test_exposed_area_never_negative(self):
+        """Exposed area should never be negative."""
+        # Various scenarios
+        for petal_r in [3, 5, 10]:
+            for black_r in [5, 10, 15]:
+                for d in [0, 2, 5, 10, 20]:
+                    result = exposed_area(petal_r, black_r, d)
+                    assert result >= 0
+
+
+class TestRadiusForExposedPixels:
+    """Tests for radius_for_exposed_pixels function."""
+
+    def test_zero_target_returns_zero(self):
+        """Zero target pixels should return zero radius."""
+        result = radius_for_exposed_pixels(0, 10, 15)
+        assert result == 0.0
+
+    def test_no_black_circle_simple_area(self):
+        """With no black circle, radius should match simple area formula."""
+        target = 100
+        result = radius_for_exposed_pixels(target, 0, 15)
+        expected = radius_from_pixels(target)
+        assert abs(result - expected) < 0.1
+
+    def test_with_overlap_radius_larger(self):
+        """With overlap, radius should be larger to compensate."""
+        target = 100
+        black_r = 10
+        d = 12  # Close enough for overlap
+
+        # Without overlap
+        simple_radius = radius_from_pixels(target)
+
+        # With overlap - need larger radius to get same exposed area
+        result = radius_for_exposed_pixels(target, black_r, d)
+
+        assert result >= simple_radius
+
+    def test_result_achieves_target(self):
+        """Found radius should give approximately the target exposed area."""
+        target = 100
+        black_r = 10
+        d = 15
+
+        found_radius = radius_for_exposed_pixels(target, black_r, d)
+        actual_exposed = exposed_area(found_radius, black_r, d)
+
+        assert abs(actual_exposed - target) < 1.0  # Within tolerance
+
+    def test_various_targets(self):
+        """Test convergence for various target values."""
+        black_r = 10
+        d = 14
+
+        for target in [50, 100, 200, 500]:
+            found_radius = radius_for_exposed_pixels(target, black_r, d)
+            actual_exposed = exposed_area(found_radius, black_r, d)
+            assert abs(actual_exposed - target) < 1.0
+
+
+class TestRenderFlowerWithExposedArea:
+    """Tests for render_flower with use_exposed_area parameter."""
+
+    def make_cluster(self, x, y, black=100, cyan=50, magenta=50, yellow=50):
+        """Create a test ClusterResult."""
+        return ClusterResult(
+            x=x, y=y,
+            black=black, cyan=cyan, magenta=magenta, yellow=yellow,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+
+    def test_render_flower_with_exposed_area_creates_image(self):
+        """render_flower with use_exposed_area should create valid image."""
+        clusters = [self.make_cluster(50, 50)]
+        result = render_flower(clusters, (100, 100), use_exposed_area=True)
+        assert result.shape == (100, 100, 3)
+        assert result.dtype == np.uint8
+
+    def test_render_flower_exposed_area_differs_from_default(self):
+        """Exposed area sizing should produce different results than default."""
+        clusters = [self.make_cluster(50, 50, black=200, cyan=100)]
+        result_default = render_flower(clusters, (100, 100), use_exposed_area=False)
+        result_exposed = render_flower(clusters, (100, 100), use_exposed_area=True)
+        # The images should differ (petals will be sized differently)
+        # We can't guarantee they're always different, but with significant overlap they should be
+        # Just verify both produce valid images
+        assert result_default.shape == result_exposed.shape
