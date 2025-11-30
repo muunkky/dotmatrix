@@ -210,9 +210,9 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 )
 @optgroup.option(
     '--render-method',
-    type=click.Choice(['bullseye', 'block', 'treemap', 'exact'], case_sensitive=False),
+    type=click.Choice(['bullseye', 'block', 'treemap', 'exact', 'flower', 'cmyk-blend'], case_sensitive=False),
     default='bullseye',
-    help='Reconstitution method: bullseye (circles), block (stacked bars), treemap (proportional rectangles), or exact (100%% pixel-accurate strips)'
+    help='Reconstitution method: bullseye (circles), block (stacked bars), treemap (proportional rectangles), exact (pixel-accurate strips), flower (black center with CMY petals), cmyk-blend (subtractive color mixing)'
 )
 @optgroup.option(
     '--segment-height',
@@ -243,6 +243,18 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=click.Choice(['mask', 'highlight'], case_sensitive=False),
     default='mask',
     help='Diff image mode: mask (default) shows original colors of missed regions on white; highlight shows grayscale with magenta overlay'
+)
+@optgroup.option(
+    '--petal-rotation',
+    type=click.Choice(['fixed', 'random', 'cluster-hash'], case_sensitive=False),
+    default='fixed',
+    help='Flower renderer petal rotation: fixed (default), random (per cluster), cluster-hash (deterministic per position)'
+)
+@optgroup.option(
+    '--petal-offset',
+    type=float,
+    default=0.0,
+    help='Base rotation angle offset in degrees for flower petals (default: 0)'
 )
 @optgroup.option(
     '--quantize-output',
@@ -286,7 +298,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -321,7 +333,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, chunk_size, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -557,7 +569,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -881,6 +893,28 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 color_mode=color_mode_lower,
                                 scale=render_scale
                             )
+                        elif render_method_lower == 'flower':
+                            from .circle_renderer import render_flower
+                            rotation_mode = petal_rotation.lower() if petal_rotation else 'fixed'
+                            click.echo(f"Generating reconstituted image (flower, scale={render_scale}, rotation={rotation_mode})...", err=True)
+                            reconstituted = render_flower(
+                                cluster_results,
+                                image_rgb.shape[:2],
+                                petal_distance=0.7,
+                                scale=render_scale,
+                                skip_partial=False,
+                                rotation_mode=rotation_mode,
+                                base_rotation=petal_offset
+                            )
+                        elif render_method_lower == 'cmyk-blend':
+                            from .circle_renderer import render_cmyk_blend
+                            click.echo(f"Generating reconstituted image (cmyk-blend, scale={render_scale})...", err=True)
+                            reconstituted = render_cmyk_blend(
+                                cluster_results,
+                                image_rgb.shape[:2],
+                                scale=render_scale,
+                                skip_partial=False
+                            )
                         else:
                             from .cluster_renderer import render_bullseye
                             click.echo("Generating reconstituted image (bullseye)...", err=True)
@@ -914,6 +948,10 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 method_desc = f"treemap pattern, cluster_size={cluster_size}"
                             elif render_method_lower == 'exact':
                                 method_desc = f"exact pixel count, scale={render_scale}"
+                            elif render_method_lower == 'flower':
+                                method_desc = f"flower pattern, scale={render_scale}"
+                            elif render_method_lower == 'cmyk-blend':
+                                method_desc = f"cmyk-blend pattern, scale={render_scale}"
                             else:
                                 method_desc = "bullseye pattern"
                             click.echo(f"  - reconstituted.png ({method_desc})")
@@ -935,7 +973,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                     manifest_settings['segment_height'] = segment_height
                                 elif render_method_lower == 'treemap':
                                     manifest_settings['cluster_size'] = cluster_size
-                                elif render_method_lower == 'exact':
+                                elif render_method_lower in ('exact', 'flower', 'cmyk-blend'):
                                     manifest_settings['render_scale'] = render_scale
                                 manifest_data = generate_manifest(
                                     source_file=Path(input),
