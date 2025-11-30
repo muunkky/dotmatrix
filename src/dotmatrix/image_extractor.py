@@ -238,3 +238,103 @@ def extract_circles_to_images(
         created_files.append(filepath)
 
     return created_files
+
+
+def generate_composite_image(
+    circles_with_colors: List[Tuple[Circle, Tuple[int, int, int]]],
+    image_shape: Tuple[int, int],
+    output_dir: Path
+) -> Path:
+    """Generate a composite image showing all detected circles for visual QA.
+
+    Creates a single image with all detected circles rendered at their
+    positions with their detected colors on a white background.
+
+    Args:
+        circles_with_colors: List of (Circle, RGB color) tuples
+        image_shape: Original image shape (height, width)
+        output_dir: Directory to save the composite image
+
+    Returns:
+        Path to the created composite.png file
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    height, width = image_shape
+
+    # Create white background image
+    img = Image.new('RGB', (width, height), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    # Draw all circles
+    for circle, color in circles_with_colors:
+        left = int(circle.center_x - circle.radius)
+        top = int(circle.center_y - circle.radius)
+        right = int(circle.center_x + circle.radius)
+        bottom = int(circle.center_y + circle.radius)
+
+        draw.ellipse([left, top, right, bottom], fill=color, outline=color)
+
+    filepath = output_dir / "composite.png"
+    img.save(filepath, 'PNG')
+    return filepath
+
+
+def generate_diff_image(
+    source_image: np.ndarray,
+    circles_with_colors: List[Tuple[Circle, Tuple[int, int, int]]],
+    output_dir: Path,
+    mode: str = "highlight"
+) -> Path:
+    """Generate a diff image showing regions missed by detection.
+
+    Compares the source image with the detected circles to highlight
+    regions that weren't captured by the detection algorithm.
+
+    Args:
+        source_image: Original source image (numpy array, RGB)
+        circles_with_colors: List of (Circle, RGB color) tuples
+        output_dir: Directory to save the diff image
+        mode: Diff visualization mode:
+            - "highlight": Show missed regions with bright highlight
+            - "mask": Show original colors of missed regions
+
+    Returns:
+        Path to the created diff.png file
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    height, width = source_image.shape[:2]
+
+    # Create mask of detected circles
+    detected_mask = np.zeros((height, width), dtype=np.uint8)
+
+    for circle, color in circles_with_colors:
+        # Draw filled circle on mask
+        y, x = np.ogrid[:height, :width]
+        dist_sq = (x - circle.center_x)**2 + (y - circle.center_y)**2
+        circle_mask = dist_sq <= circle.radius**2
+        detected_mask[circle_mask] = 255
+
+    # Find missed regions (non-white pixels not covered by detection)
+    # Assume white background (255, 255, 255)
+    is_white = np.all(source_image >= 250, axis=2)
+    is_detected = detected_mask > 0
+    is_missed = ~is_white & ~is_detected
+
+    if mode == "mask":
+        # Show original colors of missed regions, black elsewhere
+        diff_img = np.zeros_like(source_image)
+        diff_img[is_missed] = source_image[is_missed]
+    else:
+        # Highlight mode: show missed regions in bright magenta
+        diff_img = np.full_like(source_image, 255)  # White background
+        diff_img[is_missed] = [255, 0, 255]  # Magenta highlight
+
+    # Save as PIL image
+    img = Image.fromarray(diff_img)
+    filepath = output_dir / "diff.png"
+    img.save(filepath, 'PNG')
+    return filepath
