@@ -163,6 +163,107 @@ def fit_circle_least_squares(points: np.ndarray) -> Optional[Tuple[float, float,
     return (cx, cy, radius)
 
 
+class NonCMYKRGBPixelError(ValueError):
+    """Raised when image contains pixels that are not pure CMYKRGB colors.
+
+    Attributes:
+        invalid_pixel_count: Total count of non-conforming pixels
+        invalid_colors: Dict mapping RGB tuples to their pixel counts
+    """
+    def __init__(self, invalid_pixel_count: int, invalid_colors: Dict[Tuple[int, int, int], int]):
+        self.invalid_pixel_count = invalid_pixel_count
+        self.invalid_colors = invalid_colors
+        # Build a helpful message showing the top invalid colors
+        top_colors = sorted(invalid_colors.items(), key=lambda x: -x[1])[:5]
+        color_examples = ", ".join(f"RGB{c}: {n}px" for c, n in top_colors)
+        super().__init__(
+            f"Image contains {invalid_pixel_count} non-CMYKRGB pixels. "
+            f"Examples: {color_examples}. "
+            f"All pixels must be one of: White(255,255,255), Black(0,0,0), "
+            f"Cyan(0,255,255), Magenta(255,0,255), Yellow(255,255,0), "
+            f"Red(255,0,0), Green(0,255,0), Blue(0,0,255)"
+        )
+
+
+# Valid CMYKRGB palette colors in BGR format (for OpenCV)
+VALID_CMYKRGB_BGR = {
+    (255, 255, 255),  # White
+    (0, 0, 0),        # Black
+    (255, 255, 0),    # Cyan (BGR)
+    (255, 0, 255),    # Magenta (BGR)
+    (0, 255, 255),    # Yellow (BGR)
+    (0, 0, 255),      # Red (BGR)
+    (0, 255, 0),      # Green (BGR)
+    (255, 0, 0),      # Blue (BGR)
+}
+
+
+def validate_cmykrgb_input(image: np.ndarray, raise_exception: bool = True) -> Dict:
+    """Validate that all pixels in the image are pure CMYKRGB colors.
+
+    Checks each pixel against the 8-color CMYKRGB palette. This is critical
+    for accurate pixel counting - anti-aliased or noisy pixels will cause
+    incorrect CMYK decomposition.
+
+    Args:
+        image: BGR image as numpy array (H, W, 3)
+        raise_exception: If True, raise NonCMYKRGBPixelError if invalid pixels found.
+                        If False, just return the validation result.
+
+    Returns:
+        Dict with validation results:
+            - valid: True if all pixels are valid CMYKRGB
+            - invalid_pixel_count: Number of non-conforming pixels
+            - invalid_colors: Dict mapping RGB tuples to their counts
+            - color_counts: Dict mapping valid BGR colors to their counts
+
+    Raises:
+        NonCMYKRGBPixelError: If invalid pixels found and raise_exception=True
+    """
+    h, w = image.shape[:2]
+    total_pixels = h * w
+
+    # Reshape to (N, 3) for efficient processing
+    pixels = image.reshape(-1, 3)
+
+    # Convert to tuples for set lookup
+    pixel_tuples = [tuple(p) for p in pixels]
+
+    # Count each unique color
+    from collections import Counter
+    color_counts = Counter(pixel_tuples)
+
+    # Separate valid and invalid colors
+    valid_colors = {}
+    invalid_colors = {}
+
+    for color, count in color_counts.items():
+        if color in VALID_CMYKRGB_BGR:
+            valid_colors[color] = count
+        else:
+            invalid_colors[color] = count
+
+    invalid_pixel_count = sum(invalid_colors.values())
+
+    result = {
+        'valid': invalid_pixel_count == 0,
+        'invalid_pixel_count': invalid_pixel_count,
+        'invalid_colors': invalid_colors,
+        'color_counts': valid_colors,
+        'total_pixels': total_pixels,
+    }
+
+    if raise_exception and invalid_pixel_count > 0:
+        # Convert BGR to RGB for error message clarity
+        rgb_invalid = {
+            (c[2], c[1], c[0]): count
+            for c, count in invalid_colors.items()
+        }
+        raise NonCMYKRGBPixelError(invalid_pixel_count, rgb_invalid)
+
+    return result
+
+
 def quantize_to_cmyk_rgb(image: np.ndarray) -> np.ndarray:
     """Quantize image to nearest CMYK+RGB+white color.
 
@@ -216,7 +317,8 @@ def quantize_to_cmyk_rgb(image: np.ndarray) -> np.ndarray:
 
 def separate_cmyk_inks(
     image: np.ndarray,
-    quantize: bool = True
+    quantize: bool = True,
+    validate: bool = False
 ) -> Dict[str, np.ndarray]:
     """Separate image into CMYK ink masks using subtractive color model.
 
@@ -233,6 +335,9 @@ def separate_cmyk_inks(
         image: BGR image as numpy array (H, W, 3)
         quantize: If True, quantize to nearest CMYK+RGB color first (default: True)
                  This removes anti-aliasing gradients for cleaner separation.
+        validate: If True, validate that all pixels are pure CMYKRGB BEFORE any
+                 quantization. Raises NonCMYKRGBPixelError if invalid pixels found.
+                 Use this for strict input validation.
 
     Returns:
         Dictionary mapping ink names to binary masks (255=ink present, 0=absent):
@@ -243,6 +348,9 @@ def separate_cmyk_inks(
             'black': mask,   # Pixels where black ink is present
         }
 
+    Raises:
+        NonCMYKRGBPixelError: If validate=True and non-CMYKRGB pixels found
+
     CMYK Color Theory:
         In subtractive CMYK printing on white:
         - Cyan absorbs RED → if R is low, cyan ink is present
@@ -250,6 +358,10 @@ def separate_cmyk_inks(
         - Yellow absorbs BLUE → if B is low, yellow ink is present
         - Black absorbs ALL → if R, G, B all low, black ink is present
     """
+    # Validate input BEFORE quantization if requested
+    if validate:
+        validate_cmykrgb_input(image, raise_exception=True)
+
     # Quantize to clean CMYK+RGB colors if requested
     if quantize:
         image = quantize_to_cmyk_rgb(image)
