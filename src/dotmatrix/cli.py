@@ -229,8 +229,8 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @optgroup.option(
     '--render-scale',
     type=int,
-    default=2,
-    help='Output scale for exact renderer. Use 2 for 100%% pixel accuracy (default: 2)'
+    default=1,
+    help='Output scale multiplier (default: 1 = same size as source)'
 )
 @optgroup.option(
     '--color-mode',
@@ -257,9 +257,9 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Base rotation angle offset in degrees for flower petals (default: 0)'
 )
 @optgroup.option(
-    '--exposed-area-sizing',
-    is_flag=True,
-    help='Size flower petals based on visible area after black overlap (more accurate proportions)'
+    '--exposed-area-sizing/--no-exposed-area-sizing',
+    default=True,
+    help='Size flower petals based on visible area after black overlap (default: enabled)'
 )
 @optgroup.option(
     '--blend-overlaps',
