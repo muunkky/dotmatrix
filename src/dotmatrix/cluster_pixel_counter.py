@@ -698,7 +698,7 @@ def cluster_and_count_pixels(
     black_mask: np.ndarray,
     image_shape: Optional[Tuple[int, int]] = None,
     color_mode: str = 'full',
-    separation_method: str = 'connected',
+    separation_method: str = 'distance_transform',
     min_dot_distance: int = 10,
     anchor_method: str = 'centroid',
     return_debug_info: bool = False

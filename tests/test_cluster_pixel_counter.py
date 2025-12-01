@@ -662,11 +662,13 @@ class TestAnchorMethod:
         # Cyan pixel near the horizontal arm of L
         cyan_mask[55, 65] = 255
 
+        # Use 'connected' separation to ensure L-shape is treated as single blob
         results_centroid = cluster_and_count_pixels(
             cyan_mask=cyan_mask,
             magenta_mask=magenta_mask,
             yellow_mask=yellow_mask,
             black_mask=black_mask,
+            separation_method='connected',
             anchor_method='centroid'
         )
 
@@ -675,6 +677,7 @@ class TestAnchorMethod:
             magenta_mask=magenta_mask,
             yellow_mask=yellow_mask,
             black_mask=black_mask,
+            separation_method='connected',
             anchor_method='nearest_pixel'
         )
 
@@ -799,11 +802,13 @@ class TestBoundingBox:
         # Rectangular black region from (20,30) to (40,70)
         black_mask[30:71, 20:41] = 255
 
+        # Use 'connected' separation to ensure rectangle is treated as single blob
         results = cluster_and_count_pixels(
             cyan_mask=cyan_mask,
             magenta_mask=magenta_mask,
             yellow_mask=yellow_mask,
-            black_mask=black_mask
+            black_mask=black_mask,
+            separation_method='connected'
         )
 
         assert len(results) == 1
