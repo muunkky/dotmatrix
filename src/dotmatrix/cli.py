@@ -257,6 +257,12 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Base rotation angle offset in degrees for flower petals (default: 0)'
 )
 @optgroup.option(
+    '--petal-distance',
+    type=float,
+    default=0.35,
+    help='Petal center distance as fraction of black radius (default: 0.35). Lower=closer to center, Higher=further out'
+)
+@optgroup.option(
     '--exposed-area-sizing/--no-exposed-area-sizing',
     default=True,
     help='Size flower petals based on visible area after black overlap (default: enabled)'
@@ -284,6 +290,22 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     default='auto',
     help='Tile size: "auto", pixel size, or "0" to disable'
 )
+@optgroup.option(
+    '--sliding-window',
+    is_flag=True,
+    help='Use sliding window for large images (enables memory-efficient processing)'
+)
+@optgroup.option(
+    '--window-size',
+    type=int,
+    default=500,
+    help='Sliding window size in pixels (default: 500)'
+)
+@optgroup.option(
+    '--gpu/--no-gpu',
+    default=None,
+    help='Enable/disable GPU acceleration (auto-detects by default)'
+)
 # Calibration Options
 @optgroup.group('Calibration', help='Radius calibration from reference')
 @optgroup.option(
@@ -308,7 +330,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, exposed_area_sizing, blend_overlaps, chunk_size, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -343,7 +365,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, exposed_area_sizing, blend_overlaps, chunk_size, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -579,7 +601,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -796,29 +818,41 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
             if cmyk_sep_mode:
                 click.echo("Using CMYK ink separation mode (AND logic for overlapping colors)", err=True)
 
-                # Debug callback for CMYK separation
-                def cmyk_debug_cb(ink_name, mask, circles):
+                # Check if we're using sliding window - skip full-image detection
+                render_method_lower = render_method.lower() if render_method else 'bullseye'
+                skip_full_detection = sliding_window and reconstitute and render_method_lower == 'flower'
+
+                if skip_full_detection:
+                    # Sliding window mode - defer detection to per-tile processing
+                    click.echo("  (Deferring detection to sliding window tiles)", err=True)
+                    detected_circles = []  # Empty - sliding window will handle
+                    quantized = None
+                    color_palette = list(CMYK_INK_COLORS.values())
+                else:
+                    # Standard mode - full-image detection
+                    # Debug callback for CMYK separation
+                    def cmyk_debug_cb(ink_name, mask, circles):
+                        if debug:
+                            click.echo(f"  {ink_name}: {len(circles)} circle(s) detected", err=True)
+
+                    detected_circles = detect_circles_cmyk_separation(
+                        image_rgb,
+                        min_radius=min_radius,
+                        max_radius=max_radius,
+                        debug_callback=cmyk_debug_cb if debug else None,
+                        sensitive_mode=sensitive_occlusion,
+                        morphological_enhance=morph_enhance,
+                        dedup_distance=dedup_distance
+                    )
+                    quantized = None  # No quantized image in separation mode
+                    color_palette = list(CMYK_INK_COLORS.values())  # For compatibility
+
                     if debug:
-                        click.echo(f"  {ink_name}: {len(circles)} circle(s) detected", err=True)
+                        click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)
 
-                detected_circles = detect_circles_cmyk_separation(
-                    image_rgb,
-                    min_radius=min_radius,
-                    max_radius=max_radius,
-                    debug_callback=cmyk_debug_cb if debug else None,
-                    sensitive_mode=sensitive_occlusion,
-                    morphological_enhance=morph_enhance,
-                    dedup_distance=dedup_distance
-                )
-                quantized = None  # No quantized image in separation mode
-                color_palette = list(CMYK_INK_COLORS.values())  # For compatibility
-
-                if debug:
-                    click.echo(f"Total detected: {len(detected_circles)} circle(s)", err=True)
-
-                # Run black dot verification (default enabled for CMYK)
+                # Run black dot verification (default enabled for CMYK, skip in sliding window)
                 verification_result = None
-                if not no_verify_black:
+                if not no_verify_black and not skip_full_detection:
                     from .black_verification import (
                         verify_black_dot_detection,
                         format_verification_output
@@ -839,8 +873,79 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                         click.echo("Aborting due to verification warnings (--verify-abort)", err=True)
                         sys.exit(1)
 
-                # Cluster counting and/or reconstitute mode
-                if cluster_count or reconstitute:
+                # Sliding window mode - skip full-image processing, do everything per-tile
+                render_method_lower = render_method.lower() if render_method else 'bullseye'
+                color_mode_lower = color_mode.lower() if color_mode else 'full'
+
+                if sliding_window and reconstitute and render_method_lower == 'flower':
+                    from .sliding_window import process_sliding_window
+
+                    click.echo(f"Using sliding window mode (size={window_size}, method=flower)...", err=True)
+                    click.echo("  (Skipping full-image detection for memory efficiency)", err=True)
+
+                    def progress_cb(tile_num, total_tiles, status):
+                        click.echo(f"  [{tile_num}/{total_tiles}] {status}", err=True)
+
+                    reconstituted, cluster_results, sw_stats = process_sliding_window(
+                        image,  # BGR format
+                        window_size=window_size,
+                        overlap=max_radius * 2,
+                        min_radius=min_radius,
+                        max_radius=max_radius,
+                        petal_distance=petal_distance,
+                        render_scale=render_scale,
+                        color_mode=color_mode_lower,
+                        debug=debug,
+                        progress_callback=progress_cb if not debug else None
+                    )
+
+                    click.echo(f"  Processed {sw_stats['total_tiles']} tiles, "
+                              f"{sw_stats['total_rendered']} clusters rendered", err=True)
+
+                    partial_count = sum(1 for r in cluster_results if r.partial)
+
+                    # Save output for sliding window mode
+                    if output_dir and not no_extract:
+                        from .run_manager import create_run_directory, copy_input_file
+                        run_dir = create_run_directory(output_dir, run_name, organize=not no_organize)
+                        copy_input_file(Path(input), run_dir)
+
+                        reconstituted_path = run_dir / 'reconstituted.png'
+                        cv2.imwrite(str(reconstituted_path), reconstituted)
+                        click.echo(f"  - reconstituted.png (sliding window flower, scale={render_scale})")
+
+                        # Create manifest
+                        if not no_manifest:
+                            from .manifest import generate_manifest, write_manifest
+                            manifest_settings = {
+                                'mode': mode or 'halftone',
+                                'palette': palette,
+                                'convex_edge': convex_edge,
+                                'cluster_count': len(cluster_results),
+                                'partial_clusters': partial_count,
+                                'render_method': 'flower',
+                                'color_mode': color_mode_lower,
+                                'sliding_window': True,
+                                'window_size': window_size,
+                                'tiles_processed': sw_stats['total_tiles'],
+                            }
+                            # Sliding window doesn't have circle detection results
+                            manifest = generate_manifest(
+                                Path(input),
+                                manifest_settings,
+                                results=[],  # No circle detection results in sliding window mode
+                                output_files=[reconstituted_path]
+                            )
+                            manifest_path = write_manifest(run_dir, manifest)
+                            click.echo(f"  - manifest.json")
+
+                        click.echo(f"Output saved to: {run_dir}")
+
+                    # Exit early - sliding window handles everything
+                    sys.exit(0)
+
+                # Standard mode - full-image processing
+                elif cluster_count or reconstitute:
                     from .cluster_pixel_counter import cluster_and_count_pixels
                     from .convex_detector import separate_cmyk_inks
                     import json as json_module
@@ -850,9 +955,6 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     # Get ink masks (with quantization for clean separation)
                     # Note: separate_cmyk_inks expects BGR format (native cv2)
                     ink_masks = separate_cmyk_inks(image)
-
-                    # Normalize color_mode
-                    color_mode_lower = color_mode.lower() if color_mode else 'full'
 
                     # Run cluster counting
                     cluster_results = cluster_and_count_pixels(
@@ -873,8 +975,6 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                     # Generate reconstituted image if requested
                     if reconstitute:
-                        render_method_lower = render_method.lower() if render_method else 'bullseye'
-
                         if render_method_lower == 'block':
                             from .block_renderer import render_blocks
                             click.echo(f"Generating reconstituted image (block, segment_height={segment_height}, color_mode={color_mode_lower})...", err=True)
@@ -904,19 +1004,53 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 scale=render_scale
                             )
                         elif render_method_lower == 'flower':
-                            from .circle_renderer import render_flower
                             rotation_mode = petal_rotation.lower() if petal_rotation else 'fixed'
-                            click.echo(f"Generating reconstituted image (flower, scale={render_scale}, rotation={rotation_mode})...", err=True)
-                            reconstituted = render_flower(
-                                cluster_results,
-                                image_rgb.shape[:2],
-                                petal_distance=0.5,  # Center petals inside black circle
-                                scale=render_scale,
-                                skip_partial=False,
-                                rotation_mode=rotation_mode,
-                                base_rotation=petal_offset,
-                                blend_overlaps=blend_overlaps
-                            )
+                            # Determine GPU usage: auto-detect if None, else use explicit setting
+                            from .gpu import is_gpu_available, get_gpu_info
+                            gpu_available = is_gpu_available()
+
+                            # Handle explicit --gpu flag with unavailable GPU
+                            if gpu is True and not gpu_available:
+                                gpu_info = get_gpu_info()
+                                error_msg = gpu_info.get('error', 'Unknown error')
+                                click.echo(f"Warning: --gpu requested but GPU unavailable: {error_msg}", err=True)
+                                click.echo("Falling back to CPU rendering. Install cupy-cuda12x for GPU support.", err=True)
+
+                            use_gpu = gpu if gpu is not None else gpu_available
+
+                            # Use GPU renderer for global blend mode (the primary use case)
+                            if blend_overlaps and use_gpu and gpu_available:
+                                from .gpu_renderer import render_flower_global_blend_gpu
+                                click.echo(f"Generating reconstituted image (flower+GPU, scale={render_scale}, rotation={rotation_mode})...", err=True)
+                                reconstituted = render_flower_global_blend_gpu(
+                                    cluster_results,
+                                    image_rgb.shape[:2],
+                                    petal_distance=petal_distance,
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=rotation_mode,
+                                    base_rotation=petal_offset,
+                                    use_gpu=True,
+                                )
+                            else:
+                                from .circle_renderer import render_flower
+                                if gpu_available and not blend_overlaps:
+                                    gpu_status = " (GPU requires --blend-overlaps)"
+                                elif gpu is False:
+                                    gpu_status = " (GPU disabled)"
+                                else:
+                                    gpu_status = ""
+                                click.echo(f"Generating reconstituted image (flower, scale={render_scale}, rotation={rotation_mode}){gpu_status}...", err=True)
+                                reconstituted = render_flower(
+                                    cluster_results,
+                                    image_rgb.shape[:2],
+                                    petal_distance=petal_distance,
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=rotation_mode,
+                                    base_rotation=petal_offset,
+                                    blend_overlaps=blend_overlaps
+                                )
                         elif render_method_lower == 'cmyk-blend':
                             from .circle_renderer import render_cmyk_blend
                             click.echo(f"Generating reconstituted image (cmyk-blend, scale={render_scale})...", err=True)
