@@ -9,6 +9,8 @@ TDD tests for the cluster_pixel_counter module that implements:
 import numpy as np
 import pytest
 
+from dotmatrix.cluster_pixel_counter import ClusterResult
+
 
 class TestMidtoneCompletion:
     """Test Phase 1: Completing midtone masks with RGB overlaps."""
@@ -683,3 +685,133 @@ class TestAnchorMethod:
         # Both should count the cyan pixel
         assert results_centroid[0].cyan >= 1
         assert results_nearest[0].cyan >= 1
+
+
+class TestBoundingBox:
+    """Test bounding box field in ClusterResult.
+    Feature: CLUSTEREXT sprint - card euac65
+    """
+
+    def test_bbox_field_exists_in_cluster_result(self):
+        """ClusterResult should have bbox field with correct default."""
+        result = ClusterResult(
+            x=50, y=50,
+            cyan=10, magenta=10, yellow=10,
+            black=100, red=0, green=0, blue=0
+        )
+
+        # bbox should exist and default to None
+        assert hasattr(result, 'bbox')
+        assert result.bbox is None
+
+    def test_bbox_tuple_format(self):
+        """bbox should be (x_min, y_min, x_max, y_max) tuple."""
+        result = ClusterResult(
+            x=50, y=50,
+            cyan=10, magenta=10, yellow=10,
+            black=100, red=0, green=0, blue=0,
+            bbox=(40, 40, 60, 60)
+        )
+
+        assert result.bbox is not None
+        assert len(result.bbox) == 4
+        x_min, y_min, x_max, y_max = result.bbox
+        assert x_min == 40
+        assert y_min == 40
+        assert x_max == 60
+        assert y_max == 60
+
+    def test_bbox_included_in_to_dict(self):
+        """to_dict() should include bbox field."""
+        import json
+
+        result = ClusterResult(
+            x=50, y=50,
+            cyan=10, magenta=10, yellow=10,
+            black=100, red=0, green=0, blue=0,
+            bbox=(40, 40, 60, 60)
+        )
+
+        as_dict = result.to_dict()
+
+        assert 'bbox' in as_dict
+        assert as_dict['bbox'] == [40, 40, 60, 60]  # Converted to list for JSON
+
+        # Should be JSON serializable
+        json_str = json.dumps(as_dict)
+        assert '"bbox": [40, 40, 60, 60]' in json_str
+
+    def test_bbox_none_in_to_dict(self):
+        """to_dict() should handle None bbox."""
+        result = ClusterResult(
+            x=50, y=50,
+            cyan=10, magenta=10, yellow=10,
+            black=100, red=0, green=0, blue=0,
+            bbox=None
+        )
+
+        as_dict = result.to_dict()
+
+        assert 'bbox' in as_dict
+        assert as_dict['bbox'] is None
+
+    def test_bbox_computed_from_cluster(self):
+        """cluster_and_count_pixels should compute bbox from cluster mask."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        # Create test image with one black dot at (50, 50) with radius 10
+        cyan_mask = np.zeros((100, 100), dtype=np.uint8)
+        magenta_mask = np.zeros((100, 100), dtype=np.uint8)
+        yellow_mask = np.zeros((100, 100), dtype=np.uint8)
+        black_mask = np.zeros((100, 100), dtype=np.uint8)
+
+        # Black dot at center (50, 50) with radius 10
+        y, x = np.ogrid[:100, :100]
+        black_dot = (x - 50)**2 + (y - 50)**2 <= 10**2
+        black_mask[black_dot] = 255
+
+        results = cluster_and_count_pixels(
+            cyan_mask=cyan_mask,
+            magenta_mask=magenta_mask,
+            yellow_mask=yellow_mask,
+            black_mask=black_mask
+        )
+
+        assert len(results) == 1
+        assert results[0].bbox is not None
+
+        x_min, y_min, x_max, y_max = results[0].bbox
+        # For a circle at (50, 50) with radius 10, bbox should be roughly (40, 40, 60, 60)
+        assert 38 <= x_min <= 42
+        assert 38 <= y_min <= 42
+        assert 58 <= x_max <= 62
+        assert 58 <= y_max <= 62
+
+    def test_bbox_rectangular_cluster(self):
+        """bbox should accurately capture rectangular cluster shape."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        cyan_mask = np.zeros((100, 100), dtype=np.uint8)
+        magenta_mask = np.zeros((100, 100), dtype=np.uint8)
+        yellow_mask = np.zeros((100, 100), dtype=np.uint8)
+        black_mask = np.zeros((100, 100), dtype=np.uint8)
+
+        # Rectangular black region from (20,30) to (40,70)
+        black_mask[30:71, 20:41] = 255
+
+        results = cluster_and_count_pixels(
+            cyan_mask=cyan_mask,
+            magenta_mask=magenta_mask,
+            yellow_mask=yellow_mask,
+            black_mask=black_mask
+        )
+
+        assert len(results) == 1
+        assert results[0].bbox is not None
+
+        x_min, y_min, x_max, y_max = results[0].bbox
+        # bbox should match the rectangular region
+        assert x_min == 20
+        assert y_min == 30
+        assert x_max == 40
+        assert y_max == 70

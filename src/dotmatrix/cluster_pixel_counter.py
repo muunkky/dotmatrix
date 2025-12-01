@@ -30,6 +30,7 @@ class ClusterResult:
         black: Black ink pixel count
         red, green, blue: Overlap pixel counts (M∩Y, C∩Y, C∩M)
         partial: True if cluster is at image edge (may have incomplete counts)
+        bbox: Bounding box as (x_min, y_min, x_max, y_max), or None if not computed
     """
     x: int
     y: int
@@ -41,6 +42,7 @@ class ClusterResult:
     green: int
     blue: int
     partial: bool = False
+    bbox: Optional[Tuple[int, int, int, int]] = None
 
     def to_list(self) -> List[int]:
         """Convert to [x, y, C, M, Y, K, R, G, B] list."""
@@ -60,7 +62,8 @@ class ClusterResult:
                 'green': self.green,
                 'blue': self.blue,
             },
-            'partial': self.partial
+            'partial': self.partial,
+            'bbox': list(self.bbox) if self.bbox else None
         }
 
 
@@ -375,6 +378,16 @@ def count_cluster_pixels(
     y_pixels = cluster_mask & (yellow_mask > 0)
     k_pixels = cluster_mask & (black_mask > 0)
 
+    # Compute bounding box from actual ink pixels (not Voronoi region)
+    ink_mask = c_pixels | m_pixels | y_pixels | k_pixels
+    coords = np.argwhere(ink_mask)
+    if len(coords) > 0:
+        y_min, x_min = coords.min(axis=0)
+        y_max, x_max = coords.max(axis=0)
+        bbox = (int(x_min), int(y_min), int(x_max), int(y_max))
+    else:
+        bbox = None
+
     # Count RGB overlaps (these are definitive, no deduplication needed)
     red_pixels = m_pixels & y_pixels & ~c_pixels    # M ∩ Y - C (pure red)
     green_pixels = c_pixels & y_pixels & ~m_pixels  # C ∩ Y - M (pure green)
@@ -408,7 +421,8 @@ def count_cluster_pixels(
         red=red_count,
         green=green_count,
         blue=blue_count,
-        partial=False  # Will be set by caller if needed
+        partial=False,  # Will be set by caller if needed
+        bbox=bbox
     )
 
 
@@ -442,11 +456,27 @@ def count_cluster_pixels_cmyk(
     # Mask for this cluster
     cluster_mask = labels == cluster_id
 
+    # Get ink pixels for this cluster
+    c_pixels = cluster_mask & (cyan_mask > 0)
+    m_pixels = cluster_mask & (magenta_mask > 0)
+    y_pixels = cluster_mask & (yellow_mask > 0)
+    k_pixels = cluster_mask & (black_mask > 0)
+
+    # Compute bounding box from actual ink pixels (not Voronoi region)
+    ink_mask = c_pixels | m_pixels | y_pixels | k_pixels
+    coords = np.argwhere(ink_mask)
+    if len(coords) > 0:
+        y_min, x_min = coords.min(axis=0)
+        y_max, x_max = coords.max(axis=0)
+        bbox = (int(x_min), int(y_min), int(x_max), int(y_max))
+    else:
+        bbox = None
+
     # Count all pixels with each ink (no overlap subtraction)
-    cyan_count = int(np.sum(cluster_mask & (cyan_mask > 0)))
-    magenta_count = int(np.sum(cluster_mask & (magenta_mask > 0)))
-    yellow_count = int(np.sum(cluster_mask & (yellow_mask > 0)))
-    black_count = int(np.sum(cluster_mask & (black_mask > 0)))
+    cyan_count = int(np.sum(c_pixels))
+    magenta_count = int(np.sum(m_pixels))
+    yellow_count = int(np.sum(y_pixels))
+    black_count = int(np.sum(k_pixels))
 
     return ClusterResult(
         x=center[0],
@@ -458,7 +488,8 @@ def count_cluster_pixels_cmyk(
         red=0,
         green=0,
         blue=0,
-        partial=False  # Will be set by caller if needed
+        partial=False,  # Will be set by caller if needed
+        bbox=bbox
     )
 
 
