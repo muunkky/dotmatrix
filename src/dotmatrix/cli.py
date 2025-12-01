@@ -816,12 +816,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                 CMYK_INK_COLORS
             )
 
-            # Show progress message for convex detection (can be slow for large images)
-            if megapixels > 5:  # Show progress for images > 5 MP
-                click.echo(f"Detecting circles (convex edge analysis)...", err=True)
-
             if debug:
-                click.echo(f"Using convex edge detection with palette: {palette}", err=True)
+                click.echo(f"Using CMYK palette mode: {palette}", err=True)
 
             # Convert BGR to RGB for convex detector (needed for both auto and preset)
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
