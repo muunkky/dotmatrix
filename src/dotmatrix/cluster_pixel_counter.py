@@ -746,6 +746,76 @@ def estimate_cluster_radius(
     return int(np.sqrt(area / np.pi))
 
 
+def batch_estimate_radii(
+    labels: np.ndarray,
+    black_mask: np.ndarray,
+    n_clusters: int
+) -> np.ndarray:
+    """Batch estimate radii for all clusters using bincount.
+
+    O(P) instead of O(N×P) where P=pixels, N=clusters.
+
+    Args:
+        labels: (H, W) cluster label array
+        black_mask: (H, W) black ink mask
+        n_clusters: Number of clusters
+
+    Returns:
+        (n_clusters,) array of estimated radii
+    """
+    # Compute black pixel count per cluster in one pass
+    black_in_cluster = (labels.ravel() >= 0) & (black_mask.ravel() > 0)
+    cluster_ids = labels.ravel()[black_in_cluster]
+
+    if len(cluster_ids) == 0:
+        return np.full(n_clusters, 10, dtype=np.int32)
+
+    black_counts = np.bincount(cluster_ids, minlength=n_clusters)
+
+    # Radius = sqrt(area / pi), default 10 for empty clusters
+    radii = np.where(black_counts > 0,
+                     np.sqrt(black_counts / np.pi).astype(np.int32),
+                     10)
+    return radii
+
+
+def batch_compute_edge_flags(
+    centers: List[Tuple[int, int]],
+    radii: np.ndarray,
+    image_shape: Tuple[int, int]
+) -> List[bool]:
+    """Batch compute edge cluster flags.
+
+    O(N) instead of O(N×P).
+
+    Args:
+        centers: List of (x, y) center coordinates
+        radii: (n_clusters,) array of radii
+        image_shape: (height, width)
+
+    Returns:
+        List of boolean flags (True = edge cluster)
+    """
+    h, w = image_shape
+    centers_arr = np.array(centers)
+
+    if len(centers_arr) == 0:
+        return []
+
+    x = centers_arr[:, 0]
+    y = centers_arr[:, 1]
+
+    # Edge if any part of cluster extends beyond image bounds
+    is_edge = (
+        (x - radii < 0) |
+        (x + radii >= w) |
+        (y - radii < 0) |
+        (y + radii >= h)
+    )
+
+    return is_edge.tolist()
+
+
 def cluster_and_count_pixels(
     cyan_mask: np.ndarray,
     magenta_mask: np.ndarray,
@@ -905,6 +975,17 @@ def cluster_and_count_pixels(
             elapsed = time_module.perf_counter() - start_time
             print(f"[GPU] CMYK batch count completed in {elapsed:.3f}s", file=sys.stderr)
 
+        # Batch compute radii and edge flags (O(P) + O(N) instead of O(N×P))
+        if debug:
+            print(f"[GPU] Computing edge flags for {n_clusters} clusters...", file=sys.stderr)
+        start_time = time_module.perf_counter()
+        radii = batch_estimate_radii(labels, black_mask, n_clusters)
+        edge_flags = batch_compute_edge_flags(centers, radii, image_shape)
+        if debug:
+            elapsed = time_module.perf_counter() - start_time
+            print(f"[GPU] Edge flags computed in {elapsed:.3f}s", file=sys.stderr)
+
+        # Build results (O(N) - no per-cluster image ops)
         results = []
         for i, center in enumerate(centers):
             result = ClusterResult(
@@ -917,19 +998,17 @@ def cluster_and_count_pixels(
                 red=0,
                 green=0,
                 blue=0,
-                partial=False,
-                bbox=_compute_bbox(i)
+                partial=edge_flags[i],
+                bbox=None  # Skip bbox for GPU mode (expensive, rarely used)
             )
-
-            # Check if edge cluster
-            radius = estimate_cluster_radius(i, labels, black_mask)
-            if is_edge_cluster(center[0], center[1], radius, image_shape):
-                result.partial = True
-
             results.append(result)
 
     elif use_gpu_counting and color_mode == 'full':
         # Full mode with GPU: compute overlap masks, then batch count
+        if debug:
+            print(f"[GPU] Starting full-color batch count for {n_clusters} clusters...", file=sys.stderr)
+        start_time = time_module.perf_counter()
+
         # Pre-compute overlap masks
         c_mask = cyan_mask > 0
         m_mask = magenta_mask > 0
@@ -956,7 +1035,21 @@ def cluster_and_count_pixels(
             'B': blue_mask,
         }
         counts = gpu_count_cluster_colors(labels, color_masks, n_clusters)
+        if debug:
+            elapsed = time_module.perf_counter() - start_time
+            print(f"[GPU] Full-color batch count completed in {elapsed:.3f}s", file=sys.stderr)
 
+        # Batch compute radii and edge flags (O(P) + O(N) instead of O(N×P))
+        if debug:
+            print(f"[GPU] Computing edge flags for {n_clusters} clusters...", file=sys.stderr)
+        start_time = time_module.perf_counter()
+        radii = batch_estimate_radii(labels, black_mask, n_clusters)
+        edge_flags = batch_compute_edge_flags(centers, radii, image_shape)
+        if debug:
+            elapsed = time_module.perf_counter() - start_time
+            print(f"[GPU] Edge flags computed in {elapsed:.3f}s", file=sys.stderr)
+
+        # Build results (O(N) - no per-cluster image ops)
         results = []
         for i, center in enumerate(centers):
             result = ClusterResult(
@@ -969,15 +1062,9 @@ def cluster_and_count_pixels(
                 red=int(counts['R'][i]),
                 green=int(counts['G'][i]),
                 blue=int(counts['B'][i]),
-                partial=False,
-                bbox=_compute_bbox(i)
+                partial=edge_flags[i],
+                bbox=None  # Skip bbox for GPU mode (expensive, rarely used)
             )
-
-            # Check if edge cluster
-            radius = estimate_cluster_radius(i, labels, black_mask)
-            if is_edge_cluster(center[0], center[1], radius, image_shape):
-                result.partial = True
-
             results.append(result)
 
     else:
