@@ -24,6 +24,14 @@ import numpy as np
 from scipy.ndimage import label as ndimage_label
 from scipy.spatial import KDTree
 
+# Import GPU functions for acceleration (auto-fallback to CPU if unavailable)
+from .gpu import (
+    is_gpu_available,
+    gpu_nms_centers,
+    gpu_create_cluster_labels,
+    gpu_count_cluster_colors,
+)
+
 
 @dataclass
 class ClusterResult:
@@ -298,7 +306,8 @@ def find_black_dot_centers(black_mask: np.ndarray) -> List[Tuple[int, int]]:
 def find_black_dot_centers_distance_transform(
     black_mask: np.ndarray,
     min_distance: int = 10,
-    threshold_ratio: float = 0.5
+    threshold_ratio: float = 0.5,
+    use_gpu: bool = True
 ) -> List[Tuple[int, int]]:
     """Find center points of black dots using distance transform.
 
@@ -315,6 +324,7 @@ def find_black_dot_centers_distance_transform(
         black_mask: Binary mask of black ink pixels
         min_distance: Minimum distance between detected centers (pixels)
         threshold_ratio: Minimum peak height as ratio of max (0-1)
+        use_gpu: If True, use GPU acceleration for NMS when available
 
     Returns:
         List of (x, y) center coordinates for each black dot
@@ -357,7 +367,7 @@ def find_black_dot_centers_distance_transform(
 
     # Non-maximum suppression to ensure min_distance between centers
     if min_distance > 0 and len(centers) > 1:
-        centers = _nms_centers(centers, dist_transform, min_distance)
+        centers = _nms_centers(centers, dist_transform, min_distance, use_gpu=use_gpu)
 
     return centers
 
@@ -365,18 +375,36 @@ def find_black_dot_centers_distance_transform(
 def _nms_centers(
     centers: List[Tuple[int, int]],
     dist_transform: np.ndarray,
-    min_distance: int
+    min_distance: int,
+    use_gpu: bool = True
 ) -> List[Tuple[int, int]]:
     """Apply non-maximum suppression to center points.
 
     Keeps centers with highest distance transform value when multiple
     centers are within min_distance of each other.
+
+    Args:
+        centers: List of (x, y) center coordinates
+        dist_transform: Distance transform array for scoring
+        min_distance: Minimum distance between kept centers
+        use_gpu: If True, use GPU acceleration when available
+
+    Returns:
+        Filtered list of (x, y) center coordinates
     """
     if len(centers) <= 1:
         return centers
 
-    # Sort by distance transform value (descending)
-    scores = [dist_transform[y, x] for x, y in centers]
+    # Extract scores from distance transform
+    scores = np.array([dist_transform[y, x] for x, y in centers])
+    centers_array = np.array(centers, dtype=np.float64)
+
+    # Use GPU-accelerated NMS when available and enabled
+    if use_gpu:
+        result = gpu_nms_centers(centers_array, scores, float(min_distance))
+        return [(int(x), int(y)) for x, y in result]
+
+    # CPU fallback
     sorted_indices = np.argsort(scores)[::-1]
 
     kept = []
@@ -404,7 +432,8 @@ def _nms_centers(
 def create_cluster_labels_from_centers(
     centers: List[Tuple[int, int]],
     image_shape: Tuple[int, int],
-    max_distance: Optional[float] = None
+    max_distance: Optional[float] = None,
+    use_gpu: bool = True
 ) -> np.ndarray:
     """Create cluster label image based on nearest center point.
 
@@ -419,6 +448,7 @@ def create_cluster_labels_from_centers(
         max_distance: Maximum distance to assign to a cluster. Pixels
                      farther than this get label -1. If None, all pixels
                      are assigned.
+        use_gpu: If True, use GPU acceleration when available
 
     Returns:
         Label image where each pixel value is the cluster ID (0-indexed).
@@ -429,8 +459,15 @@ def create_cluster_labels_from_centers(
     if not centers:
         return np.full((h, w), -1, dtype=np.int32)
 
-    # Build KDTree from centers
-    centers_array = np.array(centers)  # Already (x, y) format
+    centers_array = np.array(centers, dtype=np.float32)  # Already (x, y) format
+
+    # Use GPU-accelerated label creation when available and enabled
+    if use_gpu and max_distance is None:
+        # GPU path - uses Voronoi tessellation via nearest center
+        labels = gpu_create_cluster_labels(image_shape, centers_array)
+        return labels.astype(np.int32)
+
+    # CPU fallback - uses KDTree
     tree = KDTree(centers_array)
 
     # For each pixel, find nearest center
@@ -702,7 +739,8 @@ def cluster_and_count_pixels(
     separation_method: str = 'distance_transform',
     min_dot_distance: int = 10,
     anchor_method: str = 'centroid',
-    return_debug_info: bool = False
+    return_debug_info: bool = False,
+    use_gpu: bool = True
 ):
     """Main entry point: cluster CMYK pixels and count per cluster.
 
@@ -732,6 +770,8 @@ def cluster_and_count_pixels(
                    'nearest_pixel' - assign to nearest black pixel (legacy)
         return_debug_info: If True, returns (results, debug_info) tuple with
                    debug_info containing 'labels' and 'centers' for visualization.
+        use_gpu: If True, use GPU acceleration when available. Default True.
+                 GPU is used for NMS, cluster labeling, and color counting.
 
     Returns:
         If return_debug_info=False (default):
@@ -765,7 +805,8 @@ def cluster_and_count_pixels(
         centers = find_black_dot_centers_distance_transform(
             black_mask,
             min_distance=min_dot_distance,
-            threshold_ratio=0.3  # Lower threshold to catch more dots
+            threshold_ratio=0.3,  # Lower threshold to catch more dots
+            use_gpu=use_gpu
         )
     else:
         # Default: connected component analysis
@@ -774,7 +815,7 @@ def cluster_and_count_pixels(
     # Create cluster labels based on anchor_method (decoupled from separation_method)
     if anchor_method == 'centroid':
         # Assign pixels to nearest center point (more stable, default)
-        labels = create_cluster_labels_from_centers(centers, image_shape)
+        labels = create_cluster_labels_from_centers(centers, image_shape, use_gpu=use_gpu)
     else:
         # 'nearest_pixel': Assign to nearest black pixel (legacy behavior)
         labels = create_cluster_labels(black_mask)
@@ -784,32 +825,135 @@ def cluster_and_count_pixels(
             return [], {'labels': labels, 'centers': []}
         return []
 
-    # Choose counting function based on color mode
-    if color_mode == 'cmyk':
-        count_func = count_cluster_pixels_cmyk
-    else:
-        count_func = count_cluster_pixels
-
     # Phase 3: Count pixels per cluster
-    results = []
+    n_clusters = len(centers)
 
-    for i, center in enumerate(centers):
-        result = count_func(
-            cluster_id=i,
-            labels=labels,
-            cyan_mask=cyan_mask,
-            magenta_mask=magenta_mask,
-            yellow_mask=yellow_mask,
-            black_mask=black_mask,
-            center=center
+    # Helper function to compute bbox for a cluster
+    def _compute_bbox(cluster_id: int) -> Optional[Tuple[int, int, int, int]]:
+        """Compute bounding box from ink pixels in cluster."""
+        cluster_mask = labels == cluster_id
+        ink_mask = cluster_mask & (
+            (cyan_mask > 0) | (magenta_mask > 0) |
+            (yellow_mask > 0) | (black_mask > 0)
         )
+        coords = np.argwhere(ink_mask)
+        if len(coords) > 0:
+            y_min, x_min = coords.min(axis=0)
+            y_max, x_max = coords.max(axis=0)
+            return (int(x_min), int(y_min), int(x_max), int(y_max))
+        return None
 
-        # Check if edge cluster
-        radius = estimate_cluster_radius(i, labels, black_mask)
-        if is_edge_cluster(center[0], center[1], radius, image_shape):
-            result.partial = True
+    # Use GPU-accelerated batch counting when available
+    if use_gpu and color_mode == 'cmyk':
+        # CMYK mode: simple batch counting without overlap detection
+        color_masks = {
+            'C': cyan_mask > 0,
+            'M': magenta_mask > 0,
+            'Y': yellow_mask > 0,
+            'K': black_mask > 0,
+        }
+        counts = gpu_count_cluster_colors(labels, color_masks, n_clusters)
 
-        results.append(result)
+        results = []
+        for i, center in enumerate(centers):
+            result = ClusterResult(
+                x=center[0],
+                y=center[1],
+                cyan=int(counts['C'][i]),
+                magenta=int(counts['M'][i]),
+                yellow=int(counts['Y'][i]),
+                black=int(counts['K'][i]),
+                red=0,
+                green=0,
+                blue=0,
+                partial=False,
+                bbox=_compute_bbox(i)
+            )
+
+            # Check if edge cluster
+            radius = estimate_cluster_radius(i, labels, black_mask)
+            if is_edge_cluster(center[0], center[1], radius, image_shape):
+                result.partial = True
+
+            results.append(result)
+
+    elif use_gpu and color_mode == 'full':
+        # Full mode with GPU: compute overlap masks, then batch count
+        # Pre-compute overlap masks
+        c_mask = cyan_mask > 0
+        m_mask = magenta_mask > 0
+        y_mask = yellow_mask > 0
+        k_mask = black_mask > 0
+
+        # Pure colors (excluding overlaps)
+        cyan_pure = c_mask & ~m_mask & ~y_mask
+        magenta_pure = m_mask & ~c_mask & ~y_mask
+        yellow_pure = y_mask & ~c_mask & ~m_mask
+
+        # RGB overlaps (exactly 2 colors, not 3)
+        red_mask = m_mask & y_mask & ~c_mask     # M ∩ Y - C
+        green_mask = c_mask & y_mask & ~m_mask   # C ∩ Y - M
+        blue_mask = c_mask & m_mask & ~y_mask    # C ∩ M - Y
+
+        color_masks = {
+            'C': cyan_pure,
+            'M': magenta_pure,
+            'Y': yellow_pure,
+            'K': k_mask,
+            'R': red_mask,
+            'G': green_mask,
+            'B': blue_mask,
+        }
+        counts = gpu_count_cluster_colors(labels, color_masks, n_clusters)
+
+        results = []
+        for i, center in enumerate(centers):
+            result = ClusterResult(
+                x=center[0],
+                y=center[1],
+                cyan=int(counts['C'][i]),
+                magenta=int(counts['M'][i]),
+                yellow=int(counts['Y'][i]),
+                black=int(counts['K'][i]),
+                red=int(counts['R'][i]),
+                green=int(counts['G'][i]),
+                blue=int(counts['B'][i]),
+                partial=False,
+                bbox=_compute_bbox(i)
+            )
+
+            # Check if edge cluster
+            radius = estimate_cluster_radius(i, labels, black_mask)
+            if is_edge_cluster(center[0], center[1], radius, image_shape):
+                result.partial = True
+
+            results.append(result)
+
+    else:
+        # CPU fallback: per-cluster counting
+        if color_mode == 'cmyk':
+            count_func = count_cluster_pixels_cmyk
+        else:
+            count_func = count_cluster_pixels
+
+        results = []
+        for i, center in enumerate(centers):
+            result = count_func(
+                cluster_id=i,
+                labels=labels,
+                cyan_mask=cyan_mask,
+                magenta_mask=magenta_mask,
+                yellow_mask=yellow_mask,
+                black_mask=black_mask,
+                center=center
+            )
+
+            # Check if edge cluster
+            radius = estimate_cluster_radius(i, labels, black_mask)
+            if is_edge_cluster(center[0], center[1], radius, image_shape):
+                result.partial = True
+
+            results.append(result)
 
     if return_debug_info:
         return results, {'labels': labels, 'centers': centers}

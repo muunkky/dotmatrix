@@ -46,6 +46,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (GPUINTEGRATE Sprint)
+- GPU-accelerated cluster pipeline integrated into `cluster_pixel_counter.py`
+  - `gpu_nms_centers()` replaces CPU-based non-maximum suppression for black dot detection
+  - `gpu_create_cluster_labels()` replaces scipy KDTree for Voronoi tessellation
+  - `gpu_count_cluster_colors()` replaces per-cluster counting loop with batch GPU bincount
+- `use_gpu` parameter added to `cluster_and_count_pixels()` (default: True, auto-detects)
+- GPU acceleration message shown in debug output: "(GPU acceleration enabled)"
+- All 50 cluster_pixel_counter tests pass with GPU integration
+- All 13 GPU acceleration tests pass
+
+### Technical Details (GPUINTEGRATE Sprint)
+- GPU NMS: O(n²) distance matrix on GPU vs O(n²) CPU loop - faster for >500 centers
+- GPU labeling: Parallel pixel-center distance computation vs KDTree query
+- GPU color counting: Batch bincount across all colors vs per-cluster loop
+- Automatic CPU fallback when CuPy not available
+- No change to public API - existing code works unchanged
+
 ### Added (GPURENDER Sprint)
 - GPU acceleration framework with CuPy for CUDA-enabled systems
   - `--gpu/--no-gpu` CLI flag for explicit GPU control (auto-detects by default)
