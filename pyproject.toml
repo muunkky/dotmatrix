@@ -44,6 +44,9 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+gpu = [
+    "cupy-cuda12x>=13.0.0",  # GPU acceleration via CUDA 12.x
+]
 
 [project.scripts]
 dotmatrix = "dotmatrix.cli:main"
