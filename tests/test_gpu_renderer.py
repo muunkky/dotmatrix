@@ -4,6 +4,11 @@ Tests verify:
 1. GPU output matches CPU baseline within tolerance
 2. Performance improvement with GPU acceleration
 3. Graceful fallback to CPU when GPU unavailable
+
+Tolerance Thresholds (documented for CI/CD):
+- Max pixel difference: 1 (anti-aliasing rounding)
+- Max differing pixels: <0.1% of total pixels
+- Tested image sizes: 100x100 (small), 350x350 (medium), 500x500+ (large)
 """
 
 import pytest
@@ -143,6 +148,38 @@ class TestGPURendererEquivalence:
         diff = np.abs(cpu_result.astype(int) - gpu_result.astype(int))
         max_diff = np.max(diff)
         assert max_diff <= 1
+
+    def test_large_image_equivalence(self):
+        """GPU produces equivalent output for large images (1000x1000)."""
+        # Large image with many clusters - stress test
+        clusters = []
+        for row in range(10):
+            for col in range(10):
+                x = 50 + col * 100
+                y = 50 + row * 100
+                clusters.append(make_test_cluster(
+                    x, y,
+                    black=200 + (row + col) * 20,
+                    cyan=100 + col * 10,
+                    magenta=100 + row * 10,
+                    yellow=80 + (row * col) % 50,
+                ))
+
+        image_shape = (1000, 1000)
+
+        cpu_result = render_flower_global_blend(clusters, image_shape)
+        gpu_result = render_flower_global_blend_gpu(clusters, image_shape, use_gpu=True)
+
+        np.testing.assert_array_equal(cpu_result.shape, gpu_result.shape)
+
+        # Count significantly different pixels
+        diff = np.abs(cpu_result.astype(int) - gpu_result.astype(int))
+        diff_pixels = np.sum(diff > 1)
+        total_pixels = cpu_result.shape[0] * cpu_result.shape[1]
+
+        # Less than 0.1% of pixels should differ
+        diff_ratio = diff_pixels / total_pixels
+        assert diff_ratio < 0.001, f"Too many differing pixels in large image: {diff_ratio:.4%}"
 
 
 class TestGPURendererFallback:
