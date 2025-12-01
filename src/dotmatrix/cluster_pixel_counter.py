@@ -542,8 +542,9 @@ def cluster_and_count_pixels(
     color_mode: str = 'full',
     separation_method: str = 'connected',
     min_dot_distance: int = 10,
-    anchor_method: str = 'centroid'
-) -> List[ClusterResult]:
+    anchor_method: str = 'centroid',
+    return_debug_info: bool = False
+):
     """Main entry point: cluster CMYK pixels and count per cluster.
 
     Complete pipeline:
@@ -570,10 +571,15 @@ def cluster_and_count_pixels(
         anchor_method: Method for assigning pixels to clusters:
                    'centroid' (default) - assign to nearest black dot center
                    'nearest_pixel' - assign to nearest black pixel (legacy)
+        return_debug_info: If True, returns (results, debug_info) tuple with
+                   debug_info containing 'labels' and 'centers' for visualization.
 
     Returns:
-        List of ClusterResult, one per black dot cluster.
-        Output format: [x, y, C, M, Y, K, R, G, B] with no double counting.
+        If return_debug_info=False (default):
+            List of ClusterResult, one per black dot cluster.
+        If return_debug_info=True:
+            Tuple of (results, debug_info) where debug_info is a dict with
+            'labels' (np.ndarray) and 'centers' (list of (x,y) tuples).
     """
     if image_shape is None:
         image_shape = black_mask.shape
@@ -615,6 +621,8 @@ def cluster_and_count_pixels(
         labels = create_cluster_labels(black_mask)
 
     if not centers:
+        if return_debug_info:
+            return [], {'labels': labels, 'centers': []}
         return []
 
     # Choose counting function based on color mode
@@ -644,4 +652,121 @@ def cluster_and_count_pixels(
 
         results.append(result)
 
+    if return_debug_info:
+        return results, {'labels': labels, 'centers': centers}
     return results
+
+
+# =============================================================================
+# Debug Visualization Functions
+# =============================================================================
+
+def generate_cluster_colors(n_clusters: int) -> List[Tuple[int, int, int]]:
+    """Generate N visually distinct colors for cluster visualization.
+
+    Uses HSV color space with evenly spaced hues for maximum visual
+    distinction between clusters.
+
+    Args:
+        n_clusters: Number of distinct colors needed
+
+    Returns:
+        List of BGR color tuples (OpenCV format)
+    """
+    if n_clusters == 0:
+        return []
+
+    colors = []
+    for i in range(n_clusters):
+        # Evenly space hues around the color wheel (OpenCV hue: 0-180)
+        hue = int(180 * i / n_clusters)
+        # High saturation and value for visibility
+        hsv_color = np.array([[[hue, 255, 200]]], dtype=np.uint8)
+        bgr_color = cv2.cvtColor(hsv_color, cv2.COLOR_HSV2BGR)[0, 0]
+        colors.append(tuple(int(c) for c in bgr_color))
+
+    return colors
+
+
+def generate_cluster_debug_image(
+    labels: np.ndarray,
+    centers: List[Tuple[int, int]],
+    partial_flags: List[bool],
+    original_image: Optional[np.ndarray] = None,
+    overlay_alpha: float = 0.5
+) -> np.ndarray:
+    """Generate a debug visualization image showing cluster assignments.
+
+    Creates a color-coded image where each cluster is drawn in a unique,
+    visually distinct color. Cluster centers are marked with crosshairs.
+
+    Args:
+        labels: 2D array where each pixel contains its cluster ID (0-indexed),
+                or -1 for background/unassigned pixels
+        centers: List of (x, y) center coordinates for each cluster
+        partial_flags: List of booleans indicating if each cluster is partial
+        original_image: Optional BGR image to overlay clusters on
+        overlay_alpha: Transparency for overlay mode (0=fully transparent, 1=opaque)
+
+    Returns:
+        BGR image with color-coded clusters and marked centers
+    """
+    h, w = labels.shape[:2]
+
+    # Find unique cluster IDs (excluding -1 background)
+    unique_ids = np.unique(labels)
+    cluster_ids = [cid for cid in unique_ids if cid >= 0]
+    n_clusters = len(cluster_ids)
+
+    # Generate distinct colors for each cluster
+    colors = generate_cluster_colors(max(n_clusters, 1))
+
+    # Create output image
+    debug_img = np.zeros((h, w, 3), dtype=np.uint8)
+
+    # Fill each cluster with its color
+    for idx, cluster_id in enumerate(cluster_ids):
+        color = colors[idx % len(colors)]
+        mask = labels == cluster_id
+        debug_img[mask] = color
+
+    # If overlay mode, blend with original image
+    if original_image is not None:
+        # Ensure original is BGR and same size
+        if len(original_image.shape) == 2:
+            original_bgr = cv2.cvtColor(original_image, cv2.COLOR_GRAY2BGR)
+        else:
+            original_bgr = original_image
+
+        if original_bgr.shape[:2] != (h, w):
+            original_bgr = cv2.resize(original_bgr, (w, h))
+
+        debug_img = cv2.addWeighted(
+            debug_img, overlay_alpha,
+            original_bgr, 1 - overlay_alpha,
+            0
+        )
+
+    # Mark cluster centers with crosshairs
+    crosshair_color = (255, 255, 255)  # White
+    crosshair_size = 5
+
+    for i, (cx, cy) in enumerate(centers):
+        # Ensure center is within image bounds
+        if 0 <= cx < w and 0 <= cy < h:
+            # Draw crosshair
+            cv2.line(debug_img,
+                     (cx - crosshair_size, cy),
+                     (cx + crosshair_size, cy),
+                     crosshair_color, 1)
+            cv2.line(debug_img,
+                     (cx, cy - crosshair_size),
+                     (cx, cy + crosshair_size),
+                     crosshair_color, 1)
+
+            # Mark partial clusters with a circle
+            if i < len(partial_flags) and partial_flags[i]:
+                cv2.circle(debug_img, (cx, cy), crosshair_size + 2,
+                          (0, 0, 255), 1)  # Red circle for partial
+
+    return debug_img

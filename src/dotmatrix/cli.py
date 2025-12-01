@@ -210,6 +210,11 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Cluster assignment method: centroid (default, uses dot centers) or pixel (legacy, assigns to nearest black pixel)'
 )
 @optgroup.option(
+    '--debug-clusters',
+    is_flag=True,
+    help='Generate cluster debug visualization showing color-coded cluster assignments (saves cluster_debug.png)'
+)
+@optgroup.option(
     '--reconstitute',
     is_flag=True,
     help='Generate reconstituted bullseye pattern image from clusters (CMYK mode only)'
@@ -336,7 +341,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -371,7 +376,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort)
 
 
@@ -607,7 +612,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -981,8 +986,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     sys.exit(0)
 
                 # Standard mode - full-image processing
-                elif cluster_count or reconstitute:
-                    from .cluster_pixel_counter import cluster_and_count_pixels
+                elif cluster_count or reconstitute or debug_clusters:
+                    from .cluster_pixel_counter import cluster_and_count_pixels, generate_cluster_debug_image
                     from .convex_detector import separate_cmyk_inks
                     import json as json_module
 
@@ -995,16 +1000,24 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     # Map CLI anchor choice to parameter value
                     anchor_method_value = 'nearest_pixel' if cluster_anchor == 'pixel' else 'centroid'
 
-                    # Run cluster counting
-                    cluster_results = cluster_and_count_pixels(
+                    # Run cluster counting (request debug info if debug_clusters enabled)
+                    result = cluster_and_count_pixels(
                         cyan_mask=ink_masks['cyan'],
                         magenta_mask=ink_masks['magenta'],
                         yellow_mask=ink_masks['yellow'],
                         black_mask=ink_masks['black'],
                         image_shape=image_rgb.shape[:2],
                         color_mode=color_mode_lower,
-                        anchor_method=anchor_method_value
+                        anchor_method=anchor_method_value,
+                        return_debug_info=debug_clusters
                     )
+
+                    # Handle return value based on debug mode
+                    if debug_clusters:
+                        cluster_results, debug_info = result
+                    else:
+                        cluster_results = result
+                        debug_info = None
 
                     click.echo(f"Found {len(cluster_results)} cluster(s)", err=True)
 
@@ -1152,6 +1165,20 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             diff_path = generate_diff_from_images(image, reconstituted, run_dir)
                             click.echo(f"  - diff.png (pixel difference)")
                             output_files.append(diff_path)
+
+                            # Generate cluster debug visualization if requested
+                            if debug_clusters and debug_info is not None:
+                                partial_flags = [r.partial for r in cluster_results]
+                                debug_img = generate_cluster_debug_image(
+                                    debug_info['labels'],
+                                    debug_info['centers'],
+                                    partial_flags,
+                                    original_image=image
+                                )
+                                debug_cluster_path = run_dir / 'cluster_debug.png'
+                                cv2.imwrite(str(debug_cluster_path), debug_img)
+                                click.echo(f"  - cluster_debug.png (cluster assignments)")
+                                output_files.append(debug_cluster_path)
 
                             # Create manifest if not disabled
                             if not no_manifest:

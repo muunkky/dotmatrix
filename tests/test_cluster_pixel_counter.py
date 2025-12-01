@@ -815,3 +815,134 @@ class TestBoundingBox:
         assert y_min == 30
         assert x_max == 40
         assert y_max == 70
+
+
+class TestDebugVisualization:
+    """Test debug visualization mode for cluster analysis.
+    Feature: CLUSTEREXT sprint - card elr3ns
+    """
+
+    def test_generate_cluster_colors_returns_correct_count(self):
+        """generate_cluster_colors should return n distinct colors."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_colors
+
+        colors = generate_cluster_colors(5)
+        assert len(colors) == 5
+
+        colors = generate_cluster_colors(10)
+        assert len(colors) == 10
+
+    def test_generate_cluster_colors_are_distinct(self):
+        """Each color should be visually distinct (different hues)."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_colors
+
+        colors = generate_cluster_colors(6)
+        # All colors should be different tuples
+        unique_colors = set(tuple(c) for c in colors)
+        assert len(unique_colors) == 6
+
+    def test_generate_cluster_colors_format(self):
+        """Colors should be BGR tuples with valid values."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_colors
+
+        colors = generate_cluster_colors(3)
+        for color in colors:
+            assert len(color) == 3  # BGR
+            assert all(0 <= v <= 255 for v in color)
+
+    def test_generate_cluster_debug_image_dimensions(self):
+        """Debug image should have same dimensions as label image."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_debug_image
+
+        # Create simple 100x100 label image with 2 clusters
+        labels = np.zeros((100, 100), dtype=np.int32)
+        labels[:50, :] = 0
+        labels[50:, :] = 1
+
+        centers = [(25, 25), (75, 75)]
+        partial_flags = [False, False]
+
+        debug_img = generate_cluster_debug_image(labels, centers, partial_flags)
+
+        assert debug_img.shape[:2] == (100, 100)
+        assert debug_img.shape[2] == 3  # BGR color image
+
+    def test_generate_cluster_debug_image_unique_colors_per_cluster(self):
+        """Each cluster region should have a unique color."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_debug_image
+
+        # Create 100x100 image with 3 distinct cluster regions
+        labels = np.zeros((100, 100), dtype=np.int32)
+        labels[0:33, :] = 0
+        labels[33:66, :] = 1
+        labels[66:100, :] = 2
+
+        centers = [(16, 50), (50, 50), (83, 50)]
+        partial_flags = [False, False, False]
+
+        debug_img = generate_cluster_debug_image(labels, centers, partial_flags)
+
+        # Sample colors from each region (away from center markers)
+        color_0 = tuple(debug_img[10, 10])
+        color_1 = tuple(debug_img[50, 10])
+        color_2 = tuple(debug_img[80, 10])
+
+        # All cluster colors should be different
+        assert color_0 != color_1
+        assert color_1 != color_2
+        assert color_0 != color_2
+
+    def test_generate_cluster_debug_image_marks_centers(self):
+        """Cluster centers should be marked (crosshair or dot)."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_debug_image
+
+        labels = np.zeros((100, 100), dtype=np.int32)
+        centers = [(50, 50)]
+        partial_flags = [False]
+
+        debug_img = generate_cluster_debug_image(labels, centers, partial_flags)
+
+        # Center pixel should be different from surrounding cluster color
+        center_color = tuple(debug_img[50, 50])
+        nearby_color = tuple(debug_img[40, 40])
+
+        # Center should be marked differently (typically with crosshair)
+        # The center or pixels around it should differ from cluster fill
+        assert center_color != nearby_color or \
+               tuple(debug_img[50, 45]) != nearby_color or \
+               tuple(debug_img[45, 50]) != nearby_color
+
+    def test_generate_cluster_debug_image_with_overlay(self):
+        """Overlay mode should blend with original image."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_debug_image
+
+        labels = np.zeros((100, 100), dtype=np.int32)
+        centers = [(50, 50)]
+        partial_flags = [False]
+
+        # Create original image (solid red)
+        original = np.zeros((100, 100, 3), dtype=np.uint8)
+        original[:] = (0, 0, 255)  # BGR red
+
+        debug_img = generate_cluster_debug_image(
+            labels, centers, partial_flags,
+            original_image=original,
+            overlay_alpha=0.5
+        )
+
+        # Result should be blended (not pure cluster color, not pure red)
+        sample_color = debug_img[40, 40]
+        # Should have some red component from original
+        assert sample_color[2] > 50  # Red channel > 50 from blend
+
+    def test_generate_cluster_debug_image_empty_labels(self):
+        """Should handle empty/all-background labels gracefully."""
+        from dotmatrix.cluster_pixel_counter import generate_cluster_debug_image
+
+        labels = np.full((100, 100), -1, dtype=np.int32)  # All background
+        centers = []
+        partial_flags = []
+
+        debug_img = generate_cluster_debug_image(labels, centers, partial_flags)
+
+        assert debug_img.shape == (100, 100, 3)
