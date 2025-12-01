@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import List, Tuple, Dict
 import numpy as np
+import cv2
 from PIL import Image, ImageDraw
 from collections import defaultdict
 
@@ -337,4 +338,85 @@ def generate_diff_image(
     img = Image.fromarray(diff_img)
     filepath = output_dir / "diff.png"
     img.save(filepath, 'PNG')
+    return filepath
+
+
+def generate_composite_from_images(
+    source_image: np.ndarray,
+    rendered_image: np.ndarray,
+    output_dir: Path,
+    alpha: float = 0.5
+) -> Path:
+    """Generate a composite overlay blending source and rendered images.
+
+    Creates a 50/50 blend of the source and rendered images for visual
+    comparison of detection and rendering quality.
+
+    Args:
+        source_image: Original source image (numpy array, BGR)
+        rendered_image: Rendered/reconstituted image (numpy array, BGR)
+        output_dir: Directory to save the composite image
+        alpha: Blend factor (0=source only, 1=rendered only, 0.5=equal blend)
+
+    Returns:
+        Path to the created composite.png file
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle size mismatch (e.g., if render_scale != 1)
+    if source_image.shape[:2] != rendered_image.shape[:2]:
+        # Resize source to match rendered
+        rendered_h, rendered_w = rendered_image.shape[:2]
+        source_resized = cv2.resize(source_image, (rendered_w, rendered_h))
+    else:
+        source_resized = source_image
+
+    # Blend images
+    composite = cv2.addWeighted(source_resized, 1 - alpha, rendered_image, alpha, 0)
+
+    filepath = output_dir / "composite.png"
+    cv2.imwrite(str(filepath), composite)
+    return filepath
+
+
+def generate_diff_from_images(
+    source_image: np.ndarray,
+    rendered_image: np.ndarray,
+    output_dir: Path,
+    amplify: int = 3
+) -> Path:
+    """Generate a diff image showing pixel differences between source and rendered.
+
+    Creates an image showing |source - rendered| per pixel, optionally amplified
+    for visibility. Useful for identifying rendering errors and coverage gaps.
+
+    Args:
+        source_image: Original source image (numpy array, BGR)
+        rendered_image: Rendered/reconstituted image (numpy array, BGR)
+        output_dir: Directory to save the diff image
+        amplify: Multiplier for diff values to make small errors visible
+
+    Returns:
+        Path to the created diff.png file
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle size mismatch
+    if source_image.shape[:2] != rendered_image.shape[:2]:
+        rendered_h, rendered_w = rendered_image.shape[:2]
+        source_resized = cv2.resize(source_image, (rendered_w, rendered_h))
+    else:
+        source_resized = source_image
+
+    # Calculate absolute difference
+    diff = cv2.absdiff(source_resized, rendered_image)
+
+    # Amplify for visibility
+    if amplify > 1:
+        diff = np.clip(diff.astype(np.int32) * amplify, 0, 255).astype(np.uint8)
+
+    filepath = output_dir / "diff.png"
+    cv2.imwrite(str(filepath), diff)
     return filepath

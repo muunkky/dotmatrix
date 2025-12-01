@@ -19,6 +19,8 @@ import json
 import hashlib
 import warnings
 
+import sys
+import time as time_module
 import cv2
 import numpy as np
 from scipy.ndimage import label as ndimage_label
@@ -30,6 +32,8 @@ from .gpu import (
     gpu_nms_centers,
     gpu_create_cluster_labels,
     gpu_count_cluster_colors,
+    gpu_distance_transform,
+    gpu_maximum_filter,
 )
 
 
@@ -307,7 +311,8 @@ def find_black_dot_centers_distance_transform(
     black_mask: np.ndarray,
     min_distance: int = 10,
     threshold_ratio: float = 0.5,
-    use_gpu: bool = True
+    use_gpu: bool = True,
+    debug: bool = False
 ) -> List[Tuple[int, int]]:
     """Find center points of black dots using distance transform.
 
@@ -316,29 +321,30 @@ def find_black_dot_centers_distance_transform(
     component centroids for dense halftone patterns where dots touch.
 
     Algorithm:
-    1. Apply distance transform (distance from each pixel to edge)
-    2. Find local maxima (peaks = circle centers)
-    3. Filter by minimum distance between peaks
+    1. Apply distance transform (distance from each pixel to edge) - GPU accelerated
+    2. Find local maxima (peaks = circle centers) - GPU accelerated
+    3. Filter by minimum distance between peaks - GPU accelerated NMS
 
     Args:
         black_mask: Binary mask of black ink pixels
         min_distance: Minimum distance between detected centers (pixels)
         threshold_ratio: Minimum peak height as ratio of max (0-1)
-        use_gpu: If True, use GPU acceleration for NMS when available
+        use_gpu: If True, use GPU acceleration when available
 
     Returns:
         List of (x, y) center coordinates for each black dot
     """
-    from scipy.ndimage import maximum_filter
-
     if np.sum(black_mask) == 0:
         return []
 
     # Ensure binary mask
     binary = (black_mask > 0).astype(np.uint8)
 
-    # Distance transform: each pixel gets distance to nearest edge
-    dist_transform = cv2.distanceTransform(binary, cv2.DIST_L2, 5)
+    # Distance transform: each pixel gets distance to nearest edge (GPU accelerated)
+    if use_gpu:
+        dist_transform = gpu_distance_transform(binary)
+    else:
+        dist_transform = cv2.distanceTransform(binary, cv2.DIST_L2, 5).astype(np.float32)
 
     if dist_transform.max() == 0:
         return []
@@ -347,10 +353,14 @@ def find_black_dot_centers_distance_transform(
     # Use ratio of max, but floor at 0.5 to catch single-pixel dots (dist_transform=1)
     threshold = max(0.5, threshold_ratio * dist_transform.max())
 
-    # Find local maxima using maximum filter
+    # Find local maxima using maximum filter (GPU accelerated)
     # A pixel is a local max if it equals the max in its neighborhood
     neighborhood_size = max(3, min_distance)
-    local_max = maximum_filter(dist_transform, size=neighborhood_size)
+    if use_gpu:
+        local_max = gpu_maximum_filter(dist_transform, size=neighborhood_size)
+    else:
+        from scipy.ndimage import maximum_filter
+        local_max = maximum_filter(dist_transform, size=neighborhood_size)
 
     # Peaks are where distance transform equals local max AND above threshold
     peaks = (dist_transform == local_max) & (dist_transform > threshold) & binary.astype(bool)
@@ -367,7 +377,7 @@ def find_black_dot_centers_distance_transform(
 
     # Non-maximum suppression to ensure min_distance between centers
     if min_distance > 0 and len(centers) > 1:
-        centers = _nms_centers(centers, dist_transform, min_distance, use_gpu=use_gpu)
+        centers = _nms_centers(centers, dist_transform, min_distance, use_gpu=use_gpu, debug=debug)
 
     return centers
 
@@ -376,7 +386,8 @@ def _nms_centers(
     centers: List[Tuple[int, int]],
     dist_transform: np.ndarray,
     min_distance: int,
-    use_gpu: bool = True
+    use_gpu: bool = True,
+    debug: bool = False
 ) -> List[Tuple[int, int]]:
     """Apply non-maximum suppression to center points.
 
@@ -388,6 +399,7 @@ def _nms_centers(
         dist_transform: Distance transform array for scoring
         min_distance: Minimum distance between kept centers
         use_gpu: If True, use GPU acceleration when available
+        debug: If True, print timing information to stderr
 
     Returns:
         Filtered list of (x, y) center coordinates
@@ -399,12 +411,18 @@ def _nms_centers(
     scores = np.array([dist_transform[y, x] for x, y in centers])
     centers_array = np.array(centers, dtype=np.float64)
 
-    # Use GPU-accelerated NMS when available and enabled
+    # Always use GPU for NMS when enabled (no thresholds)
     if use_gpu:
+        if debug:
+            print(f"[GPU] NMS: {len(centers)} centers, using GPU", file=sys.stderr)
+        start_time = time_module.perf_counter()
         result = gpu_nms_centers(centers_array, scores, float(min_distance))
+        if debug:
+            elapsed = time_module.perf_counter() - start_time
+            print(f"[GPU] NMS completed in {elapsed:.3f}s -> {len(result)} centers kept", file=sys.stderr)
         return [(int(x), int(y)) for x, y in result]
 
-    # CPU fallback
+    # CPU path (used for small center counts or when GPU disabled)
     sorted_indices = np.argsort(scores)[::-1]
 
     kept = []
@@ -461,13 +479,12 @@ def create_cluster_labels_from_centers(
 
     centers_array = np.array(centers, dtype=np.float32)  # Already (x, y) format
 
-    # Use GPU-accelerated label creation when available and enabled
-    if use_gpu and max_distance is None:
-        # GPU path - uses Voronoi tessellation via nearest center
-        labels = gpu_create_cluster_labels(image_shape, centers_array)
-        return labels.astype(np.int32)
+    # NOTE: GPU cluster labeling is SLOWER than KDTree (O(M×N) vs O(M log N))
+    # Benchmarks show GPU is 10x slower for typical tile sizes.
+    # Always use KDTree for cluster labeling - it's superior.
+    # GPU is only beneficial for NMS (>200 centers) and color counting (>1M pixels).
 
-    # CPU fallback - uses KDTree
+    # Use KDTree for cluster labeling (always)
     tree = KDTree(centers_array)
 
     # For each pixel, find nearest center
@@ -740,7 +757,8 @@ def cluster_and_count_pixels(
     min_dot_distance: int = 10,
     anchor_method: str = 'centroid',
     return_debug_info: bool = False,
-    use_gpu: bool = True
+    use_gpu: bool = True,
+    debug: bool = False
 ):
     """Main entry point: cluster CMYK pixels and count per cluster.
 
@@ -794,6 +812,15 @@ def cluster_and_count_pixels(
     if color_mode == 'absolute':
         color_mode = 'cmyk'
 
+    # Debug: Show GPU status at start
+    if debug:
+        gpu_avail = is_gpu_available()
+        print(f"[GPU] === Cluster Pixel Counter ===", file=sys.stderr)
+        print(f"[GPU] GPU available: {gpu_avail}", file=sys.stderr)
+        print(f"[GPU] use_gpu parameter: {use_gpu}", file=sys.stderr)
+        print(f"[GPU] Image shape: {image_shape}", file=sys.stderr)
+        print(f"[GPU] Color mode: {color_mode}", file=sys.stderr)
+
     # Phase 1: Complete midtone masks (used for clustering reference)
     # Note: We don't actually need the completed masks for counting,
     # just for understanding - the counting uses original masks
@@ -802,12 +829,19 @@ def cluster_and_count_pixels(
     # Phase 2: Find black dot centers based on separation_method
     if separation_method == 'distance_transform':
         # Use distance transform for better separation of merged dots
+        if debug:
+            print(f"[GPU] Finding centers via distance transform...", file=sys.stderr)
+        start_time = time_module.perf_counter()
         centers = find_black_dot_centers_distance_transform(
             black_mask,
             min_distance=min_dot_distance,
             threshold_ratio=0.3,  # Lower threshold to catch more dots
-            use_gpu=use_gpu
+            use_gpu=use_gpu,
+            debug=debug
         )
+        if debug:
+            elapsed = time_module.perf_counter() - start_time
+            print(f"[GPU] Found {len(centers)} centers in {elapsed:.3f}s", file=sys.stderr)
     else:
         # Default: connected component analysis
         centers = find_black_dot_centers(black_mask)
@@ -843,9 +877,23 @@ def cluster_and_count_pixels(
             return (int(x_min), int(y_min), int(x_max), int(y_max))
         return None
 
-    # Use GPU-accelerated batch counting when available
-    if use_gpu and color_mode == 'cmyk':
+    # Always use GPU for color counting when enabled (no thresholds)
+    n_pixels = image_shape[0] * image_shape[1]
+    use_gpu_counting = use_gpu
+
+    if debug:
+        print(f"[GPU] Color counting: {n_pixels:,} pixels", file=sys.stderr)
+        if use_gpu_counting:
+            print(f"[GPU] Color counting: ENABLED", file=sys.stderr)
+        else:
+            print(f"[CPU] Color counting: GPU disabled", file=sys.stderr)
+
+    # Use GPU-accelerated batch counting when available and beneficial
+    if use_gpu_counting and color_mode == 'cmyk':
         # CMYK mode: simple batch counting without overlap detection
+        if debug:
+            print(f"[GPU] Starting CMYK batch count for {n_clusters} clusters...", file=sys.stderr)
+        start_time = time_module.perf_counter()
         color_masks = {
             'C': cyan_mask > 0,
             'M': magenta_mask > 0,
@@ -853,6 +901,9 @@ def cluster_and_count_pixels(
             'K': black_mask > 0,
         }
         counts = gpu_count_cluster_colors(labels, color_masks, n_clusters)
+        if debug:
+            elapsed = time_module.perf_counter() - start_time
+            print(f"[GPU] CMYK batch count completed in {elapsed:.3f}s", file=sys.stderr)
 
         results = []
         for i, center in enumerate(centers):
@@ -877,7 +928,7 @@ def cluster_and_count_pixels(
 
             results.append(result)
 
-    elif use_gpu and color_mode == 'full':
+    elif use_gpu_counting and color_mode == 'full':
         # Full mode with GPU: compute overlap masks, then batch count
         # Pre-compute overlap masks
         c_mask = cyan_mask > 0

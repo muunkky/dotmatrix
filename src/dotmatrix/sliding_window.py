@@ -30,6 +30,7 @@ from .cluster_pixel_counter import (
     find_black_dot_centers,
 )
 from .circle_renderer import render_flower_global_blend
+from .gpu import gpu_separate_cmyk_inks
 
 
 def process_sliding_window(
@@ -143,8 +144,11 @@ def process_sliding_window(
         if debug:
             print(f"  Core region: ({core_x1},{core_y1}) to ({core_x2},{core_y2})")
 
-        # Get ink masks for this tile
-        ink_masks = separate_cmyk_inks(tile_bgr)
+        # Get ink masks for this tile (GPU-accelerated when enabled)
+        if use_gpu:
+            ink_masks = gpu_separate_cmyk_inks(tile_bgr)
+        else:
+            ink_masks = separate_cmyk_inks(tile_bgr)
 
         # Detect and count clusters
         tile_clusters = cluster_and_count_pixels(
@@ -156,7 +160,9 @@ def process_sliding_window(
             color_mode=color_mode.lower(),
             separation_method=separation_method,
             min_dot_distance=min_dot_distance,
-            anchor_method=anchor_method
+            anchor_method=anchor_method,
+            use_gpu=use_gpu,
+            debug=debug
         )
 
         stats['clusters_per_tile'].append(len(tile_clusters))

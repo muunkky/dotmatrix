@@ -1091,9 +1091,22 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                 elif cluster_count or reconstitute or debug_clusters:
                     from .cluster_pixel_counter import cluster_and_count_pixels, generate_cluster_debug_image
                     from .convex_detector import separate_cmyk_inks
+                    from .gpu import is_gpu_available, get_gpu_info
                     import json as json_module
 
                     click.echo("Running cluster pixel counting...", err=True)
+
+                    # Check GPU availability for standard mode
+                    gpu_available = is_gpu_available()
+                    use_gpu = gpu if gpu is not None else gpu_available
+
+                    if use_gpu and gpu_available:
+                        click.echo("  (GPU acceleration enabled)", err=True)
+                    elif gpu and not gpu_available:
+                        gpu_info = get_gpu_info()
+                        error_msg = gpu_info.get('error', 'Unknown error')
+                        click.echo(f"  Warning: --gpu requested but GPU unavailable: {error_msg}", err=True)
+                        use_gpu = False
 
                     # Get ink masks (with quantization for clean separation)
                     # Note: separate_cmyk_inks expects BGR format (native cv2)
@@ -1111,7 +1124,9 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                         image_shape=image_rgb.shape[:2],
                         color_mode=color_mode_lower,
                         anchor_method=anchor_method_value,
-                        return_debug_info=debug_clusters
+                        return_debug_info=debug_clusters,
+                        use_gpu=use_gpu,
+                        debug=debug
                     )
 
                     # Handle return value based on debug mode
