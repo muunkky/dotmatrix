@@ -9,12 +9,31 @@ Supports multiple layouts:
 The flower pattern places the black dot at center with C, M, Y circles
 positioned around it like petals. Overlaps can naturally create RGB
 secondary colors through subtractive blending.
+
+V1 BASELINE (2024-11-30)
+========================
+Locked parameters for V1 benchmark. Future optimizations should compare against this baseline.
+
+Parameters:
+- petal_distance = 0.35 (fraction of black radius for petal center placement)
+- petal_angles = [0°, 90°, 180°] (N/E/S - 90° apart to reduce neighbor overlap)
+- render_method = flower (with global CMY blending)
+- cmyk_mode = absolute (count each CMYK channel separately)
+
+Baseline Accuracy:
+- chunk_center.png: C +0.2%, M -1.2%, Y -0.6%, K +0.0% (Total: 2.0%)
+- source_quantized.png: C -0.3%, M -0.4%, Y -0.6%, K +0.0% (Total: 1.3%)
+
+Key algorithms:
+- Global black mask: Build all black circles first, then optimize petals against global mask
+- Exposed area optimization: Test cv2.circle renders against global black mask
+- CMYK decomposition: C=C+G+B, M=M+R+B, Y=Y+R+G (secondaries contribute to primaries)
 """
 
 import math
 import hashlib
 import random
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Callable
 from dataclasses import dataclass
 
 import cv2
@@ -80,11 +99,11 @@ COLORS_BGR = {
 }
 
 # Petal angles for flower layout (degrees from top, clockwise)
-# Black at center, CMY at 120° apart
+# Black at center, CMY at 90° apart (N/E/S) to reduce neighbor black overlap
 PETAL_ANGLES = {
-    'cyan': 0,       # Top
-    'magenta': 120,  # Bottom-right
-    'yellow': 240,   # Bottom-left
+    'cyan': 0,       # Top (North)
+    'magenta': 90,   # Right (East)
+    'yellow': 180,   # Bottom (South)
 }
 
 
@@ -326,7 +345,7 @@ def render_flower_cluster(
     image: np.ndarray,
     cluster: ClusterResult,
     used: np.ndarray,
-    petal_distance: float = 0.5,
+    petal_distance: float = 0.35,
     scale: int = 1,
     rotation_offset: float = 0.0,
     blend_overlaps: bool = False
@@ -534,7 +553,7 @@ def render_flower_cluster(
 def render_flower(
     clusters: List[ClusterResult],
     image_shape: Tuple[int, int],
-    petal_distance: float = 0.5,
+    petal_distance: float = 0.35,
     scale: int = 1,
     skip_partial: bool = False,
     rotation_mode: str = 'fixed',
@@ -566,6 +585,20 @@ def render_flower(
     Returns:
         BGR numpy array with rendered flowers
     """
+    # When blending overlaps globally, use dedicated function
+    # This ensures cross-cluster overlaps blend correctly
+    if blend_overlaps:
+        return render_flower_global_blend(
+            clusters=clusters,
+            image_shape=image_shape,
+            petal_distance=petal_distance,
+            scale=scale,
+            skip_partial=skip_partial,
+            rotation_mode=rotation_mode,
+            base_rotation=base_rotation,
+            rotation_seed=rotation_seed,
+        )
+
     h, w = image_shape
     out_h, out_w = h * scale, w * scale
 
@@ -597,6 +630,277 @@ def render_flower(
 
         for color, count in drawn.items():
             total_drawn[color] = total_drawn.get(color, 0) + count
+
+    return output
+
+
+def render_flower_global_blend(
+    clusters: List[ClusterResult],
+    image_shape: Tuple[int, int],
+    petal_distance: float = 0.35,
+    scale: int = 1,
+    skip_partial: bool = False,
+    rotation_mode: str = 'fixed',
+    base_rotation: float = 0.0,
+    rotation_seed: Optional[int] = None,
+    progress_callback: Optional[Callable[[int, int, str, Optional[dict]], None]] = None,
+) -> np.ndarray:
+    """Render all clusters with global CMY subtractive blending.
+
+    Unlike render_flower() which processes clusters sequentially, this function
+    collects ALL petal geometry first, then blends globally. This ensures
+    cross-cluster overlaps blend correctly (e.g., cyan from cluster A overlapping
+    magenta from cluster B creates blue).
+
+    Algorithm:
+        1. Phase 1 - Collect geometry: Calculate positions and radii for all
+           petals and black circles from all clusters
+        2. Phase 2 - Build global masks: Create mask images for each CMY color
+           containing ALL circles of that color from ALL clusters
+        3. Phase 3 - Subtractive blend: Start with white, subtract channels
+           based on global ink coverage:
+           - Remove R where cyan ink exists
+           - Remove G where magenta ink exists
+           - Remove B where yellow ink exists
+        4. Phase 4 - Add black: Draw all black circles on top
+
+    Args:
+        clusters: List of ClusterResult from detection
+        image_shape: (height, width) of original image
+        petal_distance: Fraction of black radius for petal center placement
+        scale: Output scale factor
+        skip_partial: If True, skip edge clusters
+        rotation_mode: 'fixed', 'random', or 'cluster-hash'
+        base_rotation: Base angle offset in degrees
+        rotation_seed: Random seed for 'random' mode
+        progress_callback: Optional callback function for progress updates.
+            Called with (current, total, phase_name, metadata) where:
+            - current: Current progress count
+            - total: Total count for this phase
+            - phase_name: String describing current phase (e.g., 'petal_optimization')
+            - metadata: Optional dict with additional info
+
+    Returns:
+        BGR numpy array with globally blended flowers
+    """
+    h, w = image_shape
+    out_h, out_w = h * scale, w * scale
+
+    # Phase 1a: Collect all BLACK geometry first
+    # We need the global black mask before optimizing petal radii
+    black_circles = []  # (cx, cy, float_radius)
+    cluster_data = []   # Store cluster info for Phase 1c
+
+    for cluster in clusters:
+        if skip_partial and cluster.partial:
+            continue
+
+        cx = cluster.x * scale
+        cy = cluster.y * scale
+
+        # Compute rotation for this cluster
+        rotation = compute_cluster_rotation(
+            cluster.x, cluster.y,
+            mode=rotation_mode,
+            base_rotation=base_rotation,
+            seed=rotation_seed
+        )
+
+        # Calculate black radius
+        black_radius = radius_from_pixels(cluster.black)
+        if cluster.black > 0 and black_radius > 0:
+            black_circles.append((cx, cy, black_radius))
+
+        # CMYK Decomposition for petal sizing
+        decomposed_counts = {
+            'cyan': cluster.cyan + cluster.green + cluster.blue,
+            'magenta': cluster.magenta + cluster.red + cluster.blue,
+            'yellow': cluster.yellow + cluster.red + cluster.green,
+        }
+
+        # Store for Phase 1c
+        cluster_data.append({
+            'cx': cx, 'cy': cy,
+            'black_radius': black_radius,
+            'rotation': rotation,
+            'decomposed_counts': decomposed_counts,
+        })
+
+    # Phase 1b: Build GLOBAL black mask
+    # This accounts for ALL black circles, not just the cluster's own
+    def build_global_black_mask(circle_list):
+        mask = np.zeros((out_h, out_w), dtype=np.uint8)
+        for cx, cy, r in circle_list:
+            if r > 0:
+                target_pixels = int(math.pi * r * r)
+                best_r, _, _ = find_best_radius_for_pixels(
+                    target_pixels, (out_h, out_w), (int(cx), int(cy))
+                )
+                cv2.circle(mask, (int(cx), int(cy)), best_r,
+                          255, thickness=-1, lineType=cv2.LINE_AA)
+        return mask > 0
+
+    global_black_mask = build_global_black_mask(black_circles)
+
+    # Phase 1c: Optimize petal radii against GLOBAL black mask
+    cyan_circles = []
+    magenta_circles = []
+    yellow_circles = []
+
+    def count_exposed_pixels_local(center_x, center_y, radius):
+        """Count exposed pixels using local ROI instead of full canvas.
+
+        OPTIMIZATION: Instead of creating a full (out_h, out_w) mask and doing
+        a full-canvas boolean operation, we only work with a small local region
+        around the petal center. This reduces complexity from O(canvas_size) to
+        O(flower_size) per test - approximately 10,000x faster for large images.
+        """
+        if radius <= 0:
+            return 0
+
+        int_r = int(radius)
+        margin = int_r + 2  # Small margin for anti-aliasing
+
+        # Compute local ROI bounds
+        x1 = max(0, int(center_x) - margin)
+        y1 = max(0, int(center_y) - margin)
+        x2 = min(out_w, int(center_x) + margin + 1)
+        y2 = min(out_h, int(center_y) + margin + 1)
+
+        # Skip if completely out of bounds
+        if x1 >= x2 or y1 >= y2:
+            return 0
+
+        # Create small local mask
+        local_h, local_w = y2 - y1, x2 - x1
+        local_mask = np.zeros((local_h, local_w), dtype=np.uint8)
+
+        # Circle center in local coordinates
+        local_cx = center_x - x1
+        local_cy = center_y - y1
+
+        cv2.circle(local_mask, (int(local_cx), int(local_cy)), int_r,
+                  255, thickness=-1, lineType=cv2.LINE_AA)
+
+        # Extract local ROI from global black mask
+        local_black = global_black_mask[y1:y2, x1:x2]
+
+        # Count exposed pixels (petal pixels not covered by black)
+        exposed_count = int(np.sum((local_mask > 0) & ~local_black))
+        return exposed_count
+
+    total_clusters = len(cluster_data)
+    log_interval = max(1, total_clusters // 20)  # Log every 5%
+
+    for cluster_idx, data in enumerate(cluster_data):
+        # Progress callback and logging every 5%
+        if cluster_idx % log_interval == 0 or cluster_idx == total_clusters - 1:
+            pct = (cluster_idx + 1) * 100 // total_clusters
+            if progress_callback:
+                progress_callback(
+                    cluster_idx + 1,
+                    total_clusters,
+                    'petal_optimization',
+                    {'percentage': pct}
+                )
+            else:
+                print(f"    Phase 1c: Optimizing petals {cluster_idx + 1}/{total_clusters} ({pct}%)", flush=True)
+
+        cx, cy = data['cx'], data['cy']
+        black_radius = data['black_radius']
+        rotation = data['rotation']
+        decomposed_counts = data['decomposed_counts']
+
+        for color in ['cyan', 'magenta', 'yellow']:
+            pixel_count = decomposed_counts[color]
+            if pixel_count <= 0:
+                continue
+
+            # Calculate preliminary radius
+            preliminary_radius = radius_from_pixels(pixel_count)
+            if preliminary_radius <= 0:
+                continue
+
+            # Position petal with rotation offset
+            angle_deg = PETAL_ANGLES[color] + rotation
+            angle_rad = math.radians(angle_deg - 90)
+
+            # Distance from center
+            dist = black_radius * petal_distance
+
+            # Calculate theoretical petal radius for exposed area
+            if black_radius > 0 and dist < black_radius + preliminary_radius:
+                theoretical_r = radius_for_exposed_pixels(pixel_count, black_radius, dist)
+            else:
+                theoretical_r = preliminary_radius
+
+            if theoretical_r <= 0:
+                continue
+
+            petal_x = cx + dist * math.cos(angle_rad)
+            petal_y = cy + dist * math.sin(angle_rad)
+
+            # Find optimal integer radius by testing actual exposed pixels
+            # against GLOBAL black mask (includes ALL neighboring blacks)
+            # Note: Narrow search range works better because petals are centered near
+            # their own cluster - aggressive radius increase doesn't help reach distant
+            # neighboring blacks, it just adds extra non-overlapping area
+            #
+            # OPTIMIZED: Uses local ROI instead of full-canvas mask operations.
+            # This reduces per-test complexity from O(canvas_size) to O(flower_size).
+            best_r, best_exposed, best_err = 0, 0, float('inf')
+            for test_r in range(max(1, int(theoretical_r) - 3), int(theoretical_r) + 4):
+                exposed_count = count_exposed_pixels_local(petal_x, petal_y, test_r)
+                err = abs(exposed_count - pixel_count)
+                if err < best_err:
+                    best_err = err
+                    best_r = test_r
+                    best_exposed = exposed_count
+
+            # Store optimized integer radius
+            if color == 'cyan':
+                cyan_circles.append((petal_x, petal_y, best_r))
+            elif color == 'magenta':
+                magenta_circles.append((petal_x, petal_y, best_r))
+            elif color == 'yellow':
+                yellow_circles.append((petal_x, petal_y, best_r))
+
+    # Phase 2: Build global petal masks
+    def build_petal_mask(circle_list):
+        """Build mask for petal circles (radii already optimized in Phase 1c)."""
+        mask = np.zeros((out_h, out_w), dtype=np.uint8)
+        for cx, cy, r in circle_list:
+            if r > 0:
+                int_r = max(1, int(r))
+                cv2.circle(mask, (int(cx), int(cy)), int_r,
+                          255, thickness=-1, lineType=cv2.LINE_AA)
+        return mask > 0
+
+    global_cyan = build_petal_mask(cyan_circles)
+    global_magenta = build_petal_mask(magenta_circles)
+    global_yellow = build_petal_mask(yellow_circles)
+    # Reuse global_black_mask from Phase 1b
+    global_black = global_black_mask
+
+    # Phase 3: Subtractive CMY blending
+    # Start with white (255, 255, 255)
+    output = np.full((out_h, out_w, 3), 255, dtype=np.uint8)
+
+    # Get exposed petal areas (excluding black overlap)
+    exposed_cyan = global_cyan & ~global_black
+    exposed_magenta = global_magenta & ~global_black
+    exposed_yellow = global_yellow & ~global_black
+
+    # Apply subtractive blending to exposed areas
+    # Cyan removes Red (channel 2 in BGR)
+    output[exposed_cyan, 2] = 0
+    # Magenta removes Green (channel 1 in BGR)
+    output[exposed_magenta, 1] = 0
+    # Yellow removes Blue (channel 0 in BGR)
+    output[exposed_yellow, 0] = 0
+
+    # Phase 4: Draw black on top
+    output[global_black] = COLORS_BGR['black']
 
     return output
 

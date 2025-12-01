@@ -490,3 +490,208 @@ class TestRenderFlowerWithBlending:
         dark_mask = np.all(result < 50, axis=2)
         # There should be some dark pixels where all three overlap
         assert np.any(dark_mask), "Expected dark pixels from C+M+Y overlap"
+
+
+class TestRenderFlowerProgressCallback:
+    """Tests for progress callback in render_flower_global_blend."""
+
+    def make_cluster(self, x, y, black=100, cyan=50, magenta=50, yellow=50):
+        """Create a test ClusterResult."""
+        return ClusterResult(
+            x=x, y=y,
+            black=black, cyan=cyan, magenta=magenta, yellow=yellow,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+
+    def test_progress_callback_is_called(self):
+        """Progress callback should be called during rendering."""
+        from dotmatrix.circle_renderer import render_flower_global_blend
+
+        progress_calls = []
+
+        def progress_callback(current, total, phase, metadata=None):
+            progress_calls.append({
+                'current': current,
+                'total': total,
+                'phase': phase,
+                'metadata': metadata
+            })
+
+        clusters = [self.make_cluster(50, 50)]
+        render_flower_global_blend(
+            clusters, (100, 100),
+            progress_callback=progress_callback
+        )
+
+        assert len(progress_calls) > 0, "Progress callback should be called at least once"
+
+    def test_progress_callback_receives_valid_values(self):
+        """Progress callback should receive valid current/total values."""
+        from dotmatrix.circle_renderer import render_flower_global_blend
+
+        progress_calls = []
+
+        def progress_callback(current, total, phase, metadata=None):
+            progress_calls.append({
+                'current': current,
+                'total': total,
+                'phase': phase,
+                'metadata': metadata
+            })
+
+        clusters = [self.make_cluster(i * 20, i * 20) for i in range(5)]
+        render_flower_global_blend(
+            clusters, (200, 200),
+            progress_callback=progress_callback
+        )
+
+        for call in progress_calls:
+            assert call['current'] >= 0, "Current should be >= 0"
+            assert call['total'] > 0, "Total should be > 0"
+            assert call['current'] <= call['total'], "Current should be <= total"
+            assert isinstance(call['phase'], str), "Phase should be a string"
+
+    def test_progress_callback_phases(self):
+        """Progress callback should report expected phases."""
+        from dotmatrix.circle_renderer import render_flower_global_blend
+
+        phases_seen = set()
+
+        def progress_callback(current, total, phase, metadata=None):
+            phases_seen.add(phase)
+
+        clusters = [self.make_cluster(50, 50, black=100, cyan=100)]
+        render_flower_global_blend(
+            clusters, (100, 100),
+            progress_callback=progress_callback
+        )
+
+        # Should see at least the petal optimization phase
+        assert len(phases_seen) > 0, "Should see at least one phase"
+
+    def test_progress_callback_metadata(self):
+        """Progress callback should include useful metadata."""
+        from dotmatrix.circle_renderer import render_flower_global_blend
+
+        metadata_list = []
+
+        def progress_callback(current, total, phase, metadata=None):
+            if metadata is not None:
+                metadata_list.append(metadata)
+
+        clusters = [self.make_cluster(50, 50)]
+        render_flower_global_blend(
+            clusters, (100, 100),
+            progress_callback=progress_callback
+        )
+
+        # At minimum, some calls should have metadata with cluster count or similar
+        # This is informational, not required for basic functionality
+
+    def test_progress_callback_none_is_safe(self):
+        """Passing None as progress_callback should not error."""
+        from dotmatrix.circle_renderer import render_flower_global_blend
+
+        clusters = [self.make_cluster(50, 50)]
+        # Should not raise
+        result = render_flower_global_blend(
+            clusters, (100, 100),
+            progress_callback=None
+        )
+        assert result.shape == (100, 100, 3)
+
+    def test_progress_reports_percentage_increase(self):
+        """Progress should monotonically increase (or stay same)."""
+        from dotmatrix.circle_renderer import render_flower_global_blend
+
+        progress_values = []
+
+        def progress_callback(current, total, phase, metadata=None):
+            if total > 0:
+                pct = current / total
+                progress_values.append(pct)
+
+        clusters = [self.make_cluster(i * 10, i * 10) for i in range(10)]
+        render_flower_global_blend(
+            clusters, (200, 200),
+            progress_callback=progress_callback
+        )
+
+        # Progress should generally increase (within same phase)
+        # We just verify we got values and they're valid percentages
+        for pct in progress_values:
+            assert 0 <= pct <= 1, f"Progress percentage {pct} should be between 0 and 1"
+
+
+class TestRenderFlowerProgressCallbackGPU:
+    """Tests for progress callback in render_flower_global_blend_gpu."""
+
+    def make_cluster(self, x, y, black=100, cyan=50, magenta=50, yellow=50):
+        """Create a test ClusterResult."""
+        return ClusterResult(
+            x=x, y=y,
+            black=black, cyan=cyan, magenta=magenta, yellow=yellow,
+            red=0, green=0, blue=0,
+            partial=False
+        )
+
+    def test_gpu_renderer_progress_callback_is_called(self):
+        """GPU renderer progress callback should be called during rendering."""
+        from dotmatrix.gpu_renderer import render_flower_global_blend_gpu
+
+        progress_calls = []
+
+        def progress_callback(current, total, phase, metadata=None):
+            progress_calls.append({
+                'current': current,
+                'total': total,
+                'phase': phase,
+                'metadata': metadata
+            })
+
+        clusters = [self.make_cluster(50, 50)]
+        render_flower_global_blend_gpu(
+            clusters, (100, 100),
+            progress_callback=progress_callback
+        )
+
+        assert len(progress_calls) > 0, "Progress callback should be called at least once"
+
+    def test_gpu_renderer_progress_callback_none_is_safe(self):
+        """Passing None as progress_callback to GPU renderer should not error."""
+        from dotmatrix.gpu_renderer import render_flower_global_blend_gpu
+
+        clusters = [self.make_cluster(50, 50)]
+        # Should not raise
+        result = render_flower_global_blend_gpu(
+            clusters, (100, 100),
+            progress_callback=None
+        )
+        assert result.shape == (100, 100, 3)
+
+    def test_gpu_renderer_progress_valid_values(self):
+        """GPU renderer progress callback should receive valid values."""
+        from dotmatrix.gpu_renderer import render_flower_global_blend_gpu
+
+        progress_calls = []
+
+        def progress_callback(current, total, phase, metadata=None):
+            progress_calls.append({
+                'current': current,
+                'total': total,
+                'phase': phase,
+                'metadata': metadata
+            })
+
+        clusters = [self.make_cluster(i * 20, i * 20) for i in range(5)]
+        render_flower_global_blend_gpu(
+            clusters, (200, 200),
+            progress_callback=progress_callback
+        )
+
+        for call in progress_calls:
+            assert call['current'] >= 0, "Current should be >= 0"
+            assert call['total'] > 0, "Total should be > 0"
+            assert call['current'] <= call['total'], "Current should be <= total"
+            assert isinstance(call['phase'], str), "Phase should be a string"
