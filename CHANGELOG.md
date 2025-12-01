@@ -46,6 +46,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (GPURENDER Sprint)
+- GPU acceleration framework with CuPy for CUDA-enabled systems
+  - `--gpu/--no-gpu` CLI flag for explicit GPU control (auto-detects by default)
+  - GPU-accelerated flower renderer (`gpu_renderer.py`)
+  - Graceful fallback to CPU when GPU unavailable
+  - GPU utilities module (`gpu.py`) with detection, info, and array transfer functions
+- GPU vs CPU equivalence tests with documented tolerance thresholds
+  - Max pixel difference: 1 (anti-aliasing rounding)
+  - Max differing pixels: <0.1% of total
+- Performance benchmarks comparing GPU and CPU rendering
+  - Benchmarks cover 100x100 to 2000x2000 images
+  - Tests 4 to 400 clusters per image
+
+### Technical Details (GPURENDER Sprint)
+- CuPy (cupy-cuda12x) for CUDA 12.x support
+- GPU renderer uses optimized local ROI masking (CPU ~1.6ms per cluster)
+- After profiling, CPU with local masks exceeds GPU transfer benefits
+- GPU framework retained for future kernel optimizations
+
 ### Added
 - `--min-radius` CLI flag to filter circles below specified radius (default: 10px)
 - `--max-radius` CLI flag to control maximum circle size detection (default: 500px)
@@ -280,6 +299,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `exposed_area_sizing` automatically compensates by increasing petal radius
 - Blend mode black drawing uses `make_circle_mask` instead of `draw_circle_exact`
 - All existing tests pass with no regressions
+
+### Fixed (Black Blob Rendering - CMYKFIX Sprint)
+- **Large black blobs rendered as giant circles**: Fixed overlapping black dots merging into single clusters
+  - Root cause: `find_black_dot_centers()` used connected component analysis, which merged adjacent/overlapping black dots into single components, causing giant black blobs to render instead of individual halftone dots
+  - Fix: New `find_black_dot_centers_distance_transform()` function uses distance transform with local maxima detection to identify individual dot centers even when touching
+  - Algorithm: Distance transform → local maximum filter → peak detection → NMS deduplication
+  - Added `separation_method` parameter to `cluster_and_count_pixels()`: 'connected' (legacy) or 'distance_transform' (new default)
+  - Added `min_dot_distance` parameter (default: 10px) for configuring minimum separation between dot centers
+  - Location: `cluster_pixel_counter.py:133-219`
+- **sliding_window.py updated** to use distance transform by default for improved large image handling
+- Verified on 38.9 MP test image (192 tiles, 15,724 clusters) - no black blobs
+
+### Technical Details (Black Blob Fix)
+- Distance transform converts binary mask to distance field (each pixel = distance to nearest edge)
+- Local maxima in distance field correspond to circle centers
+- Non-maximum suppression (NMS) filters duplicate centers within `min_dot_distance`
+- KD-tree based label assignment for efficient nearest-center pixel clustering
+- Fallback to connected components when no peaks detected (handles edge cases)
+- 23 tests pass including new distance transform coverage
 
 ### Planned for v0.2.0
 - Partial circle detection at image edges
