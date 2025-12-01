@@ -334,7 +334,8 @@ def find_black_dot_centers_distance_transform(
         return []
 
     # Threshold to get significant peaks only
-    threshold = threshold_ratio * dist_transform.max()
+    # Use ratio of max, but floor at 0.5 to catch single-pixel dots (dist_transform=1)
+    threshold = max(0.5, threshold_ratio * dist_transform.max())
 
     # Find local maxima using maximum filter
     # A pixel is a local max if it equals the max in its neighborhood
