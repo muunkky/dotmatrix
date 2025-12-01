@@ -401,16 +401,18 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
 # Helper functions for _do_detect (extracted for readability)
 # ============================================================================
 
-def _apply_mode_presets(mode, convex_edge, palette, sensitive_occlusion, morph_enhance, debug):
+def _apply_mode_presets(mode, convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute, debug):
     """Apply mode preset settings, returning updated values."""
     if not mode:
-        return convex_edge, palette, sensitive_occlusion, morph_enhance
+        return convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute
 
     mode_lower = mode.lower()
     if mode_lower == 'standard':
         # Standard mode: simple Hough circle detection (default behavior)
+        # Disables reconstitute to just output detected circles as JSON
         if convex_edge is None or not convex_edge:
             convex_edge = False
+        reconstitute = False
     elif mode_lower == 'halftone':
         # Halftone mode: convex edge detection with CMYK palette
         convex_edge = True
@@ -428,7 +430,7 @@ def _apply_mode_presets(mode, convex_edge, palette, sensitive_occlusion, morph_e
     if debug:
         click.echo(f"Mode '{mode}' preset applied", err=True)
 
-    return convex_edge, palette, sensitive_occlusion, morph_enhance
+    return convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute
 
 
 def _validate_inputs(input_path, no_extract, max_colors):
@@ -632,8 +634,8 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
 def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, no_cache=False, save_clusters=None, load_clusters=None):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
-    convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
-        mode, convex_edge, palette, sensitive_occlusion, morph_enhance, debug
+    convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute = _apply_mode_presets(
+        mode, convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute, debug
     )
 
     # Validate --cluster-count requires CMYK mode
@@ -794,15 +796,15 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
             click.echo(f"Image loaded: {image.shape}", err=True)
             click.echo("Detecting circles...", err=True)
 
-        # Check image size and warn for large images with convex detection
+        # Check image size and auto-enable sliding window for large images
         megapixels = get_image_megapixels(image)
         LARGE_IMAGE_THRESHOLD_MP = 20  # Per ADR-001
 
-        if convex_edge and megapixels > LARGE_IMAGE_THRESHOLD_MP:
+        if reconstitute and megapixels > LARGE_IMAGE_THRESHOLD_MP and not sliding_window:
+            sliding_window = True
+            render_method = 'flower'  # Sliding window uses flower renderer
             click.echo(
-                f"Warning: Large image detected ({megapixels:.1f} megapixels). "
-                f"Convex edge detection may take 30+ seconds. "
-                f"Consider using standard detection for faster results.",
+                f"Large image detected ({megapixels:.1f} MP) - auto-enabling sliding window mode",
                 err=True
             )
 
