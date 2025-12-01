@@ -344,16 +344,21 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 # Cache Options
 @optgroup.group('Cache', help='Cluster cache for fast render iteration')
 @optgroup.option(
+    '--no-cache',
+    is_flag=True,
+    help='Disable automatic cluster caching (force re-detection)'
+)
+@optgroup.option(
     '--save-clusters',
     type=click.Path(path_type=Path),
-    help='Save detected clusters to JSON cache file (skips detection on future runs)'
+    help='Save clusters to specific path (default: auto-save to output dir)'
 )
 @optgroup.option(
     '--load-clusters',
     type=click.Path(exists=True, path_type=Path),
-    help='Load clusters from cache file (skip detection phase)'
+    help='Load clusters from specific path (default: auto-load from output dir if valid)'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort, save_clusters, load_clusters):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -389,7 +394,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
                    no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance,
-                   auto_calibrate, calibrate_from, no_verify_black, verify_abort, save_clusters, load_clusters)
+                   auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters)
 
 
 # ============================================================================
@@ -624,7 +629,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, save_clusters=None, load_clusters=None):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, no_cache=False, save_clusters=None, load_clusters=None):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -931,22 +936,35 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     # Map CLI anchor choice to parameter value
                     anchor_method_for_sw = 'nearest_pixel' if cluster_anchor == 'pixel' else 'centroid'
 
-                    # Cache handling: load or detect
+                    # Compute source hash once for cache validation
+                    source_hash = compute_image_hash(Path(input))
+
+                    # Determine cache path: explicit path or auto-cache next to input image
                     if load_clusters:
-                        # Load clusters from cache - skip detection entirely
-                        click.echo(f"  Loading clusters from cache: {load_clusters}", err=True)
-                        cluster_results, cache_meta = do_load_clusters(load_clusters)
-                        click.echo(f"  Loaded {len(cluster_results)} clusters from cache", err=True)
+                        cache_path = Path(load_clusters)
+                    elif save_clusters:
+                        cache_path = Path(save_clusters)
+                    else:
+                        # Default: clusters.json next to input image
+                        input_path = Path(input)
+                        cache_path = input_path.parent / f"{input_path.stem}_clusters.json"
 
-                        # Validate source image hash if present
-                        source_hash = compute_image_hash(Path(input))
-                        validation = validate_cluster_cache(load_clusters, source_hash)
-                        if not validation['hash_match']:
-                            if 'warning' in validation:
-                                click.echo(f"  Warning: {validation['warning']}", err=True)
+                    # Try to load from cache (unless --no-cache forces re-detection)
+                    cache_loaded = False
+                    if not no_cache and cache_path.exists():
+                        try:
+                            validation = validate_cluster_cache(cache_path, source_hash)
+                            if validation['hash_match']:
+                                cluster_results, cache_meta = do_load_clusters(cache_path)
+                                click.echo(f"  Loaded {len(cluster_results)} clusters from cache: {cache_path}", err=True)
+                                cache_loaded = True
                             else:
-                                click.echo(f"  Warning: Cache has no source hash - cannot verify image match", err=True)
+                                # Hash mismatch - re-detect
+                                click.echo(f"  Cache invalid (image changed), re-detecting...", err=True)
+                        except Exception as e:
+                            click.echo(f"  Cache load failed ({e}), re-detecting...", err=True)
 
+                    if cache_loaded:
                         # Render from cached clusters
                         h, w = image.shape[:2]
                         click.echo(f"  Rendering {len(cluster_results)} clusters...", err=True)
@@ -988,7 +1006,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                         }
                         click.echo(f"  Rendered {len(cluster_results)} clusters from cache", err=True)
                     else:
-                        # Normal detection path
+                        # Detection path (cache miss or --no-cache)
                         click.echo("  (Skipping full-image detection for memory efficiency)", err=True)
                         reconstituted, cluster_results, sw_stats = process_sliding_window(
                             image,  # BGR format
@@ -1007,10 +1025,9 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                         click.echo(f"  Processed {sw_stats['total_tiles']} tiles, "
                                   f"{sw_stats['total_rendered']} clusters rendered", err=True)
 
-                        # Save clusters to cache if requested
-                        if save_clusters:
+                        # Auto-save clusters to cache (unless --no-cache)
+                        if not no_cache:
                             from datetime import datetime
-                            source_hash = compute_image_hash(Path(input))
                             cache_metadata = {
                                 'source_image_hash': source_hash,
                                 'source_image_path': str(input),
@@ -1023,8 +1040,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 },
                                 'timestamp': datetime.utcnow().isoformat() + 'Z',
                             }
-                            do_save_clusters(cluster_results, save_clusters, cache_metadata)
-                            click.echo(f"  Saved {len(cluster_results)} clusters to: {save_clusters}", err=True)
+                            do_save_clusters(cluster_results, cache_path, cache_metadata)
+                            click.echo(f"  Cached {len(cluster_results)} clusters to: {cache_path}", err=True)
 
                     partial_count = sum(1 for r in cluster_results if r.partial)
 
