@@ -389,7 +389,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
                    no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance,
-                   auto_calibrate, calibrate_from, no_verify_black, verify_abort)
+                   auto_calibrate, calibrate_from, no_verify_black, verify_abort, save_clusters, load_clusters)
 
 
 # ============================================================================
@@ -624,7 +624,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, save_clusters=None, load_clusters=None):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance = _apply_mode_presets(
@@ -903,8 +903,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                 if sliding_window and reconstitute and render_method_lower == 'flower':
                     from .sliding_window import process_sliding_window
                     from .cluster_pixel_counter import (
-                        save_clusters as _save_clusters,
-                        load_clusters as _load_clusters,
+                        save_clusters as do_save_clusters,
+                        load_clusters as do_load_clusters,
                         validate_cluster_cache,
                         compute_image_hash,
                     )
@@ -935,7 +935,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     if load_clusters:
                         # Load clusters from cache - skip detection entirely
                         click.echo(f"  Loading clusters from cache: {load_clusters}", err=True)
-                        cluster_results, cache_meta = _load_clusters(load_clusters)
+                        cluster_results, cache_meta = do_load_clusters(load_clusters)
                         click.echo(f"  Loaded {len(cluster_results)} clusters from cache", err=True)
 
                         # Validate source image hash if present
@@ -1023,7 +1023,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 },
                                 'timestamp': datetime.utcnow().isoformat() + 'Z',
                             }
-                            _save_clusters(cluster_results, save_clusters, cache_metadata)
+                            do_save_clusters(cluster_results, save_clusters, cache_metadata)
                             click.echo(f"  Saved {len(cluster_results)} clusters to: {save_clusters}", err=True)
 
                     partial_count = sum(1 for r in cluster_results if r.partial)
