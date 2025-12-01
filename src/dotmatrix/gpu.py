@@ -18,7 +18,7 @@ Usage:
 import os
 import sys
 import ctypes
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, List
 
 # Try to set up CUDA library path before importing cupy
 # This is needed because cupy looks for libnvrtc.so in standard paths
@@ -222,6 +222,328 @@ def print_gpu_status():
             print(f"  ... and {len(info['cuda_lib_paths']) - 3} more")
 
     print("=" * 60)
+
+
+# =============================================================================
+# GPU-Accelerated NMS (Non-Maximum Suppression)
+# =============================================================================
+
+def _cpu_nms_centers(
+    centers: np.ndarray,
+    scores: np.ndarray,
+    min_distance: float
+) -> np.ndarray:
+    """CPU implementation of Non-Maximum Suppression.
+
+    Args:
+        centers: (N, 2) array of (x, y) coordinates
+        scores: (N,) array of scores for each center (higher = better)
+        min_distance: Minimum distance between retained centers
+
+    Returns:
+        Filtered centers array (M, 2) where M <= N
+    """
+    if len(centers) == 0:
+        return centers
+    if len(centers) == 1:
+        return centers
+
+    # Sort by score (descending)
+    sorted_indices = np.argsort(scores)[::-1]
+
+    kept = []
+    suppressed = set()
+
+    for idx in sorted_indices:
+        if idx in suppressed:
+            continue
+
+        x, y = centers[idx]
+        kept.append([x, y])
+
+        # Suppress nearby centers
+        for other_idx in sorted_indices:
+            if other_idx in suppressed or other_idx == idx:
+                continue
+            ox, oy = centers[other_idx]
+            dist = np.sqrt((x - ox)**2 + (y - oy)**2)
+            if dist < min_distance:
+                suppressed.add(other_idx)
+
+    return np.array(kept) if kept else np.array([]).reshape(0, 2)
+
+
+def gpu_nms_centers(
+    centers: np.ndarray,
+    scores: np.ndarray,
+    min_distance: float,
+    force_gpu: bool = False
+) -> np.ndarray:
+    """GPU-accelerated Non-Maximum Suppression for centroid discovery.
+
+    Computes full N×N distance matrix on GPU and applies vectorized NMS.
+    Falls back to CPU for small inputs or when GPU unavailable.
+
+    Args:
+        centers: (N, 2) array of (x, y) coordinates
+        scores: (N,) array of scores for each center (higher = better)
+        min_distance: Minimum distance between retained centers
+        force_gpu: If True, forces GPU path even for small inputs
+
+    Returns:
+        Filtered centers array (M, 2) where M <= N
+    """
+    n = len(centers)
+
+    # Handle edge cases
+    if n == 0:
+        return np.array([]).reshape(0, 2)
+    if n == 1:
+        return centers.copy()
+
+    # Use CPU for small inputs or when GPU unavailable
+    if not force_gpu and (not _GPU_AVAILABLE or n < 100):
+        return _cpu_nms_centers(centers, scores, min_distance)
+
+    if not _GPU_AVAILABLE:
+        return _cpu_nms_centers(centers, scores, min_distance)
+
+    import cupy as cp
+
+    # Transfer to GPU
+    coords = cp.asarray(centers, dtype=cp.float32)
+    scores_gpu = cp.asarray(scores, dtype=cp.float32)
+
+    # Sort by score (descending) - get sorted indices
+    sorted_indices = cp.argsort(scores_gpu)[::-1]
+    sorted_coords = coords[sorted_indices]
+
+    # Compute full distance matrix: (N, N)
+    # Using broadcasting: (N, 1, 2) - (1, N, 2) -> (N, N, 2) -> sum -> sqrt -> (N, N)
+    diff = sorted_coords[:, None, :] - sorted_coords[None, :, :]
+    dist_matrix = cp.sqrt((diff ** 2).sum(axis=2))
+
+    # NMS: keep if not suppressed by a higher-ranked (lower-indexed) point
+    keep_mask = cp.ones(n, dtype=cp.bool_)
+
+    # Vectorized suppression: for each kept point, suppress all later points within distance
+    # Process in order of score (already sorted)
+    for i in range(n):
+        if keep_mask[i]:
+            # Suppress all points j > i that are within min_distance
+            suppress_mask = (dist_matrix[i, i+1:] < min_distance)
+            keep_mask[i+1:] &= ~suppress_mask
+
+    # Get kept centers
+    result = cp.asnumpy(sorted_coords[keep_mask])
+
+    return result
+
+
+# =============================================================================
+# GPU-Accelerated Nearest Center Labeling (KDTree replacement)
+# =============================================================================
+
+def gpu_nearest_center_labels(
+    pixel_coords: np.ndarray,
+    centers: np.ndarray,
+    chunk_size: int = 500_000,
+    force_gpu: bool = False
+) -> np.ndarray:
+    """GPU-accelerated nearest center labeling.
+
+    For each pixel, find the index of the nearest center using GPU
+    broadcast distance computation. Processes in chunks to manage memory.
+
+    Args:
+        pixel_coords: (M, 2) array of (x, y) pixel coordinates
+        centers: (N, 2) array of center coordinates
+        chunk_size: Number of pixels to process per GPU batch
+        force_gpu: If True, forces GPU path even when fallback would be used
+
+    Returns:
+        (M,) array of center indices for each pixel
+    """
+    n_pixels = len(pixel_coords)
+    n_centers = len(centers)
+
+    if n_pixels == 0:
+        return np.array([], dtype=np.int32)
+
+    if n_centers == 0:
+        return np.zeros(n_pixels, dtype=np.int32)
+
+    # Use CPU/KDTree for small inputs or when GPU unavailable
+    if not force_gpu and (not _GPU_AVAILABLE or n_pixels < 10000 or n_centers < 10):
+        from scipy.spatial import KDTree
+        tree = KDTree(centers)
+        _, labels = tree.query(pixel_coords)
+        return labels.astype(np.int32)
+
+    if not _GPU_AVAILABLE:
+        from scipy.spatial import KDTree
+        tree = KDTree(centers)
+        _, labels = tree.query(pixel_coords)
+        return labels.astype(np.int32)
+
+    import cupy as cp
+
+    # Transfer centers to GPU (stays for all chunks)
+    centers_gpu = cp.asarray(centers, dtype=cp.float32)
+
+    # Pre-allocate output
+    labels = np.empty(n_pixels, dtype=np.int32)
+
+    # Process in chunks to manage GPU memory
+    # Memory per chunk: chunk_size × n_centers × 4 bytes (float32)
+    for start in range(0, n_pixels, chunk_size):
+        end = min(start + chunk_size, n_pixels)
+        chunk = cp.asarray(pixel_coords[start:end], dtype=cp.float32)
+
+        # Compute squared distances (skip sqrt since we only need argmin)
+        # Shape: (chunk_size, n_centers)
+        diff = chunk[:, None, :] - centers_gpu[None, :, :]
+        dist_sq = (diff ** 2).sum(axis=2)
+
+        # Find nearest center for each pixel
+        labels[start:end] = cp.asnumpy(cp.argmin(dist_sq, axis=1))
+
+    return labels
+
+
+def gpu_create_cluster_labels(
+    image_shape: Tuple[int, int],
+    centers: np.ndarray,
+    chunk_size: int = 500_000,
+    force_gpu: bool = False
+) -> np.ndarray:
+    """Create cluster label image using GPU acceleration.
+
+    Assigns each pixel to its nearest center using Voronoi tessellation.
+
+    Args:
+        image_shape: (H, W) tuple of image dimensions
+        centers: (N, 2) array of center coordinates in (x, y) format
+        chunk_size: Pixels per GPU batch
+        force_gpu: Force GPU path
+
+    Returns:
+        (H, W) label array where each pixel contains its nearest center index
+    """
+    h, w = image_shape
+
+    # Generate all pixel coordinates as (x, y) pairs
+    yy, xx = np.mgrid[0:h, 0:w]
+    pixel_coords = np.column_stack([xx.ravel(), yy.ravel()]).astype(np.float32)
+
+    # Get labels and reshape to image
+    labels = gpu_nearest_center_labels(pixel_coords, centers, chunk_size, force_gpu)
+    return labels.reshape(h, w)
+
+
+# =============================================================================
+# GPU-Accelerated Cluster Color Counting
+# =============================================================================
+
+def _cpu_count_cluster_colors(
+    labels: np.ndarray,
+    color_masks: Dict[str, np.ndarray],
+    n_clusters: int
+) -> Dict[str, np.ndarray]:
+    """CPU implementation of per-cluster color counting.
+
+    Args:
+        labels: (H, W) array of cluster indices
+        color_masks: Dict mapping color names to (H, W) boolean masks
+        n_clusters: Total number of clusters
+
+    Returns:
+        Dict mapping color names to (n_clusters,) count arrays
+    """
+    flat_labels = labels.ravel()
+    counts = {}
+
+    for color, mask in color_masks.items():
+        flat_mask = mask.ravel().astype(np.int32)
+        counts[color] = np.bincount(
+            flat_labels,
+            weights=flat_mask,
+            minlength=n_clusters
+        ).astype(np.int64)
+
+    return counts
+
+
+def gpu_count_cluster_colors(
+    labels: np.ndarray,
+    color_masks: Dict[str, np.ndarray],
+    n_clusters: int,
+    force_gpu: bool = False
+) -> Dict[str, np.ndarray]:
+    """GPU-accelerated per-cluster color pixel counting.
+
+    Uses cupy.bincount with color masks as weights for single-pass counting.
+
+    Args:
+        labels: (H, W) array of cluster indices
+        color_masks: Dict mapping color names to (H, W) boolean masks
+        n_clusters: Total number of clusters
+        force_gpu: Force GPU path
+
+    Returns:
+        Dict mapping color names to (n_clusters,) count arrays
+    """
+    # Use CPU for small inputs or when GPU unavailable
+    if not force_gpu and (not _GPU_AVAILABLE or labels.size < 100000):
+        return _cpu_count_cluster_colors(labels, color_masks, n_clusters)
+
+    if not _GPU_AVAILABLE:
+        return _cpu_count_cluster_colors(labels, color_masks, n_clusters)
+
+    import cupy as cp
+
+    # Transfer labels to GPU
+    labels_gpu = cp.asarray(labels.ravel(), dtype=cp.int32)
+    counts = {}
+
+    for color, mask in color_masks.items():
+        mask_gpu = cp.asarray(mask.ravel().astype(np.int32))
+
+        # bincount with mask as weights: count color pixels per cluster
+        color_counts = cp.bincount(
+            labels_gpu,
+            weights=mask_gpu,
+            minlength=n_clusters
+        )
+        counts[color] = cp.asnumpy(color_counts).astype(np.int64)
+
+    return counts
+
+
+def gpu_count_cluster_totals(
+    labels: np.ndarray,
+    n_clusters: int,
+    force_gpu: bool = False
+) -> np.ndarray:
+    """Count total pixels per cluster using GPU bincount.
+
+    Args:
+        labels: (H, W) array of cluster indices
+        n_clusters: Total number of clusters
+        force_gpu: Force GPU path
+
+    Returns:
+        (n_clusters,) array of total pixel counts per cluster
+    """
+    if not force_gpu and (not _GPU_AVAILABLE or labels.size < 100000):
+        return np.bincount(labels.ravel(), minlength=n_clusters)
+
+    if not _GPU_AVAILABLE:
+        return np.bincount(labels.ravel(), minlength=n_clusters)
+
+    import cupy as cp
+    labels_gpu = cp.asarray(labels.ravel(), dtype=cp.int32)
+    return cp.asnumpy(cp.bincount(labels_gpu, minlength=n_clusters))
 
 
 if __name__ == '__main__':

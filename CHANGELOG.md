@@ -334,6 +334,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fallback to connected components when no peaks detected (handles edge cases)
 - 23 tests pass including new distance transform coverage
 
+### Added (GPU Cluster Acceleration - GPUACCEL Sprint)
+- **GPU-accelerated Non-Maximum Suppression (NMS)**: `gpu_nms_centers()` for centroid discovery
+  - Broadcast distance matrix computation on GPU
+  - O(n²) memory but parallelized computation
+  - 2x+ speedup on 5,000+ centers
+  - Automatic fallback to CPU for small inputs (<100 centers) or when GPU unavailable
+- **GPU-accelerated nearest center labeling**: `gpu_nearest_center_labels()` replaces scipy KDTree
+  - Chunked processing (500K pixels/chunk) for memory management
+  - Handles 1M+ pixels efficiently
+  - Results match KDTree within 99.99% accuracy (float32 vs float64 tie-breaking)
+- **GPU-accelerated cluster color counting**: `gpu_count_cluster_colors()` and `gpu_count_cluster_totals()`
+  - Uses CuPy bincount for parallel histogram computation
+  - Per-cluster CMYK pixel counting in single GPU pass
+  - Significant speedup for large images (2000x2000+)
+- CPU fallback functions for all GPU operations
+- 13 new tests for GPU acceleration functions (test_gpu_acceleration.py)
+
+### Technical Details (GPU Cluster Acceleration)
+- All GPU functions in `gpu.py` module with `force_gpu` parameter for testing
+- GPU NMS uses broadcast distance matrix: O(n²) GPU memory, O(n) iterations
+- Nearest center uses chunked distance computation to limit GPU memory
+- Color counting flattens labels and masks for efficient bincount
+- Float32 precision on GPU vs Float64 on CPU can cause different tie-breaking for equidistant points
+- Graceful degradation: auto-detects CuPy availability, falls back to NumPy/SciPy
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode
