@@ -208,8 +208,16 @@ def process_sliding_window(
     if debug:
         print("\n=== PHASE 2: Global Rendering ===")
 
-    if progress_callback:
-        progress_callback(total_tiles, total_tiles, f"Rendering {len(all_clusters)} clusters...")
+    # Create render progress callback wrapper for CLI display
+    def render_progress(current, total, phase, metadata=None):
+        """Internal callback to display render progress."""
+        if progress_callback:
+            gpu_str = "GPU" if metadata and metadata.get('gpu') else "CPU"
+            pct = metadata.get('percentage', 0) if metadata else 0
+            progress_callback(
+                current, total,
+                f"[{gpu_str}] Rendering {len(all_clusters)} clusters ({pct}%)"
+            )
 
     # Render all clusters globally - no tile stitching!
     if use_gpu:
@@ -223,6 +231,7 @@ def process_sliding_window(
             rotation_mode='fixed',
             base_rotation=0.0,
             use_gpu=True,
+            progress_callback=render_progress,
         )
     else:
         output = render_flower_global_blend(
@@ -232,7 +241,8 @@ def process_sliding_window(
             scale=render_scale,
             skip_partial=False,
             rotation_mode='fixed',
-            base_rotation=0.0
+            base_rotation=0.0,
+            progress_callback=render_progress,
         )
 
     if debug:
