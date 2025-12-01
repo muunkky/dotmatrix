@@ -252,6 +252,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Blending uses numpy mask operations for efficient pixel-level color mixing
 - Black circle always rendered on top after CMY blending
 
+### Fixed (Sliding Window - CMYKFIX Sprint)
+- **Tile seam artifacts**: Fixed flower clipping at tile boundaries in sliding window mode
+  - Root cause: Only core clusters were passed to renderer, missing petals from overlap region
+  - Fix: Now render ALL clusters in tile, still copy only core region to output
+  - This ensures overlap cluster petals extending into core region are visible
+  - Location: `sliding_window.py:169-170`
+- Added comprehensive test suite for sliding window seam handling:
+  - `test_overlap_cluster_petals_visible_in_core`: Verifies petals extend into adjacent core
+  - `test_no_duplicate_circles_at_boundaries`: Ensures no duplicate rendering
+  - `test_overlap_region_clusters_contribute_petals`: Tests petal contribution
+  - `test_stats_track_clusters_correctly`: Validates statistics tracking
+
+### Fixed (Flower Renderer - FLOWERFIX Sprint)
+- **Black circle clipping bug**: Fixed z-order issue where `used` mask prevented black circles from rendering over CMY petals in blend mode
+  - Root cause: `used[any_cmy] = True` was set before `draw_circle_exact` for black
+  - Fix: Black circles now draw directly via mask, bypassing the `used` check
+  - Location: `circle_renderer.py:389-395`
+- **Petal geometry improvement**: Changed petal positioning to move centers inward for shallower, rounder petal arcs
+  - Old formula: `dist = black_radius + preliminary_radius * petal_distance` (centers outside black circle)
+  - New formula: `dist = black_radius * petal_distance` (centers inside black circle)
+  - Default `petal_distance` changed from 0.7 to 0.5
+  - Location: `circle_renderer.py:334`
+
+### Technical Details (Flower Renderer Fixes)
+- Petal distance parameter now controls position as fraction of black radius (0.5 = halfway to edge)
+- `exposed_area_sizing` automatically compensates by increasing petal radius
+- Blend mode black drawing uses `make_circle_mask` instead of `draw_circle_exact`
+- All existing tests pass with no regressions
+
 ### Planned for v0.2.0
 - Partial circle detection at image edges
 - Debug visualization mode
