@@ -215,9 +215,9 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Generate cluster debug visualization showing color-coded cluster assignments (saves cluster_debug.png)'
 )
 @optgroup.option(
-    '--reconstitute',
-    is_flag=True,
-    help='Generate reconstituted bullseye pattern image from clusters (CMYK mode only)'
+    '--reconstitute/--no-reconstitute',
+    default=True,
+    help='Generate reconstituted image from detected clusters (default: enabled)'
 )
 @optgroup.option(
     '--render-method',
