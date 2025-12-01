@@ -652,21 +652,13 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
             )
             sys.exit(1)
 
-    # Validate --reconstitute requires CMYK mode
+    # Auto-enable CMYK mode for reconstitution (it's always needed)
     if reconstitute:
         palette_lower = palette.lower() if palette else ''
         if palette_lower not in ('cmyk', 'cmyk-sep'):
-            click.echo(
-                "Error: --reconstitute requires CMYK palette (--palette cmyk or --palette cmyk-sep)",
-                err=True
-            )
-            sys.exit(1)
+            palette = 'cmyk'  # Auto-set CMYK palette
         if not convex_edge:
-            click.echo(
-                "Error: --reconstitute requires convex edge detection (--convex-edge or -m halftone)",
-                err=True
-            )
-            sys.exit(1)
+            convex_edge = True  # Auto-enable convex edge detection
 
     # Load configuration file if provided
     if config:
