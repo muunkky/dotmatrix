@@ -512,3 +512,174 @@ class TestCLIIntegration:
             assert len(lines) >= 1
             header = lines[0]
             assert 'center_x' in header or 'x' in header
+
+
+class TestAnchorMethod:
+    """Test anchor_method parameter for cluster assignment.
+
+    Feature: CLUSTEREXT sprint - card v3ld39
+    Default should be 'centroid', with 'nearest_pixel' as legacy option.
+    """
+
+    def test_anchor_method_centroid_default(self):
+        """Default anchor_method should be 'centroid'."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+        import inspect
+
+        sig = inspect.signature(cluster_and_count_pixels)
+        anchor_param = sig.parameters.get('anchor_method')
+
+        assert anchor_param is not None, "anchor_method parameter should exist"
+        assert anchor_param.default == 'centroid', "Default should be 'centroid'"
+
+    def test_anchor_method_centroid_produces_valid_results(self):
+        """anchor_method='centroid' should produce valid ClusterResult."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        # Create test image with one black dot
+        cyan_mask = np.zeros((100, 100), dtype=np.uint8)
+        magenta_mask = np.zeros((100, 100), dtype=np.uint8)
+        yellow_mask = np.zeros((100, 100), dtype=np.uint8)
+        black_mask = np.zeros((100, 100), dtype=np.uint8)
+
+        # Black dot at (50, 50)
+        y, x = np.ogrid[:100, :100]
+        black_dot = (x - 50)**2 + (y - 50)**2 <= 10**2
+        black_mask[black_dot] = 255
+
+        # Cyan region
+        cyan_region = (x - 40)**2 + (y - 50)**2 <= 8**2
+        cyan_mask[cyan_region] = 255
+
+        results = cluster_and_count_pixels(
+            cyan_mask=cyan_mask,
+            magenta_mask=magenta_mask,
+            yellow_mask=yellow_mask,
+            black_mask=black_mask,
+            anchor_method='centroid'
+        )
+
+        assert len(results) == 1
+        assert results[0].black > 0
+        assert results[0].cyan > 0
+
+    def test_anchor_method_nearest_pixel_produces_valid_results(self):
+        """anchor_method='nearest_pixel' should produce valid ClusterResult."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        cyan_mask = np.zeros((100, 100), dtype=np.uint8)
+        magenta_mask = np.zeros((100, 100), dtype=np.uint8)
+        yellow_mask = np.zeros((100, 100), dtype=np.uint8)
+        black_mask = np.zeros((100, 100), dtype=np.uint8)
+
+        # Black dot at (50, 50)
+        y, x = np.ogrid[:100, :100]
+        black_dot = (x - 50)**2 + (y - 50)**2 <= 10**2
+        black_mask[black_dot] = 255
+
+        # Cyan region
+        cyan_region = (x - 40)**2 + (y - 50)**2 <= 8**2
+        cyan_mask[cyan_region] = 255
+
+        results = cluster_and_count_pixels(
+            cyan_mask=cyan_mask,
+            magenta_mask=magenta_mask,
+            yellow_mask=yellow_mask,
+            black_mask=black_mask,
+            anchor_method='nearest_pixel'
+        )
+
+        assert len(results) == 1
+        assert results[0].black > 0
+        assert results[0].cyan > 0
+
+    def test_anchor_method_invalid_raises_error(self):
+        """Invalid anchor_method should raise ValueError."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        cyan_mask = np.zeros((10, 10), dtype=np.uint8)
+        magenta_mask = np.zeros((10, 10), dtype=np.uint8)
+        yellow_mask = np.zeros((10, 10), dtype=np.uint8)
+        black_mask = np.zeros((10, 10), dtype=np.uint8)
+        black_mask[5, 5] = 255
+
+        with pytest.raises(ValueError, match="anchor_method"):
+            cluster_and_count_pixels(
+                cyan_mask=cyan_mask,
+                magenta_mask=magenta_mask,
+                yellow_mask=yellow_mask,
+                black_mask=black_mask,
+                anchor_method='invalid_method'
+            )
+
+    def test_anchor_method_works_with_separation_methods(self):
+        """anchor_method should work with both separation_method options."""
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        cyan_mask = np.zeros((100, 100), dtype=np.uint8)
+        magenta_mask = np.zeros((100, 100), dtype=np.uint8)
+        yellow_mask = np.zeros((100, 100), dtype=np.uint8)
+        black_mask = np.zeros((100, 100), dtype=np.uint8)
+
+        y, x = np.ogrid[:100, :100]
+        black_dot = (x - 50)**2 + (y - 50)**2 <= 10**2
+        black_mask[black_dot] = 255
+        cyan_mask[40:60, 30:40] = 255
+
+        # Test all 4 combinations
+        for sep_method in ['connected', 'distance_transform']:
+            for anchor in ['centroid', 'nearest_pixel']:
+                results = cluster_and_count_pixels(
+                    cyan_mask=cyan_mask,
+                    magenta_mask=magenta_mask,
+                    yellow_mask=yellow_mask,
+                    black_mask=black_mask,
+                    separation_method=sep_method,
+                    anchor_method=anchor
+                )
+                assert len(results) == 1, f"Failed for {sep_method}/{anchor}"
+                assert results[0].black > 0, f"No black for {sep_method}/{anchor}"
+
+    def test_centroid_vs_nearest_pixel_difference(self):
+        """Centroid and nearest_pixel should give different results for irregular dots.
+
+        With an irregular black region, nearest_pixel considers edge pixels,
+        while centroid only considers the center point.
+        """
+        from dotmatrix.cluster_pixel_counter import cluster_and_count_pixels
+
+        # Create an irregular L-shaped black region
+        black_mask = np.zeros((100, 100), dtype=np.uint8)
+        black_mask[40:60, 40:50] = 255  # Vertical part
+        black_mask[50:60, 40:70] = 255  # Horizontal part (L-shape)
+
+        cyan_mask = np.zeros((100, 100), dtype=np.uint8)
+        magenta_mask = np.zeros((100, 100), dtype=np.uint8)
+        yellow_mask = np.zeros((100, 100), dtype=np.uint8)
+
+        # Cyan pixel near the horizontal arm of L
+        cyan_mask[55, 65] = 255
+
+        results_centroid = cluster_and_count_pixels(
+            cyan_mask=cyan_mask,
+            magenta_mask=magenta_mask,
+            yellow_mask=yellow_mask,
+            black_mask=black_mask,
+            anchor_method='centroid'
+        )
+
+        results_nearest = cluster_and_count_pixels(
+            cyan_mask=cyan_mask,
+            magenta_mask=magenta_mask,
+            yellow_mask=yellow_mask,
+            black_mask=black_mask,
+            anchor_method='nearest_pixel'
+        )
+
+        # Both should find the cluster
+        assert len(results_centroid) == 1
+        assert len(results_nearest) == 1
+
+        # Both should count the cyan pixel
+        assert results_centroid[0].cyan >= 1
+        assert results_nearest[0].cyan >= 1

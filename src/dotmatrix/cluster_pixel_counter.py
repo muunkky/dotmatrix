@@ -134,6 +134,161 @@ def find_black_dot_centers(black_mask: np.ndarray) -> List[Tuple[int, int]]:
     return centers
 
 
+def find_black_dot_centers_distance_transform(
+    black_mask: np.ndarray,
+    min_distance: int = 10,
+    threshold_ratio: float = 0.5
+) -> List[Tuple[int, int]]:
+    """Find center points of black dots using distance transform.
+
+    Uses distance transform with local maxima detection to separate
+    merged/overlapping black dots. This is more robust than connected
+    component centroids for dense halftone patterns where dots touch.
+
+    Algorithm:
+    1. Apply distance transform (distance from each pixel to edge)
+    2. Find local maxima (peaks = circle centers)
+    3. Filter by minimum distance between peaks
+
+    Args:
+        black_mask: Binary mask of black ink pixels
+        min_distance: Minimum distance between detected centers (pixels)
+        threshold_ratio: Minimum peak height as ratio of max (0-1)
+
+    Returns:
+        List of (x, y) center coordinates for each black dot
+    """
+    from scipy.ndimage import maximum_filter
+
+    if np.sum(black_mask) == 0:
+        return []
+
+    # Ensure binary mask
+    binary = (black_mask > 0).astype(np.uint8)
+
+    # Distance transform: each pixel gets distance to nearest edge
+    dist_transform = cv2.distanceTransform(binary, cv2.DIST_L2, 5)
+
+    if dist_transform.max() == 0:
+        return []
+
+    # Threshold to get significant peaks only
+    threshold = threshold_ratio * dist_transform.max()
+
+    # Find local maxima using maximum filter
+    # A pixel is a local max if it equals the max in its neighborhood
+    neighborhood_size = max(3, min_distance)
+    local_max = maximum_filter(dist_transform, size=neighborhood_size)
+
+    # Peaks are where distance transform equals local max AND above threshold
+    peaks = (dist_transform == local_max) & (dist_transform > threshold) & binary.astype(bool)
+
+    # Get peak coordinates
+    peak_coords = np.argwhere(peaks)  # (y, x) format
+
+    if len(peak_coords) == 0:
+        # Fall back to connected components if no peaks found
+        return find_black_dot_centers(black_mask)
+
+    # Convert to (x, y) format
+    centers = [(int(x), int(y)) for y, x in peak_coords]
+
+    # Non-maximum suppression to ensure min_distance between centers
+    if min_distance > 0 and len(centers) > 1:
+        centers = _nms_centers(centers, dist_transform, min_distance)
+
+    return centers
+
+
+def _nms_centers(
+    centers: List[Tuple[int, int]],
+    dist_transform: np.ndarray,
+    min_distance: int
+) -> List[Tuple[int, int]]:
+    """Apply non-maximum suppression to center points.
+
+    Keeps centers with highest distance transform value when multiple
+    centers are within min_distance of each other.
+    """
+    if len(centers) <= 1:
+        return centers
+
+    # Sort by distance transform value (descending)
+    scores = [dist_transform[y, x] for x, y in centers]
+    sorted_indices = np.argsort(scores)[::-1]
+
+    kept = []
+    suppressed = set()
+
+    for idx in sorted_indices:
+        if idx in suppressed:
+            continue
+
+        x, y = centers[idx]
+        kept.append((x, y))
+
+        # Suppress nearby centers
+        for other_idx in sorted_indices:
+            if other_idx in suppressed or other_idx == idx:
+                continue
+            ox, oy = centers[other_idx]
+            dist = np.sqrt((x - ox)**2 + (y - oy)**2)
+            if dist < min_distance:
+                suppressed.add(other_idx)
+
+    return kept
+
+
+def create_cluster_labels_from_centers(
+    centers: List[Tuple[int, int]],
+    image_shape: Tuple[int, int],
+    max_distance: Optional[float] = None
+) -> np.ndarray:
+    """Create cluster label image based on nearest center point.
+
+    Unlike create_cluster_labels (which uses connected component labels),
+    this function assigns each pixel to the nearest CENTER from a provided
+    list. This allows properly separating merged blobs when centers are
+    found using distance transform.
+
+    Args:
+        centers: List of (x, y) center coordinates
+        image_shape: (height, width) of the image
+        max_distance: Maximum distance to assign to a cluster. Pixels
+                     farther than this get label -1. If None, all pixels
+                     are assigned.
+
+    Returns:
+        Label image where each pixel value is the cluster ID (0-indexed).
+        Pixels beyond max_distance get label -1.
+    """
+    h, w = image_shape
+
+    if not centers:
+        return np.full((h, w), -1, dtype=np.int32)
+
+    # Build KDTree from centers
+    centers_array = np.array(centers)  # Already (x, y) format
+    tree = KDTree(centers_array)
+
+    # For each pixel, find nearest center
+    all_coords = np.mgrid[0:h, 0:w].reshape(2, -1).T  # All (y, x) coords
+    all_coords_xy = all_coords[:, ::-1]  # Convert to (x, y)
+
+    # Query nearest center for each point
+    distances, indices = tree.query(all_coords_xy)
+
+    # Reshape to image
+    labels = indices.reshape(h, w)
+
+    # Apply max_distance threshold if specified
+    if max_distance is not None:
+        distances = distances.reshape(h, w)
+        labels[distances > max_distance] = -1
+
+    return labels.astype(np.int32)
+
+
 def create_cluster_labels(black_mask: np.ndarray) -> np.ndarray:
     """Create cluster label image based on nearest black pixel.
 
@@ -353,14 +508,17 @@ def cluster_and_count_pixels(
     yellow_mask: np.ndarray,
     black_mask: np.ndarray,
     image_shape: Optional[Tuple[int, int]] = None,
-    color_mode: str = 'full'
+    color_mode: str = 'full',
+    separation_method: str = 'connected',
+    min_dot_distance: int = 10,
+    anchor_method: str = 'centroid'
 ) -> List[ClusterResult]:
     """Main entry point: cluster CMYK pixels and count per cluster.
 
     Complete pipeline:
     1. Complete midtone masks (for clustering)
     2. Find black dot centers
-    3. Create cluster labels (nearest black pixel)
+    3. Create cluster labels (based on anchor_method)
     4. Count pixels per cluster with deduplication
     5. Flag edge clusters
 
@@ -371,7 +529,16 @@ def cluster_and_count_pixels(
         black_mask: Binary mask of black ink pixels
         image_shape: (height, width) for edge detection. If None, uses mask shape.
         color_mode: 'full' for 7-color mode with RGB overlaps,
-                   'cmyk' for 4-color mode without overlap detection.
+                   'cmyk' for 4-color mode without overlap detection,
+                   'absolute' for CMYK only (alias for 'cmyk').
+        separation_method: Method for separating merged black dots:
+                   'connected' (default) - connected component centroids
+                   'distance_transform' - distance transform local maxima
+        min_dot_distance: Minimum distance between black dot centers when
+                   using distance_transform method (default: 10 pixels)
+        anchor_method: Method for assigning pixels to clusters:
+                   'centroid' (default) - assign to nearest black dot center
+                   'nearest_pixel' - assign to nearest black pixel (legacy)
 
     Returns:
         List of ClusterResult, one per black dot cluster.
@@ -380,18 +547,44 @@ def cluster_and_count_pixels(
     if image_shape is None:
         image_shape = black_mask.shape
 
+    # Validate anchor_method
+    valid_anchor_methods = ('centroid', 'nearest_pixel')
+    if anchor_method not in valid_anchor_methods:
+        raise ValueError(
+            f"anchor_method must be one of {valid_anchor_methods}, got '{anchor_method}'"
+        )
+
+    # Normalize color_mode alias
+    if color_mode == 'absolute':
+        color_mode = 'cmyk'
+
     # Phase 1: Complete midtone masks (used for clustering reference)
     # Note: We don't actually need the completed masks for counting,
     # just for understanding - the counting uses original masks
     _ = complete_midtone_masks(cyan_mask, magenta_mask, yellow_mask, black_mask)
 
-    # Phase 2: Find black dot centers and create cluster labels
-    centers = find_black_dot_centers(black_mask)
+    # Phase 2: Find black dot centers based on separation_method
+    if separation_method == 'distance_transform':
+        # Use distance transform for better separation of merged dots
+        centers = find_black_dot_centers_distance_transform(
+            black_mask,
+            min_distance=min_dot_distance,
+            threshold_ratio=0.3  # Lower threshold to catch more dots
+        )
+    else:
+        # Default: connected component analysis
+        centers = find_black_dot_centers(black_mask)
+
+    # Create cluster labels based on anchor_method (decoupled from separation_method)
+    if anchor_method == 'centroid':
+        # Assign pixels to nearest center point (more stable, default)
+        labels = create_cluster_labels_from_centers(centers, image_shape)
+    else:
+        # 'nearest_pixel': Assign to nearest black pixel (legacy behavior)
+        labels = create_cluster_labels(black_mask)
 
     if not centers:
         return []
-
-    labels = create_cluster_labels(black_mask)
 
     # Choose counting function based on color mode
     if color_mode == 'cmyk':
