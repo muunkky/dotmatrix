@@ -65,6 +65,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - After profiling, CPU with local masks exceeds GPU transfer benefits
 - GPU framework retained for future kernel optimizations
 
+### Added (CLUSTEREXT Sprint)
+- `--cluster-anchor` CLI option with values:
+  - `centroid` (default): Uses black dot centroid as cluster center
+  - `pixel`: Uses nearest black pixel to centroid (legacy behavior)
+- Bounding box field added to ClusterResult dataclass
+  - `bbox` tuple: (x_min, y_min, x_max, y_max) of ink pixels
+  - Included in JSON output via `to_dict()` method
+- Debug visualization mode for cluster analysis
+  - `--debug-clusters` CLI flag outputs `cluster_debug.png`
+  - HSV-spaced unique colors for each cluster
+  - White crosshair markers at cluster centers
+  - Semi-transparent overlay on original image
+  - `generate_cluster_colors()` and `generate_cluster_debug_image()` functions
+  - `return_debug_info` parameter on `cluster_and_count_pixels()`
+
 ### Added
 - `--min-radius` CLI flag to filter circles below specified radius (default: 10px)
 - `--max-radius` CLI flag to control maximum circle size detection (default: 500px)
