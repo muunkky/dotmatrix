@@ -341,7 +341,19 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Abort with error if verification produces warnings'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort):
+# Cache Options
+@optgroup.group('Cache', help='Cluster cache for fast render iteration')
+@optgroup.option(
+    '--save-clusters',
+    type=click.Path(path_type=Path),
+    help='Save detected clusters to JSON cache file (skips detection on future runs)'
+)
+@optgroup.option(
+    '--load-clusters',
+    type=click.Path(exists=True, path_type=Path),
+    help='Load clusters from cache file (skip detection phase)'
+)
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort, save_clusters, load_clusters):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -890,9 +902,15 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                 if sliding_window and reconstitute and render_method_lower == 'flower':
                     from .sliding_window import process_sliding_window
+                    from .cluster_pixel_counter import (
+                        save_clusters as _save_clusters,
+                        load_clusters as _load_clusters,
+                        validate_cluster_cache,
+                        compute_image_hash,
+                    )
+                    from .circle_renderer import render_flower_global_blend
 
                     click.echo(f"Using sliding window mode (size={window_size}, method=flower)...", err=True)
-                    click.echo("  (Skipping full-image detection for memory efficiency)", err=True)
 
                     def progress_cb(tile_num, total_tiles, status):
                         click.echo(f"  [{tile_num}/{total_tiles}] {status}", err=True)
@@ -913,23 +931,100 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     # Map CLI anchor choice to parameter value
                     anchor_method_for_sw = 'nearest_pixel' if cluster_anchor == 'pixel' else 'centroid'
 
-                    reconstituted, cluster_results, sw_stats = process_sliding_window(
-                        image,  # BGR format
-                        window_size=window_size,
-                        overlap=max_radius * 2,
-                        min_radius=min_radius,
-                        max_radius=max_radius,
-                        petal_distance=petal_distance,
-                        render_scale=render_scale,
-                        color_mode=color_mode_lower,
-                        anchor_method=anchor_method_for_sw,
-                        debug=debug,
-                        progress_callback=progress_cb if not debug else None,
-                        use_gpu=use_gpu_for_sw,
-                    )
+                    # Cache handling: load or detect
+                    if load_clusters:
+                        # Load clusters from cache - skip detection entirely
+                        click.echo(f"  Loading clusters from cache: {load_clusters}", err=True)
+                        cluster_results, cache_meta = _load_clusters(load_clusters)
+                        click.echo(f"  Loaded {len(cluster_results)} clusters from cache", err=True)
 
-                    click.echo(f"  Processed {sw_stats['total_tiles']} tiles, "
-                              f"{sw_stats['total_rendered']} clusters rendered", err=True)
+                        # Validate source image hash if present
+                        source_hash = compute_image_hash(Path(input))
+                        validation = validate_cluster_cache(load_clusters, source_hash)
+                        if not validation['hash_match']:
+                            if 'warning' in validation:
+                                click.echo(f"  Warning: {validation['warning']}", err=True)
+                            else:
+                                click.echo(f"  Warning: Cache has no source hash - cannot verify image match", err=True)
+
+                        # Render from cached clusters
+                        h, w = image.shape[:2]
+                        click.echo(f"  Rendering {len(cluster_results)} clusters...", err=True)
+
+                        def render_progress(current, total, phase, metadata=None):
+                            if metadata:
+                                pct = metadata.get('percentage', 0)
+                                click.echo(f"  [Render] {pct}% complete", err=True)
+
+                        if use_gpu_for_sw:
+                            from .gpu_renderer import render_flower_global_blend_gpu
+                            reconstituted = render_flower_global_blend_gpu(
+                                cluster_results,
+                                (h, w),
+                                petal_distance=petal_distance,
+                                scale=render_scale,
+                                skip_partial=False,
+                                rotation_mode='fixed',
+                                base_rotation=0.0,
+                                use_gpu=True,
+                                progress_callback=render_progress,
+                            )
+                        else:
+                            reconstituted = render_flower_global_blend(
+                                cluster_results,
+                                (h, w),
+                                petal_distance=petal_distance,
+                                scale=render_scale,
+                                skip_partial=False,
+                                rotation_mode='fixed',
+                                base_rotation=0.0,
+                                progress_callback=render_progress,
+                            )
+
+                        sw_stats = {
+                            'total_tiles': 0,
+                            'total_rendered': len(cluster_results),
+                            'loaded_from_cache': True,
+                        }
+                        click.echo(f"  Rendered {len(cluster_results)} clusters from cache", err=True)
+                    else:
+                        # Normal detection path
+                        click.echo("  (Skipping full-image detection for memory efficiency)", err=True)
+                        reconstituted, cluster_results, sw_stats = process_sliding_window(
+                            image,  # BGR format
+                            window_size=window_size,
+                            overlap=max_radius * 2,
+                            min_radius=min_radius,
+                            max_radius=max_radius,
+                            petal_distance=petal_distance,
+                            render_scale=render_scale,
+                            color_mode=color_mode_lower,
+                            anchor_method=anchor_method_for_sw,
+                            debug=debug,
+                            progress_callback=progress_cb if not debug else None,
+                            use_gpu=use_gpu_for_sw,
+                        )
+                        click.echo(f"  Processed {sw_stats['total_tiles']} tiles, "
+                                  f"{sw_stats['total_rendered']} clusters rendered", err=True)
+
+                        # Save clusters to cache if requested
+                        if save_clusters:
+                            from datetime import datetime
+                            source_hash = compute_image_hash(Path(input))
+                            cache_metadata = {
+                                'source_image_hash': source_hash,
+                                'source_image_path': str(input),
+                                'detection_params': {
+                                    'window_size': window_size,
+                                    'max_radius': max_radius,
+                                    'min_radius': min_radius,
+                                    'color_mode': color_mode_lower,
+                                    'anchor_method': anchor_method_for_sw,
+                                },
+                                'timestamp': datetime.utcnow().isoformat() + 'Z',
+                            }
+                            _save_clusters(cluster_results, save_clusters, cache_metadata)
+                            click.echo(f"  Saved {len(cluster_results)} clusters to: {save_clusters}", err=True)
 
                     partial_count = sum(1 for r in cluster_results if r.partial)
 
