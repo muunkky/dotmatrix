@@ -1,0 +1,107 @@
+{
+  "timestamp": "2025-11-30T23:08:18.207896",
+  "gpu_available": true,
+  "gpu_info": {
+    "gpu_available": true,
+    "error": null,
+    "cuda_lib_paths": [
+      "/home/muunkky/.local/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib",
+      "/home/muunkky/.local/lib/python3.10/site-packages/nvidia/cuda_runtime/lib",
+      "/home/muunkky/.local/lib/python3.10/site-packages/nvidia/cublas/lib",
+      "/home/muunkky/.local/lib/python3.10/site-packages/nvidia/cufft/lib",
+      "/home/muunkky/.local/lib/python3.10/site-packages/nvidia/cusparse/lib"
+    ],
+    "device_name": "Unknown",
+    "device_id": 0,
+    "compute_capability": "61",
+    "cupy_version": "13.6.0",
+    "gpu_memory_used": 512,
+    "gpu_memory_total": 1024
+  },
+  "results": [
+    {
+      "image_size": [
+        100,
+        100
+      ],
+      "num_clusters": 4,
+      "cpu_time_ms": 2.8794960016966797,
+      "gpu_time_ms": 3.290765998826828,
+      "speedup": 0.8750230197842181,
+      "max_pixel_diff": 0,
+      "memory_mb": 234.6796875
+    },
+    {
+      "image_size": [
+        100,
+        100
+      ],
+      "num_clusters": 16,
+      "cpu_time_ms": 11.648203995719086,
+      "gpu_time_ms": 10.363109002355486,
+      "speedup": 1.1240067042691053,
+      "max_pixel_diff": 0,
+      "memory_mb": 234.8046875
+    },
+    {
+      "image_size": [
+        500,
+        500
+      ],
+      "num_clusters": 25,
+      "cpu_time_ms": 50.67804999998771,
+      "gpu_time_ms": 47.1903560028295,
+      "speedup": 1.0739069227820421,
+      "max_pixel_diff": 0,
+      "memory_mb": 243.09765625
+    },
+    {
+      "image_size": [
+        500,
+        500
+      ],
+      "num_clusters": 100,
+      "cpu_time_ms": 224.32241599744884,
+      "gpu_time_ms": 185.1228870000341,
+      "speedup": 1.2117486910054915,
+      "max_pixel_diff": 0,
+      "memory_mb": 249.03515625
+    },
+    {
+      "image_size": [
+        1000,
+        1000
+      ],
+      "num_clusters": 100,
+      "cpu_time_ms": 614.272416998574,
+      "gpu_time_ms": 615.4892809936428,
+      "speedup": 0.998022932270885,
+      "max_pixel_diff": 0,
+      "memory_mb": 273.4296875
+    },
+    {
+      "image_size": [
+        1000,
+        1000
+      ],
+      "num_clusters": 400,
+      "cpu_time_ms": 2433.8953769984073,
+      "gpu_time_ms": 2413.815867002995,
+      "speedup": 1.0083185756916673,
+      "max_pixel_diff": 0,
+      "memory_mb": 297.421875
+    },
+    {
+      "image_size": [
+        2000,
+        2000
+      ],
+      "num_clusters": 400,
+      "cpu_time_ms": 8525.53941399674,
+      "gpu_time_ms": 10055.09235199861,
+      "speedup": 0.8478827558756487,
+      "max_pixel_diff": 0,
+      "memory_mb": 392.8203125
+    }
+  ]
+}
