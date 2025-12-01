@@ -808,6 +808,37 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                 err=True
             )
 
+        # Show GPU status upfront so user knows what acceleration is available
+        from .gpu import is_gpu_available, get_gpu_info
+        gpu_available = is_gpu_available()
+        use_gpu_final = gpu if gpu is not None else gpu_available
+
+        if use_gpu_final and gpu_available:
+            gpu_info = get_gpu_info()
+            mem_total = gpu_info.get('gpu_memory_total', 0)
+            mem_str = f" ({mem_total}MB VRAM)" if mem_total > 0 else ""
+            click.echo(f"GPU acceleration: ENABLED{mem_str}", err=True)
+
+            # Auto-optimize window size based on GPU VRAM if using default
+            if window_size == 500 and mem_total > 0 and sliding_window:
+                # ~50 bytes per pixel, use 50% of VRAM for safety
+                safe_vram_bytes = (mem_total * 1024 * 1024) * 0.5
+                max_pixels = int(safe_vram_bytes / 50)
+                optimal_window = int(max_pixels ** 0.5)
+                # Cap at reasonable maximum, round to nearest 500
+                optimal_window = min(optimal_window, 10000)
+                optimal_window = (optimal_window // 500) * 500
+                if optimal_window > window_size:
+                    window_size = optimal_window
+                    click.echo(f"  Auto-optimized window size: {window_size}px (based on VRAM)", err=True)
+        elif gpu and not gpu_available:
+            gpu_info = get_gpu_info()
+            error_msg = gpu_info.get('error', 'Unknown error')
+            click.echo(f"GPU acceleration: UNAVAILABLE - {error_msg}", err=True)
+            click.echo("  Install CUDA Toolkit from: https://developer.nvidia.com/cuda-downloads", err=True)
+        else:
+            click.echo("GPU acceleration: disabled (use --gpu to enable)", err=True)
+
         # 2. Detect circles - use convex-edge mode if requested
         if convex_edge:
             # Convex edge detection for overlapping circles

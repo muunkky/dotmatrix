@@ -122,11 +122,12 @@ def get_gpu_info() -> dict:
             'cupy_version': cp.__version__,
         })
 
-        # Get memory info
+        # Get memory info from device (actual GPU memory, not mempool)
         try:
-            mempool = cp.get_default_memory_pool()
-            info['gpu_memory_used'] = mempool.used_bytes()
-            info['gpu_memory_total'] = mempool.total_bytes()
+            mem_info = device.mem_info
+            info['gpu_memory_free'] = mem_info[0] // (1024 * 1024)  # MB
+            info['gpu_memory_total'] = mem_info[1] // (1024 * 1024)  # MB
+            info['gpu_memory_used'] = info['gpu_memory_total'] - info['gpu_memory_free']
         except Exception:
             pass
 
