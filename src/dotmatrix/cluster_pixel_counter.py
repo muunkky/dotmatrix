@@ -12,7 +12,12 @@ ADR: See .gitban/cards/CLUSTERING-*-adr-cluster-pixel-counting-architecture-*.md
 """
 
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
+from pathlib import Path
+from datetime import datetime
+import json
+import hashlib
+import warnings
 
 import cv2
 import numpy as np
@@ -65,6 +70,159 @@ class ClusterResult:
             'partial': self.partial,
             'bbox': list(self.bbox) if self.bbox else None
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'ClusterResult':
+        """Create ClusterResult from dictionary.
+
+        Args:
+            data: Dictionary with 'center', 'pixel_counts', and optionally
+                  'partial' and 'bbox' keys.
+
+        Returns:
+            ClusterResult instance
+        """
+        center = data['center']
+        counts = data['pixel_counts']
+        bbox_list = data.get('bbox')
+
+        return cls(
+            x=center[0],
+            y=center[1],
+            cyan=counts['cyan'],
+            magenta=counts['magenta'],
+            yellow=counts['yellow'],
+            black=counts['black'],
+            red=counts['red'],
+            green=counts['green'],
+            blue=counts['blue'],
+            partial=data.get('partial', False),
+            bbox=tuple(bbox_list) if bbox_list else None
+        )
+
+
+# =============================================================================
+# Cluster Cache Functions
+# =============================================================================
+
+CACHE_VERSION = "1.0"
+
+
+def save_clusters(
+    clusters: List[ClusterResult],
+    path: Path,
+    metadata: Optional[Dict[str, Any]] = None
+) -> None:
+    """Save cluster results to JSON file with metadata.
+
+    Args:
+        clusters: List of ClusterResult objects to save
+        path: Output file path (will be created, including parent dirs)
+        metadata: Optional metadata dict with keys like:
+            - source_image_hash: SHA256 hash of source image
+            - detection_params: Dict of detection parameters
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    cache_data = {
+        'version': CACHE_VERSION,
+        'cluster_count': len(clusters),
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'metadata': metadata or {},
+        'clusters': [c.to_dict() for c in clusters]
+    }
+
+    with open(path, 'w') as f:
+        json.dump(cache_data, f, indent=2)
+
+
+def load_clusters(path: Path) -> Tuple[List[ClusterResult], Dict[str, Any]]:
+    """Load cluster results from JSON cache file.
+
+    Args:
+        path: Path to cache file
+
+    Returns:
+        Tuple of (clusters list, metadata dict)
+
+    Raises:
+        FileNotFoundError: If cache file doesn't exist
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Cluster cache file not found: {path}")
+
+    with open(path, 'r') as f:
+        cache_data = json.load(f)
+
+    clusters = [ClusterResult.from_dict(d) for d in cache_data.get('clusters', [])]
+    metadata = cache_data.get('metadata', {})
+
+    return clusters, metadata
+
+
+def validate_cluster_cache(
+    path: Path,
+    expected_hash: str
+) -> Dict[str, Any]:
+    """Validate cluster cache file against expected source image hash.
+
+    Loads the cache file and checks if the source image hash in metadata
+    matches the expected hash.
+
+    Args:
+        path: Path to cache file
+        expected_hash: Expected SHA256 hash of source image
+
+    Returns:
+        Dict with:
+            - valid: True if cache is usable
+            - hash_match: True if hash matches, False otherwise
+            - warning: Present if hash mismatch (string message)
+    """
+    path = Path(path)
+    with open(path, 'r') as f:
+        cache_data = json.load(f)
+
+    metadata = cache_data.get('metadata', {})
+    cached_hash = metadata.get('source_image_hash')
+
+    result = {
+        'valid': True,  # Cache is always usable, just may not match
+    }
+
+    if cached_hash is None:
+        # No hash stored, can't validate match
+        result['hash_match'] = False
+        return result
+
+    if cached_hash != expected_hash:
+        result['hash_match'] = False
+        result['warning'] = (
+            f"Cluster cache source image hash mismatch. "
+            f"Cached: {cached_hash[:16]}..., Expected: {expected_hash[:16]}..."
+        )
+        return result
+
+    result['hash_match'] = True
+    return result
+
+
+def compute_image_hash(image_path: Path) -> str:
+    """Compute SHA256 hash of an image file.
+
+    Args:
+        image_path: Path to image file
+
+    Returns:
+        Hex-encoded SHA256 hash string
+    """
+    hasher = hashlib.sha256()
+    with open(image_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(65536), b''):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 def complete_midtone_masks(

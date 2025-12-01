@@ -817,6 +817,213 @@ class TestBoundingBox:
         assert y_max == 70
 
 
+class TestClusterResultSerialization:
+    """Test ClusterResult.from_dict() and cache serialization.
+    Feature: Detection cache - card ldlfy9
+    """
+
+    def test_from_dict_roundtrip(self):
+        """ClusterResult should roundtrip through to_dict/from_dict."""
+        original = ClusterResult(
+            x=100, y=200,
+            cyan=50, magenta=30, yellow=20,
+            black=100, red=5, green=10, blue=3,
+            partial=True,
+            bbox=(80, 180, 120, 220)
+        )
+
+        as_dict = original.to_dict()
+        restored = ClusterResult.from_dict(as_dict)
+
+        assert restored.x == original.x
+        assert restored.y == original.y
+        assert restored.cyan == original.cyan
+        assert restored.magenta == original.magenta
+        assert restored.yellow == original.yellow
+        assert restored.black == original.black
+        assert restored.red == original.red
+        assert restored.green == original.green
+        assert restored.blue == original.blue
+        assert restored.partial == original.partial
+        assert restored.bbox == original.bbox
+
+    def test_from_dict_with_none_bbox(self):
+        """from_dict should handle None bbox."""
+        original = ClusterResult(
+            x=50, y=50,
+            cyan=10, magenta=10, yellow=10,
+            black=50, red=0, green=0, blue=0,
+            partial=False,
+            bbox=None
+        )
+
+        as_dict = original.to_dict()
+        restored = ClusterResult.from_dict(as_dict)
+
+        assert restored.bbox is None
+        assert restored.partial is False
+
+    def test_from_dict_missing_optional_fields(self):
+        """from_dict should handle missing optional fields with defaults."""
+        # Minimal dict without 'partial' and 'bbox'
+        minimal_dict = {
+            'center': [100, 200],
+            'pixel_counts': {
+                'cyan': 50, 'magenta': 30, 'yellow': 20,
+                'black': 100, 'red': 5, 'green': 10, 'blue': 3
+            }
+        }
+
+        restored = ClusterResult.from_dict(minimal_dict)
+
+        assert restored.x == 100
+        assert restored.y == 200
+        assert restored.partial is False  # Default
+        assert restored.bbox is None  # Default
+
+
+class TestClusterCacheIO:
+    """Test save_clusters and load_clusters functions.
+    Feature: Detection cache - card ldlfy9
+    """
+
+    def test_save_and_load_clusters(self, tmp_path):
+        """Should save and load clusters with metadata."""
+        from dotmatrix.cluster_pixel_counter import save_clusters, load_clusters
+
+        clusters = [
+            ClusterResult(x=50, y=50, cyan=100, magenta=80, yellow=60,
+                         black=150, red=10, green=20, blue=5, partial=False,
+                         bbox=(30, 30, 70, 70)),
+            ClusterResult(x=150, y=150, cyan=80, magenta=100, yellow=40,
+                         black=120, red=5, green=15, blue=8, partial=True,
+                         bbox=(130, 130, 170, 170))
+        ]
+
+        metadata = {
+            'source_image_hash': 'sha256:abc123',
+            'detection_params': {'min_radius': 10, 'max_radius': 50}
+        }
+
+        cache_path = tmp_path / "clusters.json"
+        save_clusters(clusters, cache_path, metadata)
+
+        assert cache_path.exists()
+
+        loaded_clusters, loaded_metadata = load_clusters(cache_path)
+
+        assert len(loaded_clusters) == 2
+        assert loaded_clusters[0].x == 50
+        assert loaded_clusters[0].cyan == 100
+        assert loaded_clusters[1].partial is True
+
+        assert loaded_metadata['source_image_hash'] == 'sha256:abc123'
+        assert loaded_metadata['detection_params']['min_radius'] == 10
+
+    def test_load_clusters_file_not_found(self, tmp_path):
+        """load_clusters should raise FileNotFoundError for missing file."""
+        from dotmatrix.cluster_pixel_counter import load_clusters
+
+        with pytest.raises(FileNotFoundError):
+            load_clusters(tmp_path / "nonexistent.json")
+
+    def test_save_clusters_creates_parent_dirs(self, tmp_path):
+        """save_clusters should create parent directories if needed."""
+        from dotmatrix.cluster_pixel_counter import save_clusters
+
+        clusters = [ClusterResult(x=10, y=10, cyan=1, magenta=1, yellow=1,
+                                  black=1, red=0, green=0, blue=0)]
+
+        nested_path = tmp_path / "subdir" / "deep" / "clusters.json"
+        save_clusters(clusters, nested_path, {})
+
+        assert nested_path.exists()
+
+    def test_cache_file_format_version(self, tmp_path):
+        """Cache file should include format version for future compatibility."""
+        from dotmatrix.cluster_pixel_counter import save_clusters, load_clusters
+        import json
+
+        clusters = [ClusterResult(x=10, y=10, cyan=1, magenta=1, yellow=1,
+                                  black=1, red=0, green=0, blue=0)]
+
+        cache_path = tmp_path / "clusters.json"
+        save_clusters(clusters, cache_path, {})
+
+        # Check raw file contents
+        with open(cache_path) as f:
+            raw_data = json.load(f)
+
+        assert 'version' in raw_data
+        assert raw_data['version'] == '1.0'
+        assert 'cluster_count' in raw_data
+        assert 'timestamp' in raw_data
+
+    def test_empty_clusters_list(self, tmp_path):
+        """Should handle empty cluster list."""
+        from dotmatrix.cluster_pixel_counter import save_clusters, load_clusters
+
+        cache_path = tmp_path / "empty.json"
+        save_clusters([], cache_path, {'source_image_hash': 'test'})
+
+        loaded, meta = load_clusters(cache_path)
+        assert len(loaded) == 0
+        assert meta['source_image_hash'] == 'test'
+
+
+class TestClusterCacheValidation:
+    """Test metadata validation for cluster cache.
+    Feature: Detection cache - card ldlfy9
+    """
+
+    def test_validate_source_hash_match(self, tmp_path):
+        """validate_cluster_cache should pass when hash matches."""
+        from dotmatrix.cluster_pixel_counter import save_clusters, validate_cluster_cache
+
+        clusters = [ClusterResult(x=10, y=10, cyan=1, magenta=1, yellow=1,
+                                  black=1, red=0, green=0, blue=0)]
+
+        cache_path = tmp_path / "clusters.json"
+        save_clusters(clusters, cache_path, {'source_image_hash': 'sha256:abc123'})
+
+        result = validate_cluster_cache(cache_path, expected_hash='sha256:abc123')
+
+        assert result['valid'] is True
+        assert result['hash_match'] is True
+
+    def test_validate_source_hash_mismatch_warns(self, tmp_path):
+        """validate_cluster_cache should warn but not fail on hash mismatch."""
+        from dotmatrix.cluster_pixel_counter import save_clusters, validate_cluster_cache
+
+        clusters = [ClusterResult(x=10, y=10, cyan=1, magenta=1, yellow=1,
+                                  black=1, red=0, green=0, blue=0)]
+
+        cache_path = tmp_path / "clusters.json"
+        save_clusters(clusters, cache_path, {'source_image_hash': 'sha256:abc123'})
+
+        result = validate_cluster_cache(cache_path, expected_hash='sha256:different')
+
+        # Should still be valid (usable) but warn about mismatch
+        assert result['valid'] is True
+        assert result['hash_match'] is False
+        assert 'warning' in result
+
+    def test_validate_missing_hash_in_metadata(self, tmp_path):
+        """validate_cluster_cache should handle missing hash in metadata."""
+        from dotmatrix.cluster_pixel_counter import save_clusters, validate_cluster_cache
+
+        clusters = [ClusterResult(x=10, y=10, cyan=1, magenta=1, yellow=1,
+                                  black=1, red=0, green=0, blue=0)]
+
+        cache_path = tmp_path / "clusters.json"
+        save_clusters(clusters, cache_path, {})  # No hash
+
+        result = validate_cluster_cache(cache_path, expected_hash='sha256:abc123')
+
+        assert result['valid'] is True
+        assert result['hash_match'] is False
+
+
 class TestDebugVisualization:
     """Test debug visualization mode for cluster analysis.
     Feature: CLUSTEREXT sprint - card elr3ns
