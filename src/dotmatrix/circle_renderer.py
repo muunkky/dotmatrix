@@ -292,6 +292,11 @@ class Circle:
 
     @property
     def area(self) -> float:
+        """Calculate the area of this circle in pixels.
+
+        Returns:
+            Area as π * r² (floating point)
+        """
         return math.pi * self.radius * self.radius
 
 
@@ -729,6 +734,17 @@ def render_flower_global_blend(
     # Phase 1b: Build GLOBAL black mask
     # This accounts for ALL black circles, not just the cluster's own
     def build_global_black_mask(circle_list):
+        """Build a boolean mask of all black circles for exposed pixel calculations.
+
+        Creates a composite mask where pixels covered by any black circle are True.
+        Uses find_best_radius_for_pixels for accurate circle sizing.
+
+        Args:
+            circle_list: List of (center_x, center_y, radius) tuples
+
+        Returns:
+            Boolean numpy array (out_h, out_w) where True = black coverage
+        """
         mask = np.zeros((out_h, out_w), dtype=np.uint8)
         for cx, cy, r in circle_list:
             if r > 0:
@@ -937,6 +953,16 @@ def render_cmyk_blend_cluster(
 
     # Create masks for each CMY color
     def make_mask(center_x, center_y, radius):
+        """Create a boolean circle mask at the specified position and radius.
+
+        Args:
+            center_x: X coordinate of circle center
+            center_y: Y coordinate of circle center
+            radius: Circle radius in pixels
+
+        Returns:
+            Boolean numpy array (h, w) where True = inside circle
+        """
         mask = np.zeros((h, w), dtype=np.uint8)
         if radius > 0:
             cv2.circle(mask, (int(center_x), int(center_y)),

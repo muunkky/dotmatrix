@@ -297,9 +297,19 @@ def render_flower_global_blend_gpu(
         })
 
     # Phase 1b: Build GLOBAL black mask
-    # Optimized: Use integer radius directly instead of expensive find_best_radius_for_pixels
-    # The mask is only used for exposed pixel calculation, exact pixel count not critical
     def build_global_black_mask(circle_list):
+        """Build a boolean mask of all black circles for exposed pixel calculations.
+
+        Creates a mask where pixels covered by any black circle are True.
+        Uses integer radius rounding for efficiency since exact pixel count
+        is not critical for exposed area calculations.
+
+        Args:
+            circle_list: List of (center_x, center_y, radius) tuples
+
+        Returns:
+            Boolean numpy array (out_h, out_w) where True = black coverage
+        """
         mask = np.zeros((out_h, out_w), dtype=np.uint8)
         for cx, cy, r in circle_list:
             if r > 0:
@@ -404,6 +414,20 @@ def render_flower_global_blend_gpu(
         log_interval = max(1, total_clusters // 20)
 
         def count_exposed_pixels_local(center_x, center_y, radius):
+            """Count pixels in a petal circle that are not covered by black circles.
+
+            Uses local ROI extraction for efficiency - only processes the region
+            around the petal rather than the full image. This is the CPU fallback
+            path when GPU is unavailable.
+
+            Args:
+                center_x: X coordinate of petal center
+                center_y: Y coordinate of petal center
+                radius: Radius of the petal circle
+
+            Returns:
+                Integer count of exposed (non-black) pixels in the petal
+            """
             if radius <= 0:
                 return 0
 
@@ -486,6 +510,17 @@ def render_flower_global_blend_gpu(
 
     # Phase 2: Build global petal masks
     def build_petal_mask(circle_list):
+        """Build a boolean mask of all petal circles for a single color channel.
+
+        Creates a composite mask where pixels covered by any circle in the list
+        are True. Used for global CMY blending in Phase 3.
+
+        Args:
+            circle_list: List of (center_x, center_y, radius) tuples
+
+        Returns:
+            Boolean numpy array (out_h, out_w) where True = color coverage
+        """
         mask = np.zeros((out_h, out_w), dtype=np.uint8)
         for cx, cy, r in circle_list:
             if r > 0:
