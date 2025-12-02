@@ -6,13 +6,17 @@ DotMatrix is a Python command-line tool that detects circles in images and outpu
 
 ## Features
 
-- 🎯 Accurate circle detection using Hough Circle Transform
-- 🎨 Color extraction for each detected circle (RGB)
-- 📊 Multiple output formats: JSON and CSV
+- 🎯 **Accurate circle detection** using Hough Circle Transform
+- 🎨 **Color extraction** for each detected circle (RGB/CMYK)
+- 📊 **Multiple output formats**: JSON and CSV
 - 🖼️ **PNG extraction**: Generate separate images by color with transparent backgrounds
 - 🔄 **Handles overlapping circles** with convex edge detection (best-in-class for CMYK/halftone)
-- 🚀 Fast processing with optimized algorithms
-- 📝 Simple command-line interface
+- ⚡ **GPU acceleration** via CUDA/CuPy for 5-20x faster rendering
+- 🖨️ **CMYK cluster rendering**: Reconstitute images from detected halftone patterns
+- 🎛️ **Multiple render methods**: flower, bullseye, block, treemap, exact
+- 📐 **Sliding window processing**: Handle images >20 megapixels efficiently
+- 🚀 **Fast processing** with optimized algorithms
+- 📝 **Simple command-line interface** with mode presets
 
 ## Installation
 
@@ -36,6 +40,23 @@ pip install -e ".[dev]"
 pip install dotmatrix
 ```
 
+### GPU Acceleration (Optional)
+
+For significantly faster rendering on large images:
+
+```bash
+# Install with GPU support (requires NVIDIA GPU with CUDA)
+pip install -e ".[gpu]"
+
+# Or install CuPy separately (for CUDA 12.x)
+pip install cupy-cuda12x
+```
+
+**Requirements:**
+- NVIDIA GPU with CUDA support
+- CUDA Toolkit 12.x (or matching cupy-cudaXXx package)
+- ~5-20x speedup for flower renderer on large images
+
 ## Usage
 
 ### Basic Usage
@@ -51,27 +72,63 @@ dotmatrix --input image.png --output results.json
 dotmatrix --input image.png --format csv --output results.csv
 ```
 
+### Processing Modes
+
+DotMatrix provides three primary modes for different use cases:
+
+```bash
+# Standard mode: Simple non-overlapping circles (fastest)
+dotmatrix --input image.png -m standard
+
+# Halftone mode: Overlapping CMYK halftone dots (enables reconstitution)
+dotmatrix --input image.png -m halftone
+
+# CMYK Separation mode: Full ink separation with subtractive color logic
+dotmatrix --input image.png -m cmyk-sep
+```
+
+**Mode Comparison:**
+
+| Mode | Best For | Detection | Reconstitute |
+|------|----------|-----------|--------------|
+| `standard` | Clean, non-overlapping circles | Hough Transform | No |
+| `halftone` | Overlapping CMYK dots | Convex Edge | Yes |
+| `cmyk-sep` | Ink layer separation | CMYK AND logic | Yes |
+
 ### CLI Options
 
 ```
-Options:
+Core Options:
   -i, --input PATH        Input image file path (PNG, JPG, JPEG) [required]
   -o, --output PATH       Output file path (default: stdout)
   -f, --format [json|csv] Output format (default: json)
-  --extract PATH          Extract circles to separate PNG images by color
+  -m, --mode [standard|halftone|cmyk-sep]  Detection preset
+
+Detection Options:
   --min-radius INTEGER    Minimum circle radius in pixels (default: 10)
   --max-radius INTEGER    Maximum circle radius in pixels (default: 500)
-  --min-distance INTEGER  Minimum distance between circle centers in pixels (default: 20)
-  --color-tolerance INTEGER  RGB distance threshold for color grouping (default: 20, range: 0-100)
-  --max-colors INTEGER    Maximum number of color groups using k-means clustering (only with --extract)
-  --sensitivity [strict|normal|relaxed]  Detection sensitivity preset (default: normal)
-  --min-confidence INTEGER  Minimum confidence score to include detection (0-100)
-  --chunk-size TEXT       Chunk size for tiled processing: "auto" (default), pixels (e.g., "2000"), or "0" to disable
-  --num-colors INTEGER    Number of colors to detect when using --palette auto (default: 6)
-  --debug                 Enable debug output
-  --version               Show version and exit
-  --help                  Show this message and exit
+  --min-distance INTEGER  Minimum distance between circle centers (default: 20)
+  --sensitivity [strict|normal|relaxed]  Detection sensitivity (default: normal)
+  --convex-edge           Enable convex edge detection for overlapping circles
+  --color-separation      Separate by color first, then detect per color
+
+Output Options:
+  --output-dir PATH       Output directory for extracted files (default: output/)
+  --no-extract            JSON output only (no file extraction)
+  --reconstitute          Generate reconstituted image from clusters
+  --render-method [bullseye|block|treemap|exact|flower|cmyk-blend]  Rendering style
+  --render-scale INTEGER  Output scale multiplier (default: 1)
+
+GPU Options:
+  --gpu / --no-gpu        Enable/disable GPU acceleration (auto-detects by default)
+
+Cache Options:
+  --no-cache              Disable cluster caching (force re-detection)
+  --load-clusters PATH    Load pre-computed clusters
+  --save-clusters PATH    Save clusters to file
 ```
+
+For full options: `dotmatrix --help`
 
 ### Detection Tuning
 
@@ -266,6 +323,84 @@ dotmatrix --input large_image.png --convex-edge --palette cmyk --chunk-size 0
 - 38 MP CMYK halftone (6480×6000): <5 minutes with ~8,000 circles detected
 - Memory usage scales with chunk size, not total image size
 - Recommended for images >20 megapixels or when hitting memory limits
+
+### GPU Acceleration
+
+Enable GPU acceleration for significantly faster rendering on large images:
+
+```bash
+# Auto-detect GPU (default behavior)
+dotmatrix --input image.png -m halftone
+
+# Explicitly enable GPU
+dotmatrix --input image.png -m halftone --gpu
+
+# Disable GPU (use CPU only)
+dotmatrix --input image.png -m halftone --no-gpu
+```
+
+**GPU Status Messages:**
+```
+GPU acceleration: ENABLED (8192MB VRAM)
+Auto-optimized window size: 2000px (based on VRAM)
+```
+
+**When to Use GPU:**
+- ✅ Large images (>10 megapixels)
+- ✅ Flower renderer with blend overlaps
+- ✅ Batch processing multiple images
+- ❌ Small images (<1 megapixel) - CPU is fast enough
+
+**Requirements:**
+- NVIDIA GPU with CUDA support
+- CuPy package installed (`pip install cupy-cuda12x`)
+- Provides 5-20x speedup for petal radius optimization
+
+### Cluster Rendering (Reconstitution)
+
+Reconstitute images from detected CMYK clusters using various rendering methods:
+
+```bash
+# Basic reconstitution (default: bullseye pattern)
+dotmatrix --input image.png -m halftone --reconstitute
+
+# Flower pattern (best visual quality)
+dotmatrix --input image.png -m halftone --reconstitute --render-method flower
+
+# Block pattern (100% pixel accuracy)
+dotmatrix --input image.png -m halftone --reconstitute --render-method block
+
+# Scaled output (2x resolution)
+dotmatrix --input image.png -m halftone --reconstitute --render-scale 2
+
+# GPU-accelerated flower with blending
+dotmatrix --input image.png -m halftone --reconstitute --render-method flower --blend-overlaps --gpu
+```
+
+**Render Methods:**
+
+| Method | Description | Best For |
+|--------|-------------|----------|
+| `bullseye` | Concentric circles | Quick visualization |
+| `flower` | Black center with CMY petals | Best visual quality |
+| `block` | Stacked horizontal bars | 100% pixel accuracy |
+| `treemap` | Proportional rectangles | Compact visualization |
+| `exact` | Pixel-accurate strips | Measurement verification |
+| `cmyk-blend` | Subtractive color mixing | Print simulation |
+
+**Flower Renderer Options:**
+```bash
+# Adjust petal distance (fraction of black radius)
+dotmatrix -m halftone --reconstitute --render-method flower --petal-distance 0.35
+
+# Petal rotation modes
+dotmatrix -m halftone --reconstitute --render-method flower --petal-rotation fixed
+dotmatrix -m halftone --reconstitute --render-method flower --petal-rotation random
+dotmatrix -m halftone --reconstitute --render-method flower --petal-rotation cluster-hash
+
+# Enable subtractive CMY blending
+dotmatrix -m halftone --reconstitute --render-method flower --blend-overlaps
+```
 
 ### Edge-Based Color Sampling
 
@@ -505,6 +640,11 @@ center_x,center_y,radius,color_r,color_g,color_b,confidence
 - Click >= 8.0.0
 - Pillow >= 10.0.0
 - scikit-learn >= 1.3.0
+- SciPy >= 1.11.0 (for KDTree spatial indexing)
+
+**Optional (GPU Acceleration):**
+- cupy-cuda12x (or matching CUDA version)
+- NVIDIA GPU with CUDA support
 
 ## Development
 
@@ -542,49 +682,95 @@ dotmatrix/
 │   └── dotmatrix/
 │       ├── __init__.py
 │       ├── __main__.py
-│       ├── cli.py              # CLI interface with runs subcommand
+│       ├── cli.py              # CLI entry point with mode presets
+│       │
+│       │ # Detection Layer
 │       ├── circle_detector.py  # Hough Circle Transform
 │       ├── convex_detector.py  # Convex edge detection for overlapping circles
-│       ├── color_extractor.py  # Color sampling
-│       ├── color_clustering.py # K-means color clustering
+│       ├── color_separation.py # K-means color clustering
 │       ├── color_palette_detector.py # Auto-palette detection
-│       ├── config_loader.py    # Configuration save/load
+│       ├── histogram_colors.py # Histogram-based color analysis
+│       │
+│       │ # Color Processing
+│       ├── color_extractor.py  # Color sampling from circles
+│       ├── color_clustering.py # Group similar colors
+│       ├── black_verification.py # Detection QA for CMYK
+│       ├── cmyk_accuracy.py    # Accuracy measurement
+│       ├── calibration.py      # Radius calibration
+│       │
+│       │ # Cluster Processing
+│       ├── cluster_pixel_counter.py  # KDTree pixel assignment
+│       ├── sliding_window.py   # Large image tile processing
+│       │
+│       │ # GPU Acceleration
+│       ├── gpu.py              # CuPy/CUDA setup and utilities
+│       ├── gpu_renderer.py     # GPU-accelerated flower renderer
+│       │
+│       │ # Rendering
+│       ├── circle_renderer.py  # Flower pattern renderer
+│       ├── cluster_renderer.py # Bullseye pattern renderer
+│       ├── block_renderer.py   # Block/bar renderer
+│       ├── treemap_renderer.py # Treemap and exact renderers
+│       │
+│       │ # Output
+│       ├── formatter.py        # JSON/CSV formatters
 │       ├── image_extractor.py  # PNG extraction by color
 │       ├── manifest.py         # Run manifest generation
 │       ├── run_manager.py      # Organized output directories
 │       ├── runs.py             # Run discovery and management
-│       └── formatter.py        # JSON/CSV formatters
+│       └── config_loader.py    # Configuration save/load
+│
+├── docs/
+│   ├── adr/                    # Architecture Decision Records
+│   │   ├── ADR-001-large-file-processing.md
+│   │   ├── ADR-002-cli-ux-refactoring.md
+│   │   └── ADR-003-block-renderer.md
+│   └── architecture/
+│       ├── color-pipeline.md   # BGR convention documentation
+│       └── pipeline-overview.md # Full architecture overview
+│
 ├── tests/
 │   ├── data/                   # Test images and ground truth
-│   ├── test_cli.py
-│   ├── test_circle_detector.py
-│   ├── test_runs.py            # Run management tests
-│   └── test_e2e_workflow.py    # End-to-end workflow tests
+│   └── test_*.py               # Unit and integration tests
+│
 ├── pyproject.toml
+├── CHANGELOG.md
+├── ROADMAP.md
 └── README.md
 ```
 
+For detailed architecture documentation, see [Pipeline Overview](docs/architecture/pipeline-overview.md).
+
 ## Roadmap
 
-### v0.1.0 - MVP (Current)
+### v0.1.0 - MVP ✅
 - [x] Basic project structure
-- [ ] Hough Circle Transform detection
-- [ ] Color extraction
-- [ ] JSON/CSV output
-- [ ] Unit tests
+- [x] Hough Circle Transform detection
+- [x] Color extraction
+- [x] JSON/CSV output
+- [x] Unit tests
 
-### v0.2.0 - Overlapping Circles (Current)
+### v0.2.0 - Overlapping Circles ✅
 - [x] Convex edge detection for overlapping circles
 - [x] Color palette quantization (CMYK, RGB, custom)
 - [x] Per-color circle detection with convexity analysis
 - [x] `--convex-edge`, `--palette`, `--quantize-output` CLI flags
+- [x] Chunked processing for large images
+- [x] Run management and manifests
 
-### v0.3.0 - Production Ready
-- [ ] Confidence scores
-- [ ] Visualization mode
-- [ ] Performance optimizations
+### v0.3.0 - GPU & Cluster Rendering (Current)
+- [x] GPU acceleration via CuPy/CUDA
+- [x] Cluster pixel counting with KDTree
+- [x] Multiple render methods (flower, bullseye, block, treemap)
+- [x] Sliding window for large images
+- [x] Cluster caching for fast render iteration
+- [x] Mode presets (standard, halftone, cmyk-sep)
+
+### v0.4.0 - Production Ready
 - [ ] Comprehensive documentation
 - [ ] PyPI release
+- [ ] Performance benchmarks
+- [ ] API stability
 
 ## Algorithm
 
@@ -612,12 +798,22 @@ DotMatrix is optimized for processing images from small to very large (38+ megap
 | **Hough Transform** | ~0.02s/MP | ~5 MB/MP | General use, well-separated circles |
 | **Convex Edge** | ~2s/MP | ~20 MB/MP | Overlapping circles, CMYK halftones |
 | **Convex Edge + Chunking** | ~7s/MP | ~200 MB fixed | Very large images (>20 MP) |
+| **GPU Flower Renderer** | 5-20x faster | GPU VRAM | Large reconstitution tasks |
 
 **Key metrics:**
 - **Hough detection**: Handles 64+ megapixels in <2 seconds
 - **Convex detection**: Handles 20 megapixels in <30 seconds
 - **Chunked convex**: 38 MP CMYK halftone in <5 minutes with ~8,000 circles
+- **GPU rendering**: 15K+ clusters rendered in seconds (vs minutes on CPU)
 - Performance scales with **megapixels** (not file size in MB)
+
+### GPU Acceleration Benefits
+
+| Operation | CPU Time | GPU Time | Speedup |
+|-----------|----------|----------|---------|
+| Petal radius optimization | ~60s | ~5s | 12x |
+| Global blend rendering | ~120s | ~10s | 12x |
+| Full reconstitution (15K clusters) | ~5min | ~30s | 10x |
 
 ### Scaling Optimizations
 
