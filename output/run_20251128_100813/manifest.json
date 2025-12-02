@@ -1,0 +1,46 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-28T10:08:13.912851",
+  "source_file": {
+    "path": "C:\\Users\\Cameron\\Projects\\dotmatrix\\inputs\\Circle test file .png",
+    "name": "Circle test file .png",
+    "hash": "sha256:16e252bd5ff7367443255f503808d272bcc888785fa5a04d7cf0f02ca7424510"
+  },
+  "settings": {
+    "min_radius": 80,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": true,
+    "palette": "cmyk",
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 1,
+    "circles_by_color": {
+      "rgb_255_255_0": 1
+    }
+  },
+  "output_files": [
+    "yellow.png",
+    "composite.png"
+  ],
+  "verification": {
+    "black_circles_detected": 0,
+    "radius_mean": 0.0,
+    "radius_std": 0.0,
+    "radius_min": 0,
+    "radius_max": 0,
+    "expected_density": 0.0,
+    "actual_density": 0.0,
+    "coverage_percent": 0.0,
+    "warnings": [
+      "No black circles detected. Check min_radius/max_radius settings or verify image contains CMYK halftone dots."
+    ],
+    "passed": false
+  }
+}

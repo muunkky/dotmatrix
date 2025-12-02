@@ -1,0 +1,16 @@
+{
+  "card_id": "v15b4i",
+  "validation_timestamp": "2025-12-02T00:53:35.721519Z",
+  "validation_errors": {
+    "missing_sections": [
+      {
+        "section_name": "Acceptance Criteria",
+        "message": "Required section '## Acceptance Criteria' not found"
+      },
+      {
+        "section_name": "Test Plan",
+        "message": "Required section '## Test Plan' not found"
+      }
+    ]
+  }
+}

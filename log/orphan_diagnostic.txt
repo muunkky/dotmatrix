@@ -1,0 +1,54 @@
+=== Orphan Pixel Diagnostic ===
+Input image: inputs\input_large.png
+Clusters JSON: inputs\input_large_clusters.json
+Distance threshold: 50.0px
+Foreground color: black
+
+Loading cluster centers...
+  Loaded 15604 cluster centers
+Loading input image...
+  Found 18,951,932 black pixels
+
+Computing orphan pixels...
+
+=== RESULTS ===
+Total black pixels in INPUT: 18,951,932
+Detected clusters: 15,604
+Orphan pixels: 4,335 (0.02%)
+Orphan region: X=1622-3505, Y=1856-2956
+
+Finding missed halftone dots (orphan clusters)...
+Found 64 orphan clusters (missed dots)
+
+Top 20 largest missed dots:
+  #33: 179 pixels at (2369, 2108)
+  #37: 143 pixels at (2263, 2143)
+  #128: 141 pixels at (3076, 2744)
+  #38: 124 pixels at (2334, 2143)
+  #114: 118 pixels at (3147, 2674)
+  #32: 104 pixels at (2159, 2105)
+  #45: 102 pixels at (2298, 2178)
+  #73: 100 pixels at (2440, 2391)
+  #44: 97 pixels at (2367, 2176)
+  #127: 97 pixels at (3007, 2742)
+  #106: 95 pixels at (3145, 2605)
+  #53: 94 pixels at (2331, 2212)
+  #70: 94 pixels at (2437, 2322)
+  #76: 90 pixels at (2440, 2461)
+  #124: 90 pixels at (3180, 2706)
+  #22: 89 pixels at (2154, 2039)
+  #125: 86 pixels at (3114, 2711)
+  #36: 83 pixels at (2194, 2141)
+  #113: 83 pixels at (3180, 2640)
+  #82: 82 pixels at (2473, 2565)
+
+Traceback (most recent call last):
+  File "C:\Users\Cameron\Projects\dotmatrix\scripts\diagnose_orphans.py", line 300, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "C:\Users\Cameron\Projects\dotmatrix\scripts\diagnose_orphans.py", line 295, in main
+    print(f"\u2705 Orphan rate {stats['orphan_percent']:.1f}% is acceptable")
+  File "C:\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>

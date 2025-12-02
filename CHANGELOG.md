@@ -5,6 +5,16 @@ All notable changes to DotMatrix will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-12-01
+
+### Fixed
+- **Small halftone dot detection**: Fixed critical bug where small dots (1-13px radius) were filtered out during detection. The distance transform threshold was incorrectly using a ratio of the global maximum, causing small dots to be missed when large dots were present in the same image. Now uses absolute threshold (0.5) to capture all dot sizes.
+  - Before: 15,604 clusters detected, 64 missed dots, 4,335 orphan pixels (0.02%)
+  - After: 15,794 clusters detected, 0 missed dots, 0 orphan pixels (0.00%)
+
+### Added
+- **Orphan pixel diagnostic tool**: `scripts/diagnose_orphans.py` for analyzing INPUT images to find halftone dots not captured by detection
+
 ## [0.1.0] - 2025-10-31
 
 ### Added

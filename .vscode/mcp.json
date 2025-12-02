@@ -1,0 +1,18 @@
+{
+  "servers": {
+  "github": {
+			"url": "https://api.githubcopilot.com/mcp/",
+			"type": "http"
+		},
+    "gitban": {
+      "command": "C:\\Users\\Cameron\\Projects\\modelcontextprotocol\\gitban-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["-u", "-m", "gitban.mcp_server"],
+      "env": {
+        "KANBAN_WORKSPACE_MODE": "dynamic",
+        "KANBAN_TARGET_WORKSPACE": "${workspaceFolder}\\.gitban",
+        "KANBAN_USE_HERMETIC_MODE": "true"
+      }
+    }
+  
+  }
+}

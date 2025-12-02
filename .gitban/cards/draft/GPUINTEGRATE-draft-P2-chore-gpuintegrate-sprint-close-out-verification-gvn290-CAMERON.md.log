@@ -1,0 +1,15 @@
+{
+  "card_id": "gvn290",
+  "validation_timestamp": "2025-12-01T17:02:43.106366Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Purpose",
+      "Project Location",
+      "Outputs",
+      "Success Criteria"
+    ],
+    "missing_checkboxes": 11,
+    "missing_tables": []
+  },
+  "template_name": "chore"
+}

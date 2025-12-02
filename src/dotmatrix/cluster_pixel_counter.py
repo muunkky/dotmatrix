@@ -350,8 +350,10 @@ def find_black_dot_centers_distance_transform(
         return []
 
     # Threshold to get significant peaks only
-    # Use ratio of max, but floor at 0.5 to catch single-pixel dots (dist_transform=1)
-    threshold = max(0.5, threshold_ratio * dist_transform.max())
+    # Use absolute minimum (0.5) to catch single-pixel dots, not ratio of global max
+    # The ratio-based threshold filters out small dots when large dots dominate
+    # See: SMALLDOTS sprint - root cause analysis card 65jnja
+    threshold = 0.5
 
     # Find local maxima using maximum filter (GPU accelerated)
     # A pixel is a local max if it equals the max in its neighborhood

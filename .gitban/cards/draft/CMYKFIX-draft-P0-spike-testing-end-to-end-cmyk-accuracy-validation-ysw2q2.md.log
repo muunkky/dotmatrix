@@ -1,0 +1,15 @@
+{
+  "card_id": "ysw2q2",
+  "validation_timestamp": "2025-11-30T07:51:57.472345Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Research Question",
+      "Time Box",
+      "Success Criteria",
+      "Context"
+    ],
+    "missing_checkboxes": 3,
+    "missing_tables": []
+  },
+  "template_name": "spike"
+}

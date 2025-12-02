@@ -1,0 +1,27 @@
+{
+  "sprint_id": "sprint-clustering-20251128",
+  "sprint_name": "sprint-clustering-20251128",
+  "sprint_folder": "sprint-clustering-20251128",
+  "created_at": "2025-11-28T20:30:22.231638",
+  "start_date": null,
+  "end_date": "2025-11-28",
+  "archived_at": "2025-11-28T20:30:22.231638",
+  "card_ids": [
+    "m77mk3",
+    "ghwngb",
+    "bd9g6d"
+  ],
+  "metrics": {
+    "total_cards": 3,
+    "by_priority": {
+      "P0": 3
+    },
+    "by_type": {
+      "spike": 3
+    },
+    "by_owner": {
+      "Unassigned": 2,
+      "CAMERON": 1
+    }
+  }
+}

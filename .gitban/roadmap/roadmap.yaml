@@ -17,6 +17,20 @@ changelog:
     changes:
       - Initial roadmap created for DotMatrix circle detection CLI
       - 'Defined V1 with three milestones: MVP, Enhancement, Production'
+  - version: 0.2.1
+    date: '2025-11-29'
+    changes:
+      - 'CELLCLUSTER Sprint: Confirmed cell-based clustering already implemented via
+        --reconstitute'
+      - 'Discovery: cluster_pixel_counter.py uses KDTree nearest-neighbor (Voronoi
+        tessellation)'
+      - 'Discovery: --reconstitute bypasses circle detection and uses cluster_and_count_pixels()
+        directly'
+      - CMYK accuracy measurement module (cmyk_accuracy.py) created and 
+        validated
+      - Accuracy comparison found 24.6% error due to flower renderer 
+        blend-overlaps issue
+      - Created follow-up bug card (01gzl3) for C+M overlap improvement
 versions:
   v1:
     id: v1
@@ -571,3 +585,156 @@ versions:
                 docs_ref: ''
                 depends_on:
                   - size-warnings
+          cmyk-accuracy-optimization:
+            id: cmyk-accuracy-optimization
+            title: CMYK Accuracy Optimization
+            description: Advanced techniques for improving CMYK pixel count 
+              accuracy in flower petal rendering
+            status: in_progress
+            priority: high
+            projects:
+              petal-distance-tuning:
+                id: petal-distance-tuning
+                title: Petal Distance Tuning
+                status: done
+                sequence: 1
+                description: Optimized default petal_distance from 0.5 to 0.35, 
+                  reducing CMYK error by 33%. Added --petal-distance CLI option.
+              petal-angle-optimization:
+                id: petal-angle-optimization
+                title: 90 Degree Petal Angle Optimization
+                status: done
+                sequence: 2
+                description: Changed petal angles from 120 apart to 90 apart 
+                  (N/E/S) to reduce overlap with neighboring black circles.
+              global-black-mask:
+                id: global-black-mask
+                title: Global Black Mask Optimization
+                status: done
+                sequence: 3
+                description: Build global black mask first, then optimize petal 
+                  radii against all neighboring blacks.
+              per-cluster-optimization:
+                id: per-cluster-optimization
+                title: Per-Cluster Multivariate Optimization
+                status: todo
+                sequence: 4
+                description: 'Future: Optimize petal_distance, angle, radius per-cluster
+                  based on local density and color composition. Fixed 0.35 works for
+                  2-3 tones but per-cluster tuning could further improve accuracy.'
+              small-cluster-detection:
+                id: small-cluster-detection
+                title: Small Cluster Detection (SMALLDOTS Sprint)
+                status: in_progress
+                sequence: 5
+                description: Multi-pass detection algorithm to capture small 
+                  halftone clusters missed by standard detection. Reduces orphan
+                  pixels from ~38k to <1k for $50k+ print quality.
+                owner: CAMERON
+                tdd_spec: tests/test_multipass_detection.py
+                docs_ref: docs/architecture/multipass-detection.md
+      m4:
+        id: m4
+        title: 'M4: GPU Acceleration'
+        status: todo
+        due_date: '2025-12-15'
+        description: 'GPU-accelerated rendering for large images. Target: <2 minute
+          render time for 38.9MP images.'
+        success_criteria:
+          - GPU rendering produces output matching CPU baseline
+          - Large image render time < 2 minutes (from 73+ minutes)
+          - --gpu CLI flag with auto-detection and fallback
+          - Comprehensive equivalence and benchmark tests
+        features:
+          gpu-environment:
+            id: gpu-environment
+            title: GPU Environment Setup
+            status: todo
+            priority: critical
+            description: Research and install GPU framework (CuPy, Numba, or 
+              alternative)
+            projects:
+              gpu-framework-spike:
+                id: gpu-framework-spike
+                title: GPU Framework Selection Spike
+                status: done
+                owner: CAMERON
+                sequence: 1
+                description: 'Research and select GPU framework. Decision: CuPy. Card:
+                  79itcc'
+              gpu-install-config:
+                id: gpu-install-config
+                title: Install and Configure GPU Environment
+                status: todo
+                owner: CAMERON
+                sequence: 2
+                description: 'Install CUDA toolkit, chosen framework, verify environment.
+                  Card: dmzrn4'
+              cpu-baseline-verify:
+                id: cpu-baseline-verify
+                title: Verify CPU Baseline
+                status: todo
+                owner: CAMERON
+                sequence: 3
+                description: 'Establish baseline metrics and verify CPU rendering
+                  correctness. Card: o9yarx'
+          gpu-implementation:
+            id: gpu-implementation
+            title: GPU Renderer Implementation
+            status: todo
+            priority: critical
+            description: Implement GPU-accelerated flower renderer
+            projects:
+              gpu-algorithm-spike:
+                id: gpu-algorithm-spike
+                title: GPU Algorithm Design Spike
+                status: done
+                owner: CAMERON
+                sequence: 1
+                description: 'Design GPU-parallelizable algorithm. Decision: CuPy
+                  batch implementation. Card: qt2qer'
+              gpu-flower-renderer:
+                id: gpu-flower-renderer
+                title: Implement GPU Flower Renderer
+                status: todo
+                owner: CAMERON
+                sequence: 2
+                description: 'GPU-accelerated render_flower_global_blend implementation.
+                  Card: gr4b7x'
+              gpu-cli-flag:
+                id: gpu-cli-flag
+                title: Add --gpu CLI Flag
+                status: todo
+                owner: CAMERON
+                sequence: 3
+                description: 'CLI integration with auto-detection and CPU fallback.
+                  Card: gimgcz'
+          gpu-testing:
+            id: gpu-testing
+            title: GPU Testing & Validation
+            status: todo
+            priority: high
+            description: Test GPU vs CPU equivalence and benchmark performance
+            projects:
+              gpu-equivalence-tests:
+                id: gpu-equivalence-tests
+                title: GPU vs CPU Equivalence Testing
+                status: todo
+                owner: CAMERON
+                sequence: 1
+                description: 'Verify GPU output matches CPU output pixel-for-pixel.
+                  Card: a6ing3'
+              gpu-benchmarks:
+                id: gpu-benchmarks
+                title: GPU Performance Benchmarks
+                status: todo
+                owner: CAMERON
+                sequence: 2
+                description: 'Measure speedup across various image sizes. Card: fufuy9'
+              sprint-closeout:
+                id: sprint-closeout
+                title: Sprint Closeout Verification
+                status: todo
+                owner: CAMERON
+                sequence: 3
+                description: 'Final verification and documentation. Card: 2z9217'

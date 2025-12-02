@@ -1,0 +1,30 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-12-01T19:57:19.522046",
+  "source_file": {
+    "path": "C:\\Users\\Cameron\\Projects\\dotmatrix\\inputs\\input_large.png",
+    "name": "input_large.png",
+    "hash": "sha256:16e252bd5ff7367443255f503808d272bcc888785fa5a04d7cf0f02ca7424510"
+  },
+  "settings": {
+    "mode": "halftone",
+    "palette": "cmyk-sep",
+    "convex_edge": true,
+    "cluster_count": 15604,
+    "partial_clusters": 281,
+    "render_method": "flower",
+    "color_mode": "full",
+    "sliding_window": true,
+    "window_size": 9000,
+    "tiles_processed": 0
+  },
+  "results": {
+    "total_circles": 0,
+    "circles_by_color": {}
+  },
+  "output_files": [
+    "reconstituted.png",
+    "composite.png",
+    "diff.png"
+  ]
+}

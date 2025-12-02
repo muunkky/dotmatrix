@@ -1,0 +1,13 @@
+{
+  "card_id": "4bhid6",
+  "validation_timestamp": "2025-11-30T18:19:41.119193Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Description",
+      "Implementation Plan"
+    ],
+    "missing_checkboxes": 0,
+    "missing_tables": []
+  },
+  "template_name": "feature"
+}

@@ -52,8 +52,8 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @optgroup.option(
     '--min-radius',
     type=int,
-    default=10,
-    help='Minimum circle radius in pixels (default: 10)'
+    default=1,
+    help='Minimum circle radius in pixels (default: 1)'
 )
 @optgroup.option(
     '--max-radius',

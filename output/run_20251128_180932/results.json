@@ -1,0 +1,327 @@
+[
+  {
+    "center": [
+      1697,
+      476
+    ],
+    "radius": 244,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      3299,
+      400
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      579,
+      692
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      3943,
+      1116
+    ],
+    "radius": 275,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      619,
+      1077
+    ],
+    "radius": 214,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      2181,
+      1195
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1475,
+      1216
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      406,
+      1684
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1863,
+      1729
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1259,
+      1922
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      763,
+      1957
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1563,
+      2181
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      3761,
+      2478
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      3304,
+      2654
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      264,
+      2768
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1770,
+      2890
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      2227,
+      2895
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      2878,
+      2951
+    ],
+    "radius": 194,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1063,
+      2990
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1837,
+      3351
+    ],
+    "radius": 230,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      3514,
+      3357
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      2893,
+      3827
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      3542,
+      3998
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      2262,
+      4084
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1276,
+      4193
+    ],
+    "radius": 150,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  }
+]

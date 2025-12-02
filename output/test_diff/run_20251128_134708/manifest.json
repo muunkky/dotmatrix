@@ -1,0 +1,51 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-28T13:47:09.859571",
+  "source_file": {
+    "path": "/mnt/c/users/cameron/projects/dotmatrix/test_dotmatrix.png",
+    "name": "test_dotmatrix.png",
+    "hash": "sha256:fe619851b0b28dea2f7fda7a7df5e8fdc134d459973b1d01979024b21ed1095f"
+  },
+  "settings": {
+    "min_radius": 80,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": true,
+    "palette": "cmyk",
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 12,
+    "circles_by_color": {
+      "rgb_255_0_255": 4,
+      "rgb_255_255_0": 4,
+      "black": 4
+    }
+  },
+  "output_files": [
+    "magenta.png",
+    "yellow.png",
+    "black.png",
+    "composite.png",
+    "diff.png"
+  ],
+  "verification": {
+    "black_circles_detected": 4,
+    "radius_mean": 166.75,
+    "radius_std": 57.59068935166517,
+    "radius_min": 116,
+    "radius_max": 256,
+    "expected_density": 0.0,
+    "actual_density": 1.327978922318545,
+    "coverage_percent": 12.984105680985591,
+    "warnings": [
+      "Very few black circles detected (4). Expected at least 75. Consider lowering min_radius or raising max_radius."
+    ],
+    "passed": false
+  }
+}

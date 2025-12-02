@@ -1,0 +1,30 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-27T11:25:39.520952",
+  "source_file": {
+    "path": "/tmp/tmpj7nt_jlq.png",
+    "name": "tmpj7nt_jlq.png",
+    "hash": "sha256:b184fd05fd5a6238b1415024fc8449c8ddbb5583b4ae11d2f34fd6d4ee8a5006"
+  },
+  "settings": {
+    "min_radius": 10,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": false,
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 1,
+    "circles_by_color": {
+      "rgb(255,0,0)": 1
+    }
+  },
+  "output_files": [
+    "circles_color_255_000_000.png"
+  ]
+}

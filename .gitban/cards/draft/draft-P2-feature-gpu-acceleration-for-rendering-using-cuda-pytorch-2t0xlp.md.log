@@ -1,0 +1,14 @@
+{
+  "card_id": "2t0xlp",
+  "validation_timestamp": "2025-12-01T03:54:25.879535Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Description",
+      "Acceptance Criteria",
+      "Implementation Plan"
+    ],
+    "missing_checkboxes": 3,
+    "missing_tables": []
+  },
+  "template_name": "feature"
+}

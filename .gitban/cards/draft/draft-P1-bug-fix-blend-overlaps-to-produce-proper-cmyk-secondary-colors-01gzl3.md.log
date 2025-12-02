@@ -1,0 +1,15 @@
+{
+  "card_id": "01gzl3",
+  "validation_timestamp": "2025-11-30T06:38:19.271337Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Bug Description",
+      "Steps to Reproduce",
+      "Environment",
+      "Solution"
+    ],
+    "missing_checkboxes": 0,
+    "missing_tables": []
+  },
+  "template_name": "bug"
+}

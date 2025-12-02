@@ -44,7 +44,7 @@ class Circle:
 
 def detect_circles(
     image: np.ndarray,
-    min_radius: int = 10,
+    min_radius: int = 1,
     max_radius: int = 500,
     sensitivity: Optional[str] = None,
     min_distance: int = 20

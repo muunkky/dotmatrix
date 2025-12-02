@@ -1,0 +1,17 @@
+{
+  "card_id": "6mv3po",
+  "validation_timestamp": "2025-12-01T09:14:27.754614Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Refactoring Goal",
+      "Current State",
+      "Desired State",
+      "Benefits",
+      "Refactoring Steps",
+      "Testing Strategy"
+    ],
+    "missing_checkboxes": 50,
+    "missing_tables": []
+  },
+  "template_name": "refactor"
+}

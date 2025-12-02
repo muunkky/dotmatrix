@@ -1,0 +1,31 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-27T00:00:25.445315",
+  "source_file": {
+    "path": "/tmp/pytest-of-muunkky/pytest-33/test_warning_displayed_for_lar0/large_test.png",
+    "name": "large_test.png",
+    "hash": "sha256:5875b3f8900d8ccdc3e002057b864d37ce96714f99eb01d466a548e99105acf8"
+  },
+  "settings": {
+    "min_radius": 100,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": true,
+    "palette": "cmyk",
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 1,
+    "circles_by_color": {
+      "black": 1
+    }
+  },
+  "output_files": [
+    "black.png"
+  ]
+}

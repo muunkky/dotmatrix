@@ -1,0 +1,51 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-28T18:23:39.722137",
+  "source_file": {
+    "path": "/mnt/c/users/cameron/projects/dotmatrix/inputs/corner_test.png",
+    "name": "corner_test.png",
+    "hash": "sha256:4ffb5edae054cb714c3070ba315a373243501fbd46636e03d18d012c2490a535"
+  },
+  "settings": {
+    "min_radius": 10,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": true,
+    "palette": "cmyk",
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 234,
+    "circles_by_color": {
+      "rgb_0_255_255": 87,
+      "rgb_255_0_255": 42,
+      "black": 105
+    }
+  },
+  "output_files": [
+    "cyan.png",
+    "magenta.png",
+    "black.png",
+    "composite.png",
+    "diff.png"
+  ],
+  "verification": {
+    "black_circles_detected": 105,
+    "radius_mean": 18.733333333333334,
+    "radius_std": 1.7742425166635218,
+    "radius_min": 13,
+    "radius_max": 21,
+    "expected_density": 0.0,
+    "actual_density": 420.0,
+    "coverage_percent": 46.72050930712592,
+    "warnings": [
+      "Mean radius (18.7) is close to min_radius (10). Some circles may be cut off. Consider lowering min_radius."
+    ],
+    "passed": false
+  }
+}

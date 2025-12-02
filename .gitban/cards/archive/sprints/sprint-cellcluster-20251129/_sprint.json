@@ -1,0 +1,30 @@
+{
+  "sprint_id": "sprint-cellcluster-20251129",
+  "sprint_name": "sprint-cellcluster-20251129",
+  "sprint_folder": "sprint-cellcluster-20251129",
+  "created_at": "2025-11-29T23:39:56.862398",
+  "start_date": null,
+  "end_date": "2025-11-29",
+  "archived_at": "2025-11-29T23:39:56.862398",
+  "card_ids": [
+    "23pts3",
+    "n0qecx"
+  ],
+  "metrics": {
+    "total_cards": 7,
+    "by_priority": {
+      "P1": 5,
+      "P0": 1,
+      "P2": 1
+    },
+    "by_type": {
+      "feature": 5,
+      "spike": 1,
+      "test": 1
+    },
+    "by_owner": {
+      "Unassigned": 5,
+      "CAMERON": 2
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-30T11:32:00.823484",
+  "source_file": {
+    "path": "/mnt/c/users/cameron/projects/dotmatrix/output/cmykfix_final/source_quantized.png",
+    "name": "source_quantized.png",
+    "hash": "sha256:2205defae37d23483ff51f943f68c7b4b59f1a0c6f92da48b3eb26ad39693739"
+  },
+  "settings": {
+    "mode": "halftone",
+    "palette": "cmyk-sep",
+    "convex_edge": true,
+    "cluster_count": 120,
+    "partial_clusters": 36,
+    "render_method": "flower",
+    "color_mode": "full",
+    "render_scale": 1
+  },
+  "results": {
+    "total_circles": 0,
+    "circles_by_color": {}
+  },
+  "output_files": [
+    "cyan.png",
+    "magenta.png",
+    "yellow.png",
+    "black.png",
+    "reconstituted.png"
+  ]
+}

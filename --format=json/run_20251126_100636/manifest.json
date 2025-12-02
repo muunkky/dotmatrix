@@ -1,0 +1,37 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-26T10:06:36.847894",
+  "source_file": {
+    "path": "/tmp/chunk_top-left.png",
+    "name": "chunk_top-left.png",
+    "hash": "sha256:5f8269ed17d3e5d05007d38828597c2f6c818c6e116d7db706b04afc59594175"
+  },
+  "settings": {
+    "min_radius": 10,
+    "max_radius": 50,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": true,
+    "palette": "auto",
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 657,
+    "circles_by_color": {
+      "black": 401,
+      "rgb_0_255_255": 131,
+      "blue": 106,
+      "rgb_255_0_255": 19
+    }
+  },
+  "output_files": [
+    "circles_color_000_000_000.png",
+    "circles_color_000_000_255.png",
+    "circles_color_000_255_255.png",
+    "circles_color_255_000_255.png"
+  ]
+}

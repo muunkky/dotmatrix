@@ -12,7 +12,7 @@ from typing import Optional, Literal
 @dataclass
 class DetectionParams:
     """Circle detection parameters."""
-    min_radius: int = 10
+    min_radius: int = 1
     max_radius: int = 500
     min_distance: int = 20
     sensitivity: Literal['strict', 'normal', 'relaxed'] = 'normal'

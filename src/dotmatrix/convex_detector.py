@@ -414,7 +414,7 @@ def separate_cmyk_inks(
 
 def detect_circles_cmyk_separation(
     image: np.ndarray,
-    min_radius: int = 10,
+    min_radius: int = 1,
     max_radius: int = 50,
     debug_callback: Optional[callable] = None,
     sensitive_mode: bool = False,
@@ -660,7 +660,7 @@ def apply_morphological_enhancement(
 def detect_circles_from_convex_edges(
     color_mask: np.ndarray,
     color: Tuple[int, int, int],
-    min_radius: int = 80,
+    min_radius: int = 1,
     max_radius: int = 350,
     min_blob_area: Optional[int] = None,
     defect_depth_threshold: int = 5,
@@ -699,8 +699,9 @@ def detect_circles_from_convex_edges(
     """
     # Auto-calculate min_blob_area based on min_radius if not specified
     # Use 30% of circle area to capture partial/crescent shapes in halftone images
+    # Minimum of 1 allows single-pixel dots to be detected
     if min_blob_area is None:
-        min_blob_area = max(50, int(np.pi * min_radius * min_radius * 0.3))
+        min_blob_area = max(1, int(np.pi * min_radius * min_radius * 0.3))
 
     # Apply morphological enhancement if enabled (helps with occluded circles)
     if morphological_enhance:
@@ -800,7 +801,7 @@ def detect_circles_from_convex_edges(
 def detect_all_circles(
     image: np.ndarray,
     palette: List[Tuple[int, int, int]],
-    min_radius: int = 80,
+    min_radius: int = 1,
     max_radius: int = 350,
     exclude_background: bool = True,
     debug_callback: Optional[callable] = None,
@@ -1186,7 +1187,7 @@ def process_chunked(
     palette: List[Tuple[int, int, int]],
     chunk_size: int,
     max_radius: int,
-    min_radius: int = 80,
+    min_radius: int = 1,
     exclude_background: bool = True,
     progress_callback: Optional[callable] = None,
     debug_callback: Optional[callable] = None,

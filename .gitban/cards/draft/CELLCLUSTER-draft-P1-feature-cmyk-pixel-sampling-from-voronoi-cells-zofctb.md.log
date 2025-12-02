@@ -1,0 +1,13 @@
+{
+  "card_id": "zofctb",
+  "validation_timestamp": "2025-11-30T06:28:26.824790Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Description",
+      "Implementation Plan"
+    ],
+    "missing_checkboxes": 0,
+    "missing_tables": []
+  },
+  "template_name": "feature"
+}

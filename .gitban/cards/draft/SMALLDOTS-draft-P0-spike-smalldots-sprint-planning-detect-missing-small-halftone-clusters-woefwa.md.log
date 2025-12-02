@@ -1,0 +1,16 @@
+{
+  "card_id": "woefwa",
+  "validation_timestamp": "2025-12-02T04:40:14.157511Z",
+  "validation_errors": {
+    "missing_sections": [
+      {
+        "section_name": "Acceptance Criteria",
+        "message": "Required section '## Acceptance Criteria' not found"
+      },
+      {
+        "section_name": "Test Plan",
+        "message": "Required section '## Test Plan' not found"
+      }
+    ]
+  }
+}

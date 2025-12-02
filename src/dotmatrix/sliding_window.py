@@ -37,7 +37,7 @@ def process_sliding_window(
     image_bgr: np.ndarray,
     window_size: int = 500,
     overlap: int = 100,
-    min_radius: int = 10,
+    min_radius: int = 1,
     max_radius: int = 50,
     petal_distance: float = 0.35,
     render_scale: int = 1,

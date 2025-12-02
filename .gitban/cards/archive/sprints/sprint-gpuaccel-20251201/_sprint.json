@@ -1,0 +1,27 @@
+{
+  "sprint_id": "sprint-gpuaccel-20251201",
+  "sprint_name": "sprint-gpuaccel-20251201",
+  "sprint_folder": "sprint-gpuaccel-20251201",
+  "created_at": "2025-12-01T09:55:18.364433",
+  "start_date": null,
+  "end_date": "2025-12-01",
+  "archived_at": "2025-12-01T09:55:18.364433",
+  "card_ids": [
+    "kuartq",
+    "6u8k3y",
+    "ahzwqx"
+  ],
+  "metrics": {
+    "total_cards": 3,
+    "by_priority": {
+      "P0": 2,
+      "P1": 1
+    },
+    "by_type": {
+      "feature": 3
+    },
+    "by_owner": {
+      "CAMERON": 3
+    }
+  }
+}

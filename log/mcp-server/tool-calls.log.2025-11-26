@@ -1,0 +1,88 @@
+{"timestamp": "2025-11-26T00:31:13.182325Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Chunked/Tiled Processing for Large Images", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T00:31:13.189325Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T00:31:13.197315Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T00:31:13.202317Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T00:31:13.204314Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 7fnlzk", "operation": "create_card_success", "card_id": "7fnlzk"}
+{"timestamp": "2025-11-26T00:37:49.308234Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-11-26T00:37:49.310234Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 31 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-11-26T00:37:49.310234Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-11-26T00:37:49.311239Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-11-26T00:39:07.584690Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Spatial Indexing for O(n log n) Deduplication", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T00:39:07.590691Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T00:39:07.595691Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T00:39:07.597690Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T00:39:07.599698Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: doxhmu", "operation": "create_card_success", "card_id": "doxhmu"}
+{"timestamp": "2025-11-26T00:39:16.406381Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Chunked/Tiled Processing for Large Images", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T00:39:16.406381Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T00:39:16.409383Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T00:39:16.412382Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T00:39:16.414382Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 62ga1p", "operation": "create_card_success", "card_id": "62ga1p"}
+{"timestamp": "2025-11-26T00:39:24.918038Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Research Adaptive Chunk Sizing Strategy", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T00:39:24.919038Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T00:39:24.920037Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T00:39:24.922036Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T00:39:24.924036Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 9dsqox", "operation": "create_card_success", "card_id": "9dsqox"}
+{"timestamp": "2025-11-26T00:39:32.710277Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Integrate Spatial Indexing with Chunked Processing", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T00:39:32.710277Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T00:39:32.713273Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T00:39:32.714274Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T00:39:32.716275Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: rtpjhj", "operation": "create_card_success", "card_id": "rtpjhj"}
+{"timestamp": "2025-11-26T00:39:56.913680Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: SCALING Sprint Close-out Verification", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T00:39:56.913680Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T00:39:56.915682Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T00:39:56.917794Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T00:39:56.919676Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: ik16pc", "operation": "create_card_success", "card_id": "ik16pc"}
+{"timestamp": "2025-11-26T01:28:47.261971Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-11-26T01:28:47.264972Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-11-26T01:28:47.264972Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-11-26T01:28:47.264972Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-11-26T02:24:02.419174Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Multi-color circle detection research", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T02:24:02.419174Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T02:24:02.420176Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-26T02:24:02.423208Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 563qpc", "operation": "create_card_success", "card_id": "563qpc"}
+{"timestamp": "2025-11-26T02:24:34.337315Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Auto-detect color palette from image", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T02:24:34.337315Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T02:24:34.340320Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-26T02:24:34.342321Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: e5r8vj", "operation": "create_card_success", "card_id": "e5r8vj"}
+{"timestamp": "2025-11-26T02:26:04.805646Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Improve detection of occluded circles", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T02:26:04.805646Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T02:26:04.808648Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T02:26:04.810646Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T02:26:04.811647Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: nj0ev7", "operation": "create_card_success", "card_id": "nj0ev7"}
+{"timestamp": "2025-11-26T02:26:27.576983Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Auto-calibrate radius from reference detections", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T02:26:27.576983Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T02:26:27.579985Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T02:26:27.581986Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T02:26:27.582990Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: huv5gj", "operation": "create_card_success", "card_id": "huv5gj"}
+{"timestamp": "2025-11-26T02:26:40.976545Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: COLORDETECTION sprint close-out verification", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T02:26:40.976545Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T02:26:40.979546Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T02:26:40.981546Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T02:26:40.983547Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: otwndg", "operation": "create_card_success", "card_id": "otwndg"}
+{"timestamp": "2025-11-26T21:48:54.357062Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Refactor CLI for MECE Commands and Industry-Standard UX", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T21:48:54.359061Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for refactor (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T21:48:54.365056Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for refactor: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T21:48:54.368060Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T21:48:54.370061Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: lc3xu5", "operation": "create_card_success", "card_id": "lc3xu5"}
+{"timestamp": "2025-11-26T22:04:58.345266Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-11-26T22:04:58.348264Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 46 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-11-26T22:04:58.348264Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-11-26T22:04:58.348264Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-11-26T23:19:05.487170Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-11-26T23:19:05.490178Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 46 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-11-26T23:19:05.490178Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-11-26T23:19:05.490178Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-11-26T23:30:08.202482Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Refactor output organization to run-bundled structure", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T23:30:08.202482Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for refactor (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T23:30:08.208483Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for refactor: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T23:30:08.210484Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T23:30:08.212483Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: nc3stt", "operation": "create_card_success", "card_id": "nc3stt"}
+{"timestamp": "2025-11-26T23:40:48.238475Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
+{"timestamp": "2025-11-26T23:40:48.240475Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 42 cards", "operation": "get_kanban_stats_cards_found"}
+{"timestamp": "2025-11-26T23:40:48.240475Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
+{"timestamp": "2025-11-26T23:40:48.241475Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-11-26T23:42:15.720088Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: toggle_checkboxes index parameter behavior is confusing", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-26T23:42:15.720088Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-26T23:42:15.722089Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-26T23:42:15.724090Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-26T23:42:15.725089Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: ccfwng", "operation": "create_card_success", "card_id": "ccfwng"}

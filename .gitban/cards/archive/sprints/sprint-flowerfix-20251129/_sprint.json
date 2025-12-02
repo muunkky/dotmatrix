@@ -1,0 +1,31 @@
+{
+  "sprint_id": "sprint-flowerfix-20251129",
+  "sprint_name": "sprint-flowerfix-20251129",
+  "sprint_folder": "sprint-flowerfix-20251129",
+  "created_at": "2025-11-29T18:53:29.522333",
+  "start_date": null,
+  "end_date": "2025-11-29",
+  "archived_at": "2025-11-29T18:53:29.522333",
+  "card_ids": [
+    "fgllca",
+    "scv7f9",
+    "ffii9o",
+    "jgs6mn",
+    "f5dawl"
+  ],
+  "metrics": {
+    "total_cards": 5,
+    "by_priority": {
+      "P0": 4,
+      "P1": 1
+    },
+    "by_type": {
+      "bug": 2,
+      "spike": 2,
+      "chore": 1
+    },
+    "by_owner": {
+      "CAMERON": 5
+    }
+  }
+}

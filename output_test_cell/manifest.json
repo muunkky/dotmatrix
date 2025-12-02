@@ -1,0 +1,30 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-29T23:34:46.203545",
+  "source_file": {
+    "path": "/mnt/c/users/cameron/projects/dotmatrix/inputs/corner_test.png",
+    "name": "corner_test.png",
+    "hash": "sha256:4ffb5edae054cb714c3070ba315a373243501fbd46636e03d18d012c2490a535"
+  },
+  "settings": {
+    "mode": "halftone",
+    "palette": "cmyk-sep",
+    "convex_edge": true,
+    "cluster_count": 120,
+    "partial_clusters": 36,
+    "render_method": "flower",
+    "color_mode": "full",
+    "render_scale": 1
+  },
+  "results": {
+    "total_circles": 0,
+    "circles_by_color": {}
+  },
+  "output_files": [
+    "cyan.png",
+    "magenta.png",
+    "yellow.png",
+    "black.png",
+    "reconstituted.png"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "card_id": "8em36p",
+  "validation_timestamp": "2025-12-01T05:26:37.934435Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Purpose",
+      "Project Location",
+      "Outputs",
+      "Success Criteria"
+    ],
+    "missing_checkboxes": 10,
+    "missing_tables": []
+  },
+  "template_name": "chore"
+}

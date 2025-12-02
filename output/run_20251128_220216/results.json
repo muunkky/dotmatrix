@@ -1,0 +1,171 @@
+[
+  {
+    "center": [
+      787,
+      368
+    ],
+    "radius": 106,
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      629,
+      1062
+    ],
+    "radius": 128,
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1245,
+      1237
+    ],
+    "radius": 155,
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      653,
+      1507
+    ],
+    "radius": 127,
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1006,
+      332
+    ],
+    "radius": 125,
+    "color": [
+      255,
+      255,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      555,
+      603
+    ],
+    "radius": 181,
+    "color": [
+      255,
+      255,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      345,
+      1374
+    ],
+    "radius": 181,
+    "color": [
+      255,
+      255,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1102,
+      1394
+    ],
+    "radius": 181,
+    "color": [
+      255,
+      255,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      864,
+      1004
+    ],
+    "radius": 320,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      892,
+      203
+    ],
+    "radius": 118,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1268,
+      945
+    ],
+    "radius": 258,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      524,
+      881
+    ],
+    "radius": 183,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      489,
+      1569
+    ],
+    "radius": 118,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  }
+]

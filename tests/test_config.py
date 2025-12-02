@@ -21,7 +21,7 @@ class TestDetectionParams:
     def test_defaults(self):
         """Test default values."""
         params = DetectionParams()
-        assert params.min_radius == 10
+        assert params.min_radius == 1
         assert params.max_radius == 500
         assert params.min_distance == 20
         assert params.sensitivity == 'normal'

@@ -1,0 +1,46 @@
+{"timestamp": "2025-11-25T16:59:09.403826Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Integrate convex edge detection into CLI", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T16:59:09.411824Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T16:59:09.418823Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-25T16:59:09.420824Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 6xenu7", "operation": "create_card_success", "card_id": "6xenu7"}
+{"timestamp": "2025-11-25T22:09:25.367201Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Organized output directories with run naming", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T22:09:25.368202Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T22:09:25.372197Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-25T22:09:25.374710Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: y652ye", "operation": "create_card_success", "card_id": "y652ye"}
+{"timestamp": "2025-11-25T22:09:43.864547Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Save and load config files", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T22:09:43.865547Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T22:09:43.869673Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-25T22:09:43.871541Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: di25sw", "operation": "create_card_success", "card_id": "di25sw"}
+{"timestamp": "2025-11-25T22:09:59.749536Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Run manifest with metadata and settings", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T22:09:59.749536Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T22:09:59.752537Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-25T22:09:59.754531Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 3lezsh", "operation": "create_card_success", "card_id": "3lezsh"}
+{"timestamp": "2025-11-25T22:10:15.131713Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: List and search past runs", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T22:10:15.131713Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T22:10:15.133714Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-25T22:10:15.135714Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: oi9ti0", "operation": "create_card_success", "card_id": "oi9ti0"}
+{"timestamp": "2025-11-25T22:10:24.268506Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Sprint close-out verification", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T22:10:24.268506Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T22:10:24.271507Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-25T22:10:24.274516Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-25T22:10:24.276510Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 66mooa", "operation": "create_card_success", "card_id": "66mooa"}
+{"timestamp": "2025-11-25T22:59:23.677116Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Large File Handling Performance Research", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T22:59:23.678637Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T22:59:23.680634Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-11-25T22:59:23.682633Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: w804xa", "operation": "create_card_success", "card_id": "w804xa"}
+{"timestamp": "2025-11-25T23:00:02.239826Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Large File Processing Strategy", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T23:01:17.675543Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Implement Large File Processing Pipeline", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T23:01:17.675543Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T23:01:17.678547Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-25T23:01:17.679551Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-25T23:01:17.681543Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: brz25i", "operation": "create_card_success", "card_id": "brz25i"}
+{"timestamp": "2025-11-25T23:01:35.376248Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Handle Circles Overlapping Image Edges", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T23:01:35.376248Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T23:01:35.378773Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-25T23:01:35.379772Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-25T23:01:35.381774Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: patkym", "operation": "create_card_success", "card_id": "patkym"}
+{"timestamp": "2025-11-25T23:01:47.929600Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: LARGEFILE Sprint Close-out Verification", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-11-25T23:01:47.929899Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-11-25T23:01:47.932606Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-11-25T23:01:47.934606Z", "level": "WARNING", "logger": "gitban.tools", "message": "Template validation failed: name 'extract_ephemeral_id_from_filename' is not defined", "operation": "validation_error"}
+{"timestamp": "2025-11-25T23:01:47.935607Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: apggaw", "operation": "create_card_success", "card_id": "apggaw"}
+{"timestamp": "2025-11-25T23:43:59.447916Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: LARGEFILE-2025-11, card_ids=['w804xa', 'brz25i'], all_done=False, owner=None, preview=False"}

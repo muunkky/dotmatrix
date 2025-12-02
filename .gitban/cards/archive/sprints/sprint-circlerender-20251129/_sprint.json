@@ -1,0 +1,26 @@
+{
+  "sprint_id": "sprint-circlerender-20251129",
+  "sprint_name": "sprint-circlerender-20251129",
+  "sprint_folder": "sprint-circlerender-20251129",
+  "created_at": "2025-11-29T18:09:41.100316",
+  "start_date": null,
+  "end_date": "2025-11-29",
+  "archived_at": "2025-11-29T18:09:41.100316",
+  "card_ids": [
+    "dui3fj",
+    "ca4ynp",
+    "mj96cx"
+  ],
+  "metrics": {
+    "total_cards": 3,
+    "by_priority": {
+      "P1": 3
+    },
+    "by_type": {
+      "feature": 3
+    },
+    "by_owner": {
+      "CAMERON": 3
+    }
+  }
+}

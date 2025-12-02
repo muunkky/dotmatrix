@@ -1,0 +1,28 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-30T18:15:02.736100",
+  "source_file": {
+    "path": "/mnt/c/users/cameron/projects/dotmatrix/inputs/chunk_center.png",
+    "name": "chunk_center.png",
+    "hash": "sha256:67ab310eb24f685b44561865b0d0a127e8137823b54d119d997a368dcb7cb88e"
+  },
+  "settings": {
+    "mode": "halftone",
+    "palette": "cmyk-sep",
+    "convex_edge": true,
+    "cluster_count": 313,
+    "partial_clusters": 67,
+    "render_method": "flower",
+    "color_mode": "full",
+    "sliding_window": true,
+    "window_size": 300,
+    "tiles_processed": 1
+  },
+  "results": {
+    "total_circles": 0,
+    "circles_by_color": {}
+  },
+  "output_files": [
+    "reconstituted.png"
+  ]
+}

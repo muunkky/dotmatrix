@@ -1,0 +1,18 @@
+Large image detected (38.9 MP) - auto-enabling sliding window mode
+GPU acceleration: ENABLED (8191MB VRAM)
+  Auto-optimized window size: 9000px (based on VRAM)
+Using CMYK ink separation mode (AND logic for overlapping colors)
+  (Deferring detection to sliding window tiles)
+Using sliding window mode (size=9000, method=flower)...
+  (GPU acceleration enabled)
+  (Skipping full-image detection for memory efficiency)
+  [1/1] Detecting tile 1/1
+  [0/15794] [GPU] Rendering 15794 clusters (0%)
+  [15794/15794] [GPU] Rendering 15794 clusters (100%)
+  Processed 1 tiles, 15794 clusters rendered
+  Cached 15794 clusters to: inputs\input_large_clusters.json
+  - reconstituted.png (sliding window flower, scale=1)
+  - composite.png (50/50 blend overlay)
+  - diff.png (pixel difference)
+  - manifest.json
+Output saved to: output\run_20251201_222945

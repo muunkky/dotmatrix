@@ -1,0 +1,210 @@
+[
+  {
+    "center": [
+      892,
+      205
+    ],
+    "radius": 116,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1267,
+      944
+    ],
+    "radius": 259,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      524,
+      881
+    ],
+    "radius": 184,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      489,
+      1567
+    ],
+    "radius": 114,
+    "color": [
+      0,
+      0,
+      0
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      957,
+      465
+    ],
+    "radius": 129,
+    "color": [
+      118,
+      193,
+      241
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      535,
+      861
+    ],
+    "radius": 260,
+    "color": [
+      118,
+      193,
+      241
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1104,
+      945
+    ],
+    "radius": 211,
+    "color": [
+      118,
+      193,
+      241
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      539,
+      1429
+    ],
+    "radius": 91,
+    "color": [
+      118,
+      193,
+      241
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      811,
+      351
+    ],
+    "radius": 124,
+    "color": [
+      217,
+      93,
+      155
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      626,
+      1064
+    ],
+    "radius": 127,
+    "color": [
+      217,
+      93,
+      155
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1214,
+      1199
+    ],
+    "radius": 262,
+    "color": [
+      217,
+      93,
+      155
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      652,
+      1506
+    ],
+    "radius": 129,
+    "color": [
+      217,
+      93,
+      155
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1004,
+      333
+    ],
+    "radius": 127,
+    "color": [
+      238,
+      206,
+      94
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      552,
+      602
+    ],
+    "radius": 182,
+    "color": [
+      238,
+      206,
+      94
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      347,
+      1372
+    ],
+    "radius": 182,
+    "color": [
+      238,
+      206,
+      94
+    ],
+    "confidence": 100.0
+  },
+  {
+    "center": [
+      1099,
+      1394
+    ],
+    "radius": 182,
+    "color": [
+      238,
+      206,
+      94
+    ],
+    "confidence": 100.0
+  }
+]

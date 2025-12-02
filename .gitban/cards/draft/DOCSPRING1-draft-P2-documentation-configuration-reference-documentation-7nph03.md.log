@@ -1,0 +1,20 @@
+{
+  "card_id": "7nph03",
+  "validation_timestamp": "2025-12-02T01:00:01.817415Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Documentation Scope & Context",
+      "Pre-Work Documentation Audit",
+      "Documentation Work",
+      "Validation & Closeout"
+    ],
+    "missing_checkboxes": 5,
+    "missing_tables": [
+      "Document Location|Current State|Action Required",
+      "Task|Status / Link to Artifact|Universal Check",
+      "Task|Detail/Link",
+      "Topic|Status / Action Required"
+    ]
+  },
+  "template_name": "documentation"
+}

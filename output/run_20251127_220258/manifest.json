@@ -1,0 +1,47 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-27T22:02:59.347232",
+  "source_file": {
+    "path": "/tmp/pytest-of-muunkky/pytest-54/test_warning_displayed_for_lar0/large_test.png",
+    "name": "large_test.png",
+    "hash": "sha256:5875b3f8900d8ccdc3e002057b864d37ce96714f99eb01d466a548e99105acf8"
+  },
+  "settings": {
+    "min_radius": 100,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": true,
+    "palette": "cmyk",
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 1,
+    "circles_by_color": {
+      "black": 1
+    }
+  },
+  "output_files": [
+    "black.png",
+    "composite.png"
+  ],
+  "verification": {
+    "black_circles_detected": 1,
+    "radius_mean": 499.0,
+    "radius_std": 0.0,
+    "radius_min": 499,
+    "radius_max": 499,
+    "expected_density": 0.0,
+    "actual_density": 0.04725897920604915,
+    "coverage_percent": 3.6968795479041217,
+    "warnings": [
+      "Very few black circles detected (1). Expected at least 529. Consider lowering min_radius or raising max_radius.",
+      "Mean radius (499.0) is close to max_radius (500). Some circles may be cut off. Consider raising max_radius."
+    ],
+    "passed": false
+  }
+}

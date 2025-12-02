@@ -1,0 +1,54 @@
+{
+  "dotmatrix_version": "0.1.0",
+  "timestamp": "2025-11-27T00:00:48.274575",
+  "source_file": {
+    "path": "/tmp/pytest-of-muunkky/pytest-33/test_hough_detection_on_10mp_i0/test_10mp.png",
+    "name": "test_10mp.png",
+    "hash": "sha256:fff96f49fe983e3d6e2a88408a76ffe1d2611692c6e4f527a4b2b693880a682e"
+  },
+  "settings": {
+    "min_radius": 80,
+    "max_radius": 500,
+    "min_distance": 20,
+    "sensitivity": "normal",
+    "convex_edge": false,
+    "color_tolerance": 20,
+    "edge_sampling": false,
+    "edge_samples": 36,
+    "edge_method": "circumference",
+    "format": "json"
+  },
+  "results": {
+    "total_circles": 27,
+    "circles_by_color": {
+      "rgb(1,1,255)": 1,
+      "rgb(4,4,4)": 1,
+      "rgb(254,2,2)": 1,
+      "rgb(2,2,254)": 1,
+      "rgb(26,0,124)": 1,
+      "rgb(0,0,255)": 4,
+      "rgb(1,222,1)": 1,
+      "rgb(1,255,1)": 1,
+      "rgb(0,84,171)": 1,
+      "rgb(255,0,0)": 1,
+      "rgb(0,0,0)": 4,
+      "rgb(3,6,252)": 1,
+      "rgb(10,0,128)": 1,
+      "rgb(255,5,5)": 1,
+      "rgb(0,63,192)": 1,
+      "rgb(2,2,255)": 1,
+      "rgb(2,2,2)": 1,
+      "rgb(3,255,3)": 2,
+      "rgb(253,1,1)": 1,
+      "rgb(255,2,2)": 1
+    }
+  },
+  "output_files": [
+    "circles_color_000_084_171.png",
+    "circles_color_001_001_255.png",
+    "circles_color_001_222_001.png",
+    "circles_color_004_004_004.png",
+    "circles_color_026_000_124.png",
+    "circles_color_254_002_002.png"
+  ]
+}

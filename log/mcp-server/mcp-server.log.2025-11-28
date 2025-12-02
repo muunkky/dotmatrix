@@ -1,0 +1,3 @@
+{"timestamp": "2025-11-28T19:48:02.423130Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-11-28T19:48:02.426133Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-11-28T19:48:02.427133Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}

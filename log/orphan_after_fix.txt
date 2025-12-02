@@ -1,0 +1,28 @@
+=== Orphan Pixel Diagnostic ===
+Input image: inputs\input_large.png
+Clusters JSON: inputs\input_large_clusters.json
+Distance threshold: 50.0px
+Foreground color: black
+
+Loading cluster centers...
+  Loaded 15794 cluster centers
+Loading input image...
+  Found 18,951,932 black pixels
+
+Computing orphan pixels...
+
+=== RESULTS ===
+Total black pixels in INPUT: 18,951,932
+Detected clusters: 15,794
+Orphan pixels: 0 (0.00%)
+
+Traceback (most recent call last):
+  File "C:\Users\Cameron\Projects\dotmatrix\scripts\diagnose_orphans.py", line 300, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "C:\Users\Cameron\Projects\dotmatrix\scripts\diagnose_orphans.py", line 295, in main
+    print(f"\u2705 Orphan rate {stats['orphan_percent']:.1f}% is acceptable")
+  File "C:\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
