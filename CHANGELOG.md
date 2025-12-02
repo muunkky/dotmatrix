@@ -46,6 +46,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (DOCSPRING1 Sprint - Documentation)
+- **Developer Onboarding Guide**: Comprehensive `docs/DEVELOPMENT.md` for contributors
+  - Prerequisites and quick start instructions
+  - Project structure overview with module categorization
+  - Running tests and development workflow
+  - Architecture overview with pipeline explanation
+  - Key concepts (halftone, CMYK, clusters, GPU acceleration)
+  - Common development tasks (adding CLI options, tests, renderers)
+  - Debugging tips and code style guide
+  - GPU development setup and guidelines
+- **Architecture Documentation**: `docs/architecture/pipeline-overview.md`
+  - Complete pipeline flow with Mermaid diagram
+  - Module categorization by functional layer (Input, Detection, Color, GPU, Cluster, Output)
+  - Three processing modes documented (RGB, CMYK, Reconstitute)
+  - Data format conventions (BGR/RGB, mask conventions)
+- **ADR-004: GPU Acceleration**: Documents CuPy/CUDA integration decisions
+  - Problem context (30-100x speedup opportunity)
+  - Options considered (Pure CPU, CuPy, OpenCL)
+  - Decision rationale (NumPy-compatible API, graceful fallback)
+  - Consequences and implementation details
+- **ADR-005: Cluster Rendering Pipeline**: Documents cluster-based pixel counting
+  - Problem context (overlapping CMYK halftone circles)
+  - Options considered (per-circle counting, Voronoi, hybrid)
+  - Decision rationale (handles overlaps, accurate attribution)
+  - Anchor modes, bounding boxes, debug visualization
+- **Module docstring audit**: Added docstrings to key helper functions
+  - `gpu_renderer.py`: build_global_black_mask, build_petal_mask, count_exposed_pixels_local
+  - `circle_renderer.py`: area property, build_global_black_mask, make_mask
+- **README modernization**: Updated with GPU acceleration, cluster rendering, processing modes
+
 ### Added (GPUINTEGRATE Sprint)
 - GPU-accelerated cluster pipeline integrated into `cluster_pixel_counter.py`
   - `gpu_nms_centers()` replaces CPU-based non-maximum suppression for black dot detection
