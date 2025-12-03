@@ -5,15 +5,58 @@ All notable changes to DotMatrix will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [0.2.0] - 2025-12-01
 
-### Fixed
-- **Small halftone dot detection**: Fixed critical bug where small dots (1-13px radius) were filtered out during detection. The distance transform threshold was incorrectly using a ratio of the global maximum, causing small dots to be missed when large dots were present in the same image. Now uses absolute threshold (0.5) to capture all dot sizes.
-  - Before: 15,604 clusters detected, 64 missed dots, 4,335 orphan pixels (0.02%)
-  - After: 15,794 clusters detected, 0 missed dots, 0 orphan pixels (0.00%)
-
 ### Added
-- **Orphan pixel diagnostic tool**: `scripts/diagnose_orphans.py` for analyzing INPUT images to find halftone dots not captured by detection
+- **Convex Edge Detection**: `--convex-edge` CLI flag for detecting heavily overlapping circles using convex edge analysis (best for CMYK/halftone). Includes color quantization, convexity defect analysis, and coverage scoring.
+- **GPU Acceleration**: comprehensive CuPy/CUDA framework for 30-100x speedup on compatible hardware.
+  - `--gpu/--no-gpu` CLI control.
+  - GPU-accelerated cluster pipeline (NMS, labeling, color counting).
+  - GPU-accelerated flower renderer.
+  - Graceful CPU fallback.
+- **Large File Support**: Optimized pipeline for high-resolution images (>50MP).
+  - Chunked/tiled processing with `--chunk-size`.
+  - Spatial indexing (KD-tree) for O(n log n) deduplication.
+  - Sliding window processing with seam artifact prevention.
+- **Intelligent Color Detection**:
+  - `--palette auto` for histogram-based dominant color detection.
+  - `--num-colors` to specify target palette size.
+  - `--exclude-background` to ignore white/paper colors.
+  - `--calibrate-from` to auto-calibrate radius from reference colors.
+- **Advanced Rendering Modes**:
+  - `flower`: CMYK petals around black center (physically accurate halftone model).
+  - `cmyk-blend`: Subtractive color mixing (C+M=Blue, etc.).
+  - `treemap`: Proportional area rectangles.
+  - `block`: Stacked bar charts.
+- **Cluster Analysis Tools**:
+  - `--debug-clusters` for visualization.
+  - `--cluster-anchor` control (centroid vs pixel).
+  - Bounding box calculation.
+- **Workflow Enhancements**:
+  - Timestamped output directories (e.g., `run_20251125_...`).
+  - `manifest.json` generation with full run metadata.
+  - Configuration save/load (`--save-config`, `--config`).
+  - Run management CLI (`dotmatrix runs list/show/replay`).
+- **Documentation**:
+  - Comprehensive `docs/DEVELOPMENT.md` guide.
+  - Architecture documentation in `docs/architecture/`.
+  - ADRs 001-005 covering key architectural decisions.
+- **Orphan pixel diagnostic tool**: `scripts/diagnose_orphans.py` for analyzing INPUT images to find halftone dots not captured by detection.
+
+### Fixed
+- **Small halftone dot detection**: Fixed critical bug where small dots (1-13px radius) were filtered out during detection due to relative thresholding. Now uses absolute threshold.
+  - Zero missed dots in validation set (down from 64).
+- **Black Blob Rendering**: Fixed overlapping black dots merging into giant blobs. Now uses distance transform and local maxima detection to separate touching dots.
+- **Sliding Window Artifacts**: Fixed flower clipping at tile boundaries by ensuring overlap region clusters contribute petals to core region.
+- **Flower Renderer Clipping**: Fixed Z-order issue where black circles were clipped by CMY petals in blend mode.
+- **Petal Geometry**: Improved petal positioning formula for shallower, rounder arcs (centers moved inside black circle).
+
+### Changed
+- **Refactored Architecture**: Modularized pipeline into functional layers (Input, Detection, Color, GPU, Cluster, Output).
+- **Performance**: Replaced O(n²) operations with spatial indexing and GPU acceleration where possible.
+- **Output Organization**: Default output now creates structured run folders instead of flat files.
 
 ## [0.1.0] - 2025-10-31
 
@@ -53,379 +96,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Radius accuracy: Within 10%
 - Color accuracy: Within 10% RGB tolerance
 - Successfully tested with 190 circles in single image
-
-## [Unreleased]
-
-### Added (DOCSPRING1 Sprint - Documentation)
-- **Developer Onboarding Guide**: Comprehensive `docs/DEVELOPMENT.md` for contributors
-  - Prerequisites and quick start instructions
-  - Project structure overview with module categorization
-  - Running tests and development workflow
-  - Architecture overview with pipeline explanation
-  - Key concepts (halftone, CMYK, clusters, GPU acceleration)
-  - Common development tasks (adding CLI options, tests, renderers)
-  - Debugging tips and code style guide
-  - GPU development setup and guidelines
-- **Architecture Documentation**: `docs/architecture/pipeline-overview.md`
-  - Complete pipeline flow with Mermaid diagram
-  - Module categorization by functional layer (Input, Detection, Color, GPU, Cluster, Output)
-  - Three processing modes documented (RGB, CMYK, Reconstitute)
-  - Data format conventions (BGR/RGB, mask conventions)
-- **ADR-004: GPU Acceleration**: Documents CuPy/CUDA integration decisions
-  - Problem context (30-100x speedup opportunity)
-  - Options considered (Pure CPU, CuPy, OpenCL)
-  - Decision rationale (NumPy-compatible API, graceful fallback)
-  - Consequences and implementation details
-- **ADR-005: Cluster Rendering Pipeline**: Documents cluster-based pixel counting
-  - Problem context (overlapping CMYK halftone circles)
-  - Options considered (per-circle counting, Voronoi, hybrid)
-  - Decision rationale (handles overlaps, accurate attribution)
-  - Anchor modes, bounding boxes, debug visualization
-- **Module docstring audit**: Added docstrings to key helper functions
-  - `gpu_renderer.py`: build_global_black_mask, build_petal_mask, count_exposed_pixels_local
-  - `circle_renderer.py`: area property, build_global_black_mask, make_mask
-- **README modernization**: Updated with GPU acceleration, cluster rendering, processing modes
-
-### Added (GPUINTEGRATE Sprint)
-- GPU-accelerated cluster pipeline integrated into `cluster_pixel_counter.py`
-  - `gpu_nms_centers()` replaces CPU-based non-maximum suppression for black dot detection
-  - `gpu_create_cluster_labels()` replaces scipy KDTree for Voronoi tessellation
-  - `gpu_count_cluster_colors()` replaces per-cluster counting loop with batch GPU bincount
-- `use_gpu` parameter added to `cluster_and_count_pixels()` (default: True, auto-detects)
-- GPU acceleration message shown in debug output: "(GPU acceleration enabled)"
-- All 50 cluster_pixel_counter tests pass with GPU integration
-- All 13 GPU acceleration tests pass
-
-### Technical Details (GPUINTEGRATE Sprint)
-- GPU NMS: O(n²) distance matrix on GPU vs O(n²) CPU loop - faster for >500 centers
-- GPU labeling: Parallel pixel-center distance computation vs KDTree query
-- GPU color counting: Batch bincount across all colors vs per-cluster loop
-- Automatic CPU fallback when CuPy not available
-- No change to public API - existing code works unchanged
-
-### Added (GPURENDER Sprint)
-- GPU acceleration framework with CuPy for CUDA-enabled systems
-  - `--gpu/--no-gpu` CLI flag for explicit GPU control (auto-detects by default)
-  - GPU-accelerated flower renderer (`gpu_renderer.py`)
-  - Graceful fallback to CPU when GPU unavailable
-  - GPU utilities module (`gpu.py`) with detection, info, and array transfer functions
-- GPU vs CPU equivalence tests with documented tolerance thresholds
-  - Max pixel difference: 1 (anti-aliasing rounding)
-  - Max differing pixels: <0.1% of total
-- Performance benchmarks comparing GPU and CPU rendering
-  - Benchmarks cover 100x100 to 2000x2000 images
-  - Tests 4 to 400 clusters per image
-
-### Technical Details (GPURENDER Sprint)
-- CuPy (cupy-cuda12x) for CUDA 12.x support
-- GPU renderer uses optimized local ROI masking (CPU ~1.6ms per cluster)
-- After profiling, CPU with local masks exceeds GPU transfer benefits
-- GPU framework retained for future kernel optimizations
-
-### Added (CLUSTEREXT Sprint)
-- `--cluster-anchor` CLI option with values:
-  - `centroid` (default): Uses black dot centroid as cluster center
-  - `pixel`: Uses nearest black pixel to centroid (legacy behavior)
-- Bounding box field added to ClusterResult dataclass
-  - `bbox` tuple: (x_min, y_min, x_max, y_max) of ink pixels
-  - Included in JSON output via `to_dict()` method
-- Debug visualization mode for cluster analysis
-  - `--debug-clusters` CLI flag outputs `cluster_debug.png`
-  - HSV-spaced unique colors for each cluster
-  - White crosshair markers at cluster centers
-  - Semi-transparent overlay on original image
-  - `generate_cluster_colors()` and `generate_cluster_debug_image()` functions
-  - `return_debug_info` parameter on `cluster_and_count_pixels()`
-
-### Added
-- `--min-radius` CLI flag to filter circles below specified radius (default: 10px)
-- `--max-radius` CLI flag to control maximum circle size detection (default: 500px)
-- `--min-distance` CLI flag to set minimum distance between circle centers (default: 20px)
-- `--color-tolerance` CLI flag to adjust color grouping sensitivity (default: 20, range: 0-100)
-- `--max-colors` CLI flag for intelligent color grouping using k-means clustering (requires --extract)
-- `--sensitivity` CLI flag with presets: strict, normal (default), relaxed for detection tuning
-- `--min-confidence` CLI flag to filter low-confidence detections (0-100 range)
-- `--edge-sampling` CLI flag for edge-based color sampling (better for overlapping circles)
-- `--edge-samples` CLI flag to configure number of edge sample points (default: 36)
-- Confidence scores for each detected circle based on detection order (0-100%)
-- K-means color clustering module (`color_clustering.py`) with scikit-learn integration
-- Smart color reduction: automatically groups similar colors to N color groups
-- Sensitivity presets for easy HoughCircles parameter tuning without OpenCV knowledge
-- Edge-based color sampling: samples colors from circle perimeter instead of area
-- Configurable min/max radius, min_distance, and sensitivity parameters in `detect_circles()` function
-- Configurable tolerance and max_colors parameters in `extract_circles_to_images()` function
-- Configurable use_edge_sampling and num_samples parameters in `extract_color()` function
-- Confidence field added to JSON and CSV output formats
-- 24 new tests for edge sampling, k-means, sensitivity, confidence, and min_distance (75 total tests, 90% coverage)
-- 2 new integration tests for max_colors feature
-
-### Technical Details
-- Added `scikit-learn>=1.3.0` dependency for k-means clustering
-- K-means clustering in RGB color space with automatic cluster count adjustment
-- max_colors parameter overrides tolerance-based grouping when specified
-- Sensitivity presets map to OpenCV HoughCircles param1/param2 parameters
-- min_distance parameter maps directly to HoughCircles minDist parameter
-- Confidence calculated using detection order as proxy (HoughCircles sorts by accumulator)
-- Quadratic falloff formula: confidence = 100 * (1 - index/(n-1))^2
-- Edge sampling uses evenly-spaced points around circumference (default: 36 samples)
-- Median color calculation for edge samples (robust to outliers and partial occlusions)
-- Edge sampling significantly improves color accuracy for overlapping circles
-
-### Added (Convex Edge Detection - v0.2.0)
-- `--convex-edge` CLI flag for detecting heavily overlapping circles using convex edge analysis
-- `--palette` CLI flag for specifying color palette: preset names (`cmyk`, `rgb`) or custom RGB values (`255,0,0;0,255,0`)
-- `--quantize-output` CLI flag to save quantized image for debugging
-- New `convex_detector.py` module implementing convex edge detection algorithm:
-  - Color quantization to limited palette using Euclidean distance
-  - Per-color filtering to isolate circle segments
-  - Convexity defect analysis to identify convex-only edges (using `cv2.convexityDefects`)
-  - Circle fitting on convex edges only (using `cv2.HoughCircles`)
-  - Best-circle-per-blob selection with coverage scoring
-  - Deduplication of similar circles
-- Preset color palettes: `cmyk` (White, Black, Cyan, Magenta, Yellow) and `rgb` (White, Black, Red, Green, Blue)
-- 27 unit tests for convex_detector module (85% coverage)
-- 10 integration tests for convex-edge CLI functionality
-
-### Technical Details (Convex Edge Detection)
-- Algorithm validated on test image with 16 overlapping CMYK circles - 100% detection accuracy
-- Performance: <5 seconds for 1776x1696 image
-- Key parameters: defect depth threshold 5px, non-convex margin 20px, dedup distance 20px
-- Convex edge detection bypasses standard HoughCircles when `--convex-edge` is enabled
-- Results compatible with existing JSON/CSV formatters and `--extract` functionality
-
-### Added (Workflow Features - WORKFLOW Sprint)
-- **Organized Output Directories**: Extraction now creates timestamped subdirectories
-  - `--run-name` flag for custom run naming (e.g., `my-experiment_20251125_143022/`)
-  - `--no-organize` flag to output files directly (flat mode) for backward compatibility
-  - Automatic timestamping in `run_YYYYMMDD_HHMMSS` format
-  - Directory name sanitization for filesystem safety
-- **Configuration Save/Load**: Reusable detection settings
-  - `--save-config` flag to save settings to YAML/JSON file
-  - `--config` flag to load settings from file
-  - Supports both flat and nested config formats
-  - Config schema with default values and descriptions
-  - CLI arguments always override config file values
-- **Run Manifests**: Automatic metadata generation
-  - `manifest.json` auto-generated in each run directory
-  - Includes: version, timestamp, source file hash, all settings, results summary
-  - SHA256 hash for source file verification
-  - Circle count per color for quick reference
-  - `--no-manifest` flag to disable generation
-- **Run Management CLI**: Query and replay past runs
-  - `dotmatrix runs list` - List all runs with name, date, source, circle count
-  - `dotmatrix runs list --source FILE` - Filter by source filename
-  - `dotmatrix runs list --after DATE` - Filter by date (YYYY-MM-DD)
-  - `dotmatrix runs show RUN_NAME` - Display full manifest details
-  - `dotmatrix runs replay RUN_NAME` - Re-run with same settings
-  - `dotmatrix runs replay --dry-run` - Show command without executing
-- New modules: `run_manager.py`, `manifest.py`, `runs.py`
-- 79 new tests for workflow features (now 222 total tests)
-- 5 end-to-end workflow tests covering the complete detection pipeline
-
-### Technical Details (Workflow Features)
-- CLI converted to click group for subcommand support (backward compatible)
-- Config schema defines all configurable parameters with defaults and types
-- Manifests use JSON format for easy parsing and tool integration
-- Run discovery scans for `manifest.json` files in output subdirectories
-- Replay reconstructs CLI command from manifest settings
-
-### Added (Large File Support - LARGEFILE Sprint)
-- **Performance documentation**: README now includes Performance section with benchmarks
-- **Size warnings**: Warning displayed for `--convex-edge` on images >20 megapixels
-- **Progress indicators**: "Detecting circles..." message for convex detection on large images
-- **Helper function**: `get_image_megapixels()` for consistent size measurement
-- New benchmark scripts: `benchmarks/large_file_benchmark.py`, `benchmarks/realistic_benchmark.py`
-- ADR-001 documenting large file processing strategy and findings
-- 12 new tests for large file handling (now 210 total tests)
-
-### Technical Details (Large File Support)
-- Per ADR-001: Use megapixels (not MB) as performance metric
-- Hough detection: ~0.02s/MP, ~5 MB memory/MP - handles 64+ MP in <2 seconds
-- Convex detection: ~2s/MP, ~20 MB memory/MP - handles 20 MP in <30 seconds
-- No tiling/chunking needed: current architecture handles 10MB+ files efficiently
-- Warning threshold: 20 megapixels (~4500×4500 pixels)
-- Progress message threshold: 5 megapixels
-
-### Added (Color Detection - COLORDETECTION Sprint)
-- **Auto-palette detection**: `--palette auto` option to automatically detect dominant colors
-  - Histogram-based color detection identifies dominant colors from image
-  - `--num-colors N` option to specify number of colors to detect (default: 6)
-  - White/background colors automatically excluded from detected palette
-  - Black always included in detected palette when present
-  - Detected palette displayed to user (e.g., "Detected palette: ~black, ~cyan, ~magenta, ~yellow")
-  - Works with chunked processing and all existing convex-edge features
-- New `color_palette_detector.py` module with histogram analysis
-- 25 unit tests for palette detection (test_palette_detection.py)
-
-### Technical Details (Color Detection)
-- Color quantization (bucket_size=20) reduces anti-aliasing noise
-- Image subsampling (every 10th pixel) for performance on large images
-- Minimum color presence threshold (0.5%) filters out noise
-- Detection uses histogram peak analysis (no k-means dependency for palette detection)
-
-### Added (Occluded Circle Detection - COLORDETECTION Sprint)
-- `--sensitive-occlusion` CLI flag for detecting heavily occluded circles
-  - Adjusts detection parameters for partially visible circles
-  - More permissive thresholds for edge detection
-  - Better coverage of overlapping circle regions
-- `--morph-enhance` CLI flag for morphological enhancement
-  - Applies morphological operations to improve circle edges
-  - Opening (erosion + dilation) removes small noise
-  - Closing (dilation + erosion) fills small gaps in circle edges
-  - Configurable kernel size based on circle radius
-
-### Added (Radius Auto-Calibration - COLORDETECTION Sprint)
-- `--auto-calibrate` CLI flag to auto-detect radius bounds from reference color
-  - Uses darkest color (typically black) as reference for initial detection
-  - Statistical analysis (mean ± 2σ) determines tight radius bounds
-  - 10% padding applied for safety margin
-  - Two-pass detection: first detect reference, then apply calibrated bounds
-- `--calibrate-from` CLI flag to specify reference color by name
-  - Supports color names: "black", "cyan", "magenta", "yellow", "red", "green", "blue"
-  - Reference color detection provides reliable radius samples
-- New calibration functions in `convex_detector.py`:
-  - `RadiusCalibration` dataclass for calibration results
-  - `calculate_radius_statistics()` computes mean, std, min, max
-  - `calibrate_radius_from_reference()` creates calibration from detected circles
-  - `select_reference_color()` picks darkest color from palette
-  - `detect_with_calibration()` main entry point for calibrated detection
-- 7 new tests for radius calibration (TestRadiusCalibration class)
-
-### Technical Details (Radius Calibration)
-- Reference color selection uses luminance: L = 0.299*R + 0.587*G + 0.114*B
-- Calibration bounds: mean ± 2σ with 10% padding, enforced min_radius >= 5
-- Requires minimum 3 detected circles for reliable calibration
-- Calibration result includes reference color, count, and statistics
-
-### Added (Scaling Performance - SCALING Sprint)
-- **KD-tree spatial indexing**: O(n log n) circle deduplication replacing O(n²) nested loops
-- **Chunked/tiled processing**: `--chunk-size` CLI flag for processing large images in tiles
-  - `--chunk-size auto`: Automatic chunking for images >20 MP (default behavior)
-  - `--chunk-size 2000`: Explicit chunk size in pixels
-  - `--chunk-size 0`: Disable chunking (process entire image at once)
-- **Boundary deduplication**: Circles on tile boundaries correctly deduplicated using overlap regions
-- 12 new tests for chunked processing (TestGenerateTiles, TestCalculateChunkSize, TestProcessChunked)
-- 45 total tests for convex detector with 94% coverage
-
-### Technical Details (Scaling Performance)
-- **KD-tree deduplication**: scipy.spatial.KDTree with query_ball_point() for O(n log n) neighbor searches
-- **Tile overlap**: 2×max_radius to ensure boundary circles are fully captured in at least one tile
-- **Minimum chunk size**: Enforced minimum of 3×overlap to prevent excessive tiling
-- **Auto-chunking threshold**: Images >20 MP trigger automatic chunking
-- **38 MP benchmark**: CMYK halftone image (6480×6000) processes in <5 minutes with ~8,000 circles detected
-- **Deduplication benchmark**: 50,000 circles deduplicate in <10 seconds with KD-tree (vs minutes with nested loops)
-
-### Added (Circle Renderer Enhancements - CIRCLERENDER Sprint)
-- **Petal rotation modes**: `--petal-rotation` CLI flag with three modes:
-  - `fixed` (default): All petals at same angle (base rotation)
-  - `random`: Random rotation per cluster (reproducible with `--rotation-seed`)
-  - `cluster-hash`: Deterministic rotation based on cluster position hash
-- **Exposed area circle sizing**: `--exposed-area-sizing` CLI flag for accurate petal proportions
-  - Uses lens area formula to calculate petal-black overlap
-  - Enlarges petal radius to compensate for hidden area behind black circle
-  - Binary search solver finds radius for target exposed pixel count
-- **Subtractive CMY blending**: `--blend-overlaps` CLI flag for realistic color mixing
-  - Cyan removes Red channel (C → no R)
-  - Magenta removes Green channel (M → no G)
-  - Yellow removes Blue channel (Y → no B)
-  - C+M overlap → Blue, C+Y overlap → Green, M+Y overlap → Red
-  - C+M+Y overlap → near-Black (subtractive mixing)
-- New functions in `circle_renderer.py`:
-  - `lens_area()`: Circle-circle intersection area using Wolfram MathWorld formula
-  - `exposed_area()`: Petal area visible after black overlap
-  - `radius_for_exposed_pixels()`: Binary search solver for target exposed area
-- 51 unit tests for circle renderer with comprehensive blending coverage
-
-### Technical Details (Circle Renderer Enhancements)
-- Cluster-hash rotation uses Python `hash()` on (x, y) tuple for deterministic pseudo-randomness
-- Lens area formula handles all edge cases: no overlap, full containment, partial intersection
-- Binary search converges in <20 iterations with 0.1 pixel tolerance
-- Blending uses numpy mask operations for efficient pixel-level color mixing
-- Black circle always rendered on top after CMY blending
-
-### Fixed (Sliding Window - CMYKFIX Sprint)
-- **Tile seam artifacts**: Fixed flower clipping at tile boundaries in sliding window mode
-  - Root cause: Only core clusters were passed to renderer, missing petals from overlap region
-  - Fix: Now render ALL clusters in tile, still copy only core region to output
-  - This ensures overlap cluster petals extending into core region are visible
-  - Location: `sliding_window.py:169-170`
-- Added comprehensive test suite for sliding window seam handling:
-  - `test_overlap_cluster_petals_visible_in_core`: Verifies petals extend into adjacent core
-  - `test_no_duplicate_circles_at_boundaries`: Ensures no duplicate rendering
-  - `test_overlap_region_clusters_contribute_petals`: Tests petal contribution
-  - `test_stats_track_clusters_correctly`: Validates statistics tracking
-
-### Fixed (Flower Renderer - FLOWERFIX Sprint)
-- **Black circle clipping bug**: Fixed z-order issue where `used` mask prevented black circles from rendering over CMY petals in blend mode
-  - Root cause: `used[any_cmy] = True` was set before `draw_circle_exact` for black
-  - Fix: Black circles now draw directly via mask, bypassing the `used` check
-  - Location: `circle_renderer.py:389-395`
-- **Petal geometry improvement**: Changed petal positioning to move centers inward for shallower, rounder petal arcs
-  - Old formula: `dist = black_radius + preliminary_radius * petal_distance` (centers outside black circle)
-  - New formula: `dist = black_radius * petal_distance` (centers inside black circle)
-  - Default `petal_distance` changed from 0.7 to 0.5
-  - Location: `circle_renderer.py:334`
-
-### Technical Details (Flower Renderer Fixes)
-- Petal distance parameter now controls position as fraction of black radius (0.5 = halfway to edge)
-- `exposed_area_sizing` automatically compensates by increasing petal radius
-- Blend mode black drawing uses `make_circle_mask` instead of `draw_circle_exact`
-- All existing tests pass with no regressions
-
-### Fixed (Black Blob Rendering - CMYKFIX Sprint)
-- **Large black blobs rendered as giant circles**: Fixed overlapping black dots merging into single clusters
-  - Root cause: `find_black_dot_centers()` used connected component analysis, which merged adjacent/overlapping black dots into single components, causing giant black blobs to render instead of individual halftone dots
-  - Fix: New `find_black_dot_centers_distance_transform()` function uses distance transform with local maxima detection to identify individual dot centers even when touching
-  - Algorithm: Distance transform → local maximum filter → peak detection → NMS deduplication
-  - Added `separation_method` parameter to `cluster_and_count_pixels()`: 'connected' (legacy) or 'distance_transform' (new default)
-  - Added `min_dot_distance` parameter (default: 10px) for configuring minimum separation between dot centers
-  - Location: `cluster_pixel_counter.py:133-219`
-- **sliding_window.py updated** to use distance transform by default for improved large image handling
-- Verified on 38.9 MP test image (192 tiles, 15,724 clusters) - no black blobs
-
-### Technical Details (Black Blob Fix)
-- Distance transform converts binary mask to distance field (each pixel = distance to nearest edge)
-- Local maxima in distance field correspond to circle centers
-- Non-maximum suppression (NMS) filters duplicate centers within `min_dot_distance`
-- KD-tree based label assignment for efficient nearest-center pixel clustering
-- Fallback to connected components when no peaks detected (handles edge cases)
-- 23 tests pass including new distance transform coverage
-
-### Added (GPU Cluster Acceleration - GPUACCEL Sprint)
-- **GPU-accelerated Non-Maximum Suppression (NMS)**: `gpu_nms_centers()` for centroid discovery
-  - Broadcast distance matrix computation on GPU
-  - O(n²) memory but parallelized computation
-  - 2x+ speedup on 5,000+ centers
-  - Automatic fallback to CPU for small inputs (<100 centers) or when GPU unavailable
-- **GPU-accelerated nearest center labeling**: `gpu_nearest_center_labels()` replaces scipy KDTree
-  - Chunked processing (500K pixels/chunk) for memory management
-  - Handles 1M+ pixels efficiently
-  - Results match KDTree within 99.99% accuracy (float32 vs float64 tie-breaking)
-- **GPU-accelerated cluster color counting**: `gpu_count_cluster_colors()` and `gpu_count_cluster_totals()`
-  - Uses CuPy bincount for parallel histogram computation
-  - Per-cluster CMYK pixel counting in single GPU pass
-  - Significant speedup for large images (2000x2000+)
-- CPU fallback functions for all GPU operations
-- 13 new tests for GPU acceleration functions (test_gpu_acceleration.py)
-
-### Technical Details (GPU Cluster Acceleration)
-- All GPU functions in `gpu.py` module with `force_gpu` parameter for testing
-- GPU NMS uses broadcast distance matrix: O(n²) GPU memory, O(n) iterations
-- Nearest center uses chunked distance computation to limit GPU memory
-- Color counting flattens labels and masks for efficient bincount
-- Float32 precision on GPU vs Float64 on CPU can cause different tie-breaking for equidistant points
-- Graceful degradation: auto-detects CuPy availability, falls back to NumPy/SciPy
-
-### Planned for v0.2.0
-- Partial circle detection at image edges
-- Debug visualization mode
-
----
-
-**Note**: This changelog follows [Keep a Changelog](https://keepachangelog.com/) conventions:
-- `Added` for new features
-- `Changed` for changes in existing functionality
-- `Deprecated` for soon-to-be removed features
-- `Removed` for now removed features
-- `Fixed` for any bug fixes
-- `Security` in case of vulnerabilities
