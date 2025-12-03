@@ -1,0 +1,41 @@
+{
+  "sprint_id": "sprint-2024-12-ttlttc-todo-obsolete-20251201",
+  "sprint_name": "2024-12-TTLTTC-todo-obsolete",
+  "sprint_folder": "sprint-2024-12-ttlttc-todo-obsolete-20251201",
+  "created_at": "2025-12-01T22:58:09.417715",
+  "start_date": null,
+  "end_date": "2025-12-01",
+  "archived_at": "2025-12-01T22:58:09.417715",
+  "card_ids": [
+    "82ei52",
+    "kk5hjj",
+    "njope7",
+    "0lz6ew",
+    "gnb3ou",
+    "afw8hr",
+    "4ao20k",
+    "uvtrzw",
+    "6e70lf",
+    "os0s3t",
+    "uusbc9"
+  ],
+  "metrics": {
+    "total_cards": 11,
+    "by_priority": {
+      "P1": 5,
+      "P2": 1,
+      "P0": 5
+    },
+    "by_type": {
+      "spike": 4,
+      "feature": 4,
+      "bug": 1,
+      "chore": 1,
+      "test": 1
+    },
+    "by_owner": {
+      "Unassigned": 9,
+      "CAMERON": 2
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "card_id": "eni281",
+  "validation_timestamp": "2025-12-02T05:50:14.661680Z",
+  "validation_errors": {
+    "missing_sections": [
+      "Research Question",
+      "Time Box",
+      "Success Criteria",
+      "Context"
+    ],
+    "missing_checkboxes": 0,
+    "missing_tables": []
+  },
+  "template_name": "spike"
+}

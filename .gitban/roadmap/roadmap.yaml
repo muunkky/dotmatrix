@@ -31,6 +31,17 @@ changelog:
       - Accuracy comparison found 24.6% error due to flower renderer 
         blend-overlaps issue
       - Created follow-up bug card (01gzl3) for C+M overlap improvement
+  - version: 0.2.0
+    date: '2025-12-01'
+    changes:
+      - Fixed missing small halftone clusters by switching cluster detection 
+        threshold to absolute `0.5` (reduced orphan pixels to 0).
+      - 'Improved cluster counting: detected +190 clusters (15,794 total) vs prior
+        15,604.'
+      - Added orphan diagnostic tooling and scripts to analyze detection 
+        quality.
+      - Release tagged `v0.2.0`.
+      - Updated tests and verification for small-dot detection.
 versions:
   v1:
     id: v1
@@ -46,7 +57,7 @@ versions:
         title: 'M1: MVP - Basic Circle Detection'
         description: Implement core functionality to detect non-overlapping 
           circles in images and output their properties
-        status: todo
+        status: done
         due_date: '2025-11-07'
         success_criteria:
           - CLI successfully reads image files (PNG, JPG)
