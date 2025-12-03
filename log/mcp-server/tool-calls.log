@@ -15,3 +15,6 @@
 {"timestamp": "2025-12-02T17:43:39.915641Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 41 cards", "operation": "get_kanban_stats_cards_found"}
 {"timestamp": "2025-12-02T17:43:39.915641Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
 {"timestamp": "2025-12-02T17:43:39.916641Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
+{"timestamp": "2025-12-02T17:55:14.520695Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: roadmap-upsert-requires-title-for-partial-updates", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-02T17:55:14.536691Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-02T17:55:14.560689Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}

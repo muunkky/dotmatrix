@@ -51,27 +51,27 @@ Remove temp files, scripts, and folders from root directory that accumulated dur
 
 ## Tasks
 
-- [ ] **Delete temp Python scripts**: Remove 4 `.py` files from root
+- [x] **Delete temp Python scripts**: Remove 4 `.py` files from root
   - `Remove-Item analyze_blanks.py, demo_create_test_image.py, test_color_separation.py, test_hybrid_approach.py`
 
-- [ ] **Delete shell scripts**: Remove 5 `.sh` and `.ps1` files
+- [x] **Delete shell scripts**: Remove 5 `.sh` and `.ps1` files
   - `Remove-Item demo_edge_methods_comparison.sh, extract_cmyk.ps1, extract_cmyk.sh, test_config.sh, test_detection_params.sh`
 
-- [ ] **Delete test images**: Remove 3 image files
+- [x] **Delete test images**: Remove 3 image files
   - `Remove-Item demo_circles.png, test_dotmatrix.bmp, test_dotmatrix.png`
 
-- [ ] **Delete malformed paths**: Remove invalid entries
+- [x] **Delete malformed paths**: Remove invalid entries
   - `Remove-Item "=1.3.0" -Force -Recurse`
   - `Remove-Item "--format=json" -Force -Recurse`
 
-- [ ] **Delete temp output folders**: Remove 5 output directories
+- [x] **Delete temp output folders**: Remove 5 output directories
   - `Remove-Item output_test, output_test2, output_test3, output_test_cell, demo_output -Recurse -Force`
 
-- [ ] **Review demo_results**: Decide keep or clean
+- [x] **Review demo_results**: Decide keep or clean
   - Check if any subfolders contain valuable examples
   - If keeping, document why in notes
 
-- [ ] **Review OPTIMAL_USAGE.md**: Decide keep or integrate into README
+- [x] **Review OPTIMAL_USAGE.md**: Decide keep or integrate into README
   - If valuable, move to docs/ folder
   - If redundant, delete
 
@@ -93,33 +93,33 @@ Remove temp files, scripts, and folders from root directory that accumulated dur
 
 ## Success Criteria
 
-- [ ] All temp Python scripts deleted (4 files)
-- [ ] All shell scripts deleted (5 files)
-- [ ] All test images deleted (3 files)
-- [ ] Malformed paths deleted (2 items)
-- [ ] Temp output folders deleted (5 folders)
-- [ ] Root directory contains only standard files
+- [x] All temp Python scripts deleted (4 files)
+- [x] All shell scripts deleted (5 files)
+- [x] All test images deleted (3 files)
+- [x] Malformed paths deleted (2 items)
+- [x] Temp output folders deleted (5 folders)
+- [x] Root directory contains only standard files
 
 **Quality Gates:**
-- [ ] No deletion of important files (pyproject.toml, README.md, etc.)
-- [ ] .gitban/ folder preserved
-- [ ] src/, tests/, docs/ folders preserved
+- [x] No deletion of important files (pyproject.toml, README.md, etc.)
+- [x] .gitban/ folder preserved
+- [x] src/, tests/, docs/ folders preserved
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Root directory has <15 items (down from 30+)
-- [ ] No temp/test files remain in root
-- [ ] No malformed paths remain
-- [ ] No temp output folders remain
-- [ ] Project still builds and runs correctly
+- [x] Root directory has <15 items (down from 30+)
+- [x] No temp/test files remain in root
+- [x] No malformed paths remain
+- [x] No temp output folders remain
+- [x] Project still builds and runs correctly
 
 ---
 
 ## Test Plan
 
-- [ ] Run `Get-ChildItem .` to verify clean root directory
-- [ ] Run `python -m dotmatrix --help` to verify CLI works
-- [ ] Run `git status` to see uncommitted deletions
-- [ ] Verify expected files still exist (pyproject.toml, README.md, etc.)
+- [x] Run `Get-ChildItem .` to verify clean root directory
+- [x] Run `python -m dotmatrix --help` to verify CLI works
+- [x] Run `git status` to see uncommitted deletions
+- [x] Verify expected files still exist (pyproject.toml, README.md, etc.)
