@@ -1,0 +1,30 @@
+{
+  "sprint_id": "sprint-ttlttc-sprint-cleanup-20251203",
+  "sprint_name": "TTLTTC_SPRINT_CLEANUP_20251202",
+  "sprint_folder": "sprint-ttlttc-sprint-cleanup-20251203",
+  "created_at": "2025-12-03T11:13:50.162836",
+  "start_date": null,
+  "end_date": "2025-12-03",
+  "archived_at": "2025-12-03T11:13:50.162836",
+  "card_ids": [
+    "gd0tje",
+    "o1ulgm",
+    "zz7pvg",
+    "a4tloq",
+    "j5tvhn"
+  ],
+  "metrics": {
+    "total_cards": 5,
+    "by_priority": {
+      "P0": 3,
+      "P1": 2
+    },
+    "by_type": {
+      "chore": 3,
+      "documentation": 2
+    },
+    "by_owner": {
+      "CAMERON": 5
+    }
+  }
+}
