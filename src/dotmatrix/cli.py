@@ -988,12 +988,28 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     if cache_loaded:
                         # Render from cached clusters
                         h, w = image.shape[:2]
-                        click.echo(f"  Rendering {len(cluster_results)} clusters...", err=True)
+                        
+                        # Show GPU/CPU status
+                        if use_gpu_for_sw:
+                            click.echo(f"  Rendering {len(cluster_results)} clusters with GPU (CUDA)...", err=True)
+                        else:
+                            click.echo(f"  Rendering {len(cluster_results)} clusters with CPU...", err=True)
 
                         def render_progress(current, total, phase, metadata=None):
                             if metadata:
                                 pct = metadata.get('percentage', 0)
-                                click.echo(f"  [Render] {pct}% complete", err=True)
+                                elapsed = metadata.get('elapsed_seconds', 0)
+                                throughput = metadata.get('throughput_per_second', 0)
+                                eta = metadata.get('eta_seconds', 0)
+                                
+                                if throughput > 0:
+                                    click.echo(
+                                        f"  [Render] {current}/{total} ({pct}%) "
+                                        f"[~{throughput:.1f} clusters/sec, ETA {eta:.1f}s]",
+                                        err=True
+                                    )
+                                else:
+                                    click.echo(f"  [Render] {current}/{total} ({pct}%)", err=True)
 
                         if use_gpu_for_sw:
                             from .gpu_renderer import render_flower_global_blend_gpu
@@ -1222,7 +1238,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             # Use GPU renderer for global blend mode (the primary use case)
                             if blend_overlaps and use_gpu and gpu_available:
                                 from .gpu_renderer import render_flower_global_blend_gpu
-                                click.echo(f"Generating reconstituted image (flower+GPU, scale={render_scale}, rotation={rotation_mode})...", err=True)
+                                click.echo(f"Rendering {len(cluster_results)} clusters with GPU (CUDA) [flower, scale={render_scale}, rotation={rotation_mode}]...", err=True)
                                 reconstituted = render_flower_global_blend_gpu(
                                     cluster_results,
                                     image_rgb.shape[:2],
@@ -1241,7 +1257,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                     gpu_status = " (GPU disabled)"
                                 else:
                                     gpu_status = ""
-                                click.echo(f"Generating reconstituted image (flower, scale={render_scale}, rotation={rotation_mode}){gpu_status}...", err=True)
+                                click.echo(f"Rendering {len(cluster_results)} clusters with CPU [flower, scale={render_scale}, rotation={rotation_mode}]{gpu_status}...", err=True)
                                 reconstituted = render_flower(
                                     cluster_results,
                                     image_rgb.shape[:2],

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Real-time Progress Indicators**: Added comprehensive progress feedback during rendering operations.
+  - GPU/CPU status displayed at render start (e.g., "Rendering with GPU (CUDA)" or "Rendering with CPU").
+  - Progress updates during flower rendering showing cluster count and percentage complete.
+  - Throughput metrics showing clusters processed per second.
+  - Estimated time remaining (ETA) for long-running renders.
+  - Progress callback system with metadata including elapsed time, throughput, and ETA.
+
 ## [0.2.0] - 2025-12-01
 
 ### Added

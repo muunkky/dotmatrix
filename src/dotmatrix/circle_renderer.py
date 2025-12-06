@@ -33,6 +33,7 @@ Key algorithms:
 import math
 import hashlib
 import random
+import time
 from typing import Dict, List, Tuple, Optional, Callable
 from dataclasses import dataclass
 
@@ -807,20 +808,37 @@ def render_flower_global_blend(
 
     total_clusters = len(cluster_data)
     log_interval = max(1, total_clusters // 20)  # Log every 5%
+    phase_start_time = time.time()
 
     for cluster_idx, data in enumerate(cluster_data):
         # Progress callback and logging every 5%
         if cluster_idx % log_interval == 0 or cluster_idx == total_clusters - 1:
-            pct = (cluster_idx + 1) * 100 // total_clusters
+            current = cluster_idx + 1
+            pct = current * 100 // total_clusters
+            elapsed = time.time() - phase_start_time
+            
+            # Calculate throughput and ETA
+            throughput = current / elapsed if elapsed > 0 else 0
+            remaining = total_clusters - current
+            eta_seconds = remaining / throughput if throughput > 0 else 0
+            
+            metadata = {
+                'percentage': pct,
+                'elapsed_seconds': elapsed,
+                'throughput_per_second': throughput,
+                'eta_seconds': eta_seconds,
+            }
+            
             if progress_callback:
                 progress_callback(
-                    cluster_idx + 1,
+                    current,
                     total_clusters,
                     'petal_optimization',
-                    {'percentage': pct}
+                    metadata
                 )
             else:
-                print(f"    Phase 1c: Optimizing petals {cluster_idx + 1}/{total_clusters} ({pct}%)", flush=True)
+                print(f"    Phase 1c: Optimizing petals {current}/{total_clusters} ({pct}%) "
+                      f"[{throughput:.1f} clusters/sec, ETA {eta_seconds:.1f}s]", flush=True)
 
         cx, cy = data['cx'], data['cy']
         black_radius = data['black_radius']
