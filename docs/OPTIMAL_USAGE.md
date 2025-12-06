@@ -134,3 +134,103 @@ Adjust until you get the expected circle count.
 - **Exposed method:** ~10-20ms per circle (occlusion detection overhead)
 
 For 100+ circles, band method is recommended for speed.
+
+---
+
+## Black Dot Verification (CMYK Images)
+
+### Overview
+
+When processing CMYK halftone images, DotMatrix automatically validates your detection settings using black (K) dots as ground truth. Black dots are ideal reference points because they're always printed on top and have the highest contrast.
+
+### Automatic Verification
+
+Verification runs automatically before full CMYK detection:
+
+```bash
+dotmatrix --input halftone.png --palette cmyk --min-radius 20 --max-radius 50
+```
+
+Output shows verification results:
+```
+Black Dot Verification:
+  Circles detected: 1,247
+  Radius: mean=28.3, std=6.2, range=[22, 46]
+  Coverage: 89.4%
+  Density: 2.1 circles/MP
+  Status: ✓ Verification passed
+```
+
+### Understanding Verification Warnings
+
+**"Very few black circles detected"**
+- Your min/max radius settings may be filtering out valid circles
+- Try the suggested radius range shown in the output
+
+**"Mean radius close to min_radius"**
+- Circles are being cut off at the lower bound
+- Lower your `--min-radius` to capture smaller dots
+
+**"Mean radius close to max_radius"**
+- Circles are being cut off at the upper bound  
+- Raise your `--max-radius` to capture larger dots
+
+**"High radius variation (CV > 40%)"**
+- Detection may be inconsistent
+- Check image quality or adjust thresholds
+
+### Suggested Radius Range
+
+When verification detects issues, it suggests optimal settings:
+
+```
+Black Dot Verification:
+  Circles detected: 842
+  Radius: mean=31.5, std=8.9, range=[18, 52]
+  Warnings:
+    ⚠ Mean radius (31.5) is close to max_radius (35).
+       Some circles may be cut off. Consider raising max_radius.
+  Suggested radius range: --min-radius 15 --max-radius 55
+```
+
+Simply copy the suggested parameters to your command.
+
+### Coverage Map (Debug Mode)
+
+Enable `--debug` to save a visual heatmap showing where black dots were detected:
+
+```bash
+dotmatrix --input halftone.png --palette cmyk --debug
+```
+
+Creates `output/black_verification_coverage.png`:
+- **Blue regions**: Few/no detections (possible gaps)
+- **Red regions**: Dense detections (good coverage)
+
+Use this to identify problem areas in your image.
+
+### Disabling Verification
+
+If you need to skip verification (e.g., for non-halftone images):
+
+```bash
+dotmatrix --input image.png --palette cmyk --no-verify-black
+```
+
+### Abort on Failure
+
+Stop processing immediately if verification fails:
+
+```bash
+dotmatrix --input halftone.png --palette cmyk --verify-abort
+```
+
+Useful in automated pipelines to avoid processing misconfigured images.
+
+### Best Practices
+
+1. **Start with verification**: Let it suggest radius ranges for your specific image
+2. **Iterate on settings**: Adjust based on warnings and re-run until verification passes
+3. **Use coverage maps**: Identify spatial gaps in detection with `--debug`
+4. **Validate once**: Once you find good settings, disable verification for batch processing
+
