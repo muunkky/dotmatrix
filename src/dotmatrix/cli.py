@@ -904,7 +904,8 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                 if not no_verify_black and not skip_full_detection:
                     from .black_verification import (
                         verify_black_dot_detection,
-                        format_verification_output
+                        format_verification_output,
+                        generate_coverage_map
                     )
 
                     verification_result = verify_black_dot_detection(
@@ -916,6 +917,16 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                     # Display verification results
                     click.echo(format_verification_output(verification_result), err=True)
+
+                    # Save coverage map if debug mode
+                    if debug and verification_result.circles:
+                        coverage_map = generate_coverage_map(
+                            verification_result.circles,
+                            image_rgb.shape[:2]
+                        )
+                        coverage_path = os.path.join(output_dir, "black_verification_coverage.png")
+                        cv2.imwrite(coverage_path, cv2.cvtColor(coverage_map, cv2.COLOR_RGB2BGR))
+                        click.echo(f"  Coverage map saved: {coverage_path}", err=True)
 
                     # Abort if verification failed and --verify-abort is set
                     if verify_abort and not verification_result.passed:

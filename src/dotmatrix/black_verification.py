@@ -16,11 +16,13 @@ This module provides functions to:
 from dataclasses import dataclass, asdict
 from typing import List, Tuple, Dict, Optional
 import numpy as np
+import cv2
 
 from .convex_detector import (
     separate_cmyk_inks,
     detect_circles_from_convex_edges,
     CMYK_INK_COLORS,
+    DetectedCircle,
 )
 
 
@@ -41,10 +43,15 @@ class VerificationResult:
     coverage_percent: float
     warnings: List[str]
     passed: bool
+    suggested_radius_range: Optional[Tuple[int, int]] = None
+    circles: Optional[List[DetectedCircle]] = None
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
-        return asdict(self)
+        result = asdict(self)
+        # Exclude circles from serialization (too verbose)
+        result.pop('circles', None)
+        return result
 
 
 def verify_black_dot_detection(
@@ -115,6 +122,16 @@ def verify_black_dot_detection(
         coverage_percent=metrics['coverage_percent']
     )
 
+    # Suggest radius range if detected distribution warrants it
+    suggested_range = suggest_radius_range(
+        radius_mean=metrics['radius_mean'],
+        radius_std=metrics['radius_std'],
+        radius_min=metrics['radius_min'],
+        radius_max=metrics['radius_max'],
+        current_min=min_radius,
+        current_max=max_radius
+    )
+
     # Determine if verification passed
     passed = len(warnings) == 0
 
@@ -128,7 +145,9 @@ def verify_black_dot_detection(
         actual_density=metrics['density'],
         coverage_percent=metrics['coverage_percent'],
         warnings=warnings,
-        passed=passed
+        passed=passed,
+        suggested_radius_range=suggested_range,
+        circles=circles
     )
 
 
@@ -271,6 +290,109 @@ def generate_verification_warnings(
     return warnings
 
 
+def suggest_radius_range(
+    radius_mean: float,
+    radius_std: float,
+    radius_min: int,
+    radius_max: int,
+    current_min: int,
+    current_max: int
+) -> Optional[Tuple[int, int]]:
+    """Suggest improved radius range based on detected black dots.
+
+    Uses statistical analysis of detected radii to suggest a better
+    min/max radius range that would capture the actual dot sizes.
+
+    Args:
+        radius_mean: Mean radius of detected circles
+        radius_std: Standard deviation of radii
+        radius_min: Minimum detected radius
+        radius_max: Maximum detected radius
+        current_min: Current min_radius setting
+        current_max: Current max_radius setting
+
+    Returns:
+        (suggested_min, suggested_max) tuple, or None if current range is good
+    """
+    if radius_mean == 0:
+        return None
+
+    # Calculate bounds using mean ± 2 std (covers ~95% of normal distribution)
+    # Add 20% padding to ensure we don't cut off edge cases
+    lower_bound = max(1, int((radius_mean - 2 * radius_std) * 0.8))
+    upper_bound = int((radius_mean + 2 * radius_std) * 1.2)
+
+    # Check if current range is too narrow
+    range_too_narrow = (
+        radius_min < current_min + (current_max - current_min) * 0.2 or
+        radius_max > current_max - (current_max - current_min) * 0.2
+    )
+
+    # Suggest new range if:
+    # 1. Current range is too narrow (cutting off circles)
+    # 2. Suggested range differs significantly from current (>15% difference)
+    min_diff_pct = abs(lower_bound - current_min) / current_min if current_min > 0 else 1.0
+    max_diff_pct = abs(upper_bound - current_max) / current_max if current_max > 0 else 1.0
+
+    if range_too_narrow or min_diff_pct > 0.15 or max_diff_pct > 0.15:
+        return (lower_bound, upper_bound)
+
+    return None
+
+
+def generate_coverage_map(
+    circles: List[DetectedCircle],
+    image_shape: Tuple[int, int],
+    grid_size: int = 10
+) -> np.ndarray:
+    """Generate a visual heatmap of black dot detection coverage.
+
+    Divides image into a grid and colors each cell based on detection density.
+    Useful for identifying regions with sparse detection.
+
+    Args:
+        circles: List of detected circles
+        image_shape: (height, width) of original image
+        grid_size: Number of grid cells per dimension (default: 10)
+
+    Returns:
+        RGB heatmap image as numpy array
+    """
+    h, w = image_shape
+    
+    # Create grid to count circles per cell
+    cell_height = h // grid_size
+    cell_width = w // grid_size
+    grid_counts = np.zeros((grid_size, grid_size), dtype=np.float32)
+
+    # Count circles in each grid cell
+    for circle in circles:
+        cell_y = min(int(circle.y / cell_height), grid_size - 1)
+        cell_x = min(int(circle.x / cell_width), grid_size - 1)
+        grid_counts[cell_y, cell_x] += 1
+
+    # Normalize to 0-255 range
+    if grid_counts.max() > 0:
+        grid_normalized = (grid_counts / grid_counts.max() * 255).astype(np.uint8)
+    else:
+        grid_normalized = grid_counts.astype(np.uint8)
+
+    # Resize to full image dimensions for visualization
+    coverage_map = cv2.resize(
+        grid_normalized,
+        (w, h),
+        interpolation=cv2.INTER_NEAREST
+    )
+
+    # Apply colormap (COLORMAP_JET: blue=low, red=high)
+    coverage_map_color = cv2.applyColorMap(coverage_map, cv2.COLORMAP_JET)
+
+    # Convert BGR to RGB for consistency
+    coverage_map_rgb = cv2.cvtColor(coverage_map_color, cv2.COLOR_BGR2RGB)
+
+    return coverage_map_rgb
+
+
 def format_verification_output(result: VerificationResult) -> str:
     """Format verification result for console output.
 
@@ -300,5 +422,10 @@ def format_verification_output(result: VerificationResult) -> str:
             lines.append(f"    ⚠ {warning}")
     else:
         lines.append("  Status: ✓ Verification passed")
+
+    # Add suggested radius range if available
+    if result.suggested_radius_range:
+        suggested_min, suggested_max = result.suggested_radius_range
+        lines.append(f"  Suggested radius range: --min-radius {suggested_min} --max-radius {suggested_max}")
 
     return "\n".join(lines)

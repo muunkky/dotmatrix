@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Throughput metrics showing clusters processed per second.
   - Estimated time remaining (ETA) for long-running renders.
   - Progress callback system with metadata including elapsed time, throughput, and ETA.
+- **Black Dot Verification**: Added ground truth validation for CMYK detection using black (K) channel dots.
+  - Automatic verification enabled by default for CMYK palette detection (disable with `--no-verify-black`).
+  - Displays verification stats: detected count, radius distribution (mean, std, range), coverage %, density.
+  - Intelligent warnings for misconfigured settings (min/max radius too narrow, sparse detection).
+  - Suggested radius range based on statistical analysis (mean ± 2σ with padding).
+  - Visual coverage heatmap saved in debug mode (`black_verification_coverage.png`).
+  - `--verify-abort` flag to stop processing if verification fails threshold.
+  - Helps users validate detection parameters before running expensive full CMYK separation.
 
 ## [0.2.0] - 2025-12-01
 
