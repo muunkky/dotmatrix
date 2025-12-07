@@ -99,6 +99,23 @@ We tested 4 edge sampling methods:
 - Decrease `--min-radius` (allow smaller circles)
 - Use `--sensitivity relaxed`
 
+**Wrong min/max radius settings?**
+- Use black dot verification (enabled by default for CMYK)
+- Check the verification output for suggested radius range
+- Example output:
+  ```
+  Black Dot Verification:
+    Circles detected: 1247
+    Radius: mean=28.3, std=4.2, range=[20, 42]
+    Coverage: 12.35%
+    Density: 2.1 circles/MP
+    Status: ✓ Verification passed
+    Suggested radius range: --min-radius 18 --max-radius 48
+  ```
+- Disable with `--no-verify-black` if not using CMYK
+- Use `--verify-abort` to stop if settings are misconfigured
+- Check `black_verification_coverage.png` in debug mode for detection density heatmap
+
 **Wrong colors?**
 - Try different `--edge-method` (band, canny, exposed)
 - Adjust `--max-colors` to match expected color count
