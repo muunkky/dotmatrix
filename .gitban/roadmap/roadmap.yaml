@@ -42,6 +42,40 @@ changelog:
         quality.
       - Release tagged `v0.2.0`.
       - Updated tests and verification for small-dot detection.
+  - version: 0.2.1
+    date: '2025-12-03'
+    changes:
+      - Added V2 to roadmap for Artistic Rendering (Jitter, ASCII, SVG)
+  - version: unreleased
+    date: '2025-12-06'
+    changes:
+      - Enhanced black dot verification with radius suggestion algorithm (card 
+        ajwv8f)
+      - Added visual coverage heatmap for detection density analysis
+      - Implemented suggest_radius_range() using mean ± 2σ statistical analysis
+      - Coverage maps saved automatically in debug mode
+  - changes:
+      - Created ADR-006 documenting CMYK cluster pixel counting architecture 
+        (card krzyj6)
+      - 'Documented 3-phase algorithm: midtone completion, nearest-pixel clustering,
+        and deduplication'
+      - Prevents double-counting by subtracting RGB overlaps from CMY totals
+    date: '2025-12-06'
+    version: unreleased
+  - version: unreleased
+    date: '2025-12-06'
+    changes:
+      - 'Updated roadmap: marked progress-reporting project as done (M3>large-file-support)'
+      - Synced roadmap with actual implementation status for completed features
+  - changes:
+      - Verified organized-output-dirs feature already implemented (--run-name, 
+        --no-organize flags)
+      - 'Updated roadmap: marked organized-output-dirs as done (M3>workflow-improvements)'
+      - Created comprehensive test suite for run directory management 
+        (test_run_directory_management.py)
+      - Closed verification card 418dhb documenting existing implementation
+    date: '2025-12-06'
+    version: unreleased
 versions:
   v1:
     id: v1
@@ -524,12 +558,16 @@ versions:
             priority: high
             projects:
               organized-output-dirs:
-                id: organized-output-dirs
-                title: Organized Output Directories with Run Naming
+                completion_notes: Feature already implemented with --run-name 
+                  flag and --no-organize for backward compatibility. Uses 
+                  run_manager module with create_run_directory() and manifest 
+                  generation.
                 description: Auto-create timestamped/named output folders for 
                   each run
-                status: todo
+                id: organized-output-dirs
                 sequence: 1
+                status: done
+                title: Organized Output Directories with Run Naming
               config-save-load:
                 id: config-save-load
                 title: Save and Load Config Files
@@ -588,14 +626,14 @@ versions:
               progress-reporting:
                 id: progress-reporting
                 title: Progress Reporting for Long Operations
-                status: todo
+                description: Real-time progress feedback during rendering with 
+                  throughput, ETA, and GPU/CPU status indicators
+                status: done
                 sequence: 3
-                description: Add progress feedback for operations >5 seconds.
-                owner: ''
-                tdd_spec: Progress indicator shown for operations exceeding 5s
-                docs_ref: ''
-                depends_on:
-                  - size-warnings
+                completion_notes: Implemented comprehensive progress callback 
+                  system with metadata propagation. Displays clusters/sec 
+                  throughput, ETA calculation, and GPU/CPU render mode. 
+                  Integrated into CLI with user-friendly formatting.
           cmyk-accuracy-optimization:
             id: cmyk-accuracy-optimization
             title: CMYK Accuracy Optimization
@@ -749,3 +787,11 @@ versions:
                 owner: CAMERON
                 sequence: 3
                 description: 'Final verification and documentation. Card: 2z9217'
+  v2:
+    id: v2
+    milestones: {}
+    start_date: '2025-12-03'
+    description: Artistic enhancements including jitter, ASCII output, and SVG 
+      vector graphics.
+    title: 'V2: Advanced Artistic Rendering'
+    status: todo
