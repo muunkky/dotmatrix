@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--verify-abort` flag to stop processing if verification fails threshold.
   - Helps users validate detection parameters before running expensive full CMYK separation.
 
+### Documentation
+- **ADR-006**: Documented architectural decision for CMYK cluster pixel counting algorithm.
+  - 3-phase approach: midtone completion, nearest-pixel clustering, deduplication.
+  - 9-element output tuple preventing double-counting of RGB overlaps.
+  - Validation rules for edge cases and partial clusters.
+
 ## [0.2.0] - 2025-12-01
 
 ### Added
