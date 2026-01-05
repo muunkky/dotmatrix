@@ -111,6 +111,28 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     is_flag=True,
     help='Morphological enhancement for fragmented regions'
 )
+@optgroup.option(
+    '--edge-detection',
+    is_flag=True,
+    help='Apply Canny edge detection preprocessing for improved detection (M2 feature)'
+)
+@optgroup.option(
+    '--canny-low',
+    type=int,
+    default=50,
+    help='Canny edge detection low threshold (default: 50)'
+)
+@optgroup.option(
+    '--canny-high',
+    type=int,
+    default=150,
+    help='Canny edge detection high threshold (default: 150)'
+)
+@optgroup.option(
+    '--adaptive-threshold',
+    is_flag=True,
+    help='Apply adaptive thresholding before edge detection (handles uneven lighting)'
+)
 # Color Options
 @optgroup.group('Color Options', help='Color detection and grouping')
 @optgroup.option(
@@ -358,7 +380,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=click.Path(exists=True, path_type=Path),
     help='Load clusters from specific path (default: auto-load from output dir if valid)'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters):
+def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, edge_detection, canny_low, canny_high, adaptive_threshold, auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -393,7 +415,7 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, edge_detection, canny_low, canny_high, adaptive_threshold,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters)
 
 
@@ -631,7 +653,7 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, no_cache=False, save_clusters=None, load_clusters=None):
+def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, edge_detection=False, canny_low=50, canny_high=150, adaptive_threshold=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, no_cache=False, save_clusters=None, load_clusters=None):
     """Internal function for circle detection."""
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute = _apply_mode_presets(
@@ -795,6 +817,43 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
         if debug:
             click.echo(f"Image loaded: {image.shape}", err=True)
             click.echo("Detecting circles...", err=True)
+
+        # Apply edge detection preprocessing if requested (M2 feature)
+        if edge_detection:
+            from .edge_detector import EdgeDetector
+            import numpy as np
+            
+            if debug:
+                click.echo(f"Applying Canny edge detection preprocessing...", err=True)
+                click.echo(f"  Canny thresholds: low={canny_low}, high={canny_high}", err=True)
+                if adaptive_threshold:
+                    click.echo(f"  Adaptive thresholding: enabled", err=True)
+            
+            # Convert to grayscale if needed
+            if len(image.shape) == 3:
+                image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else:
+                image_gray = image.copy()
+            
+            # Apply edge detection
+            detector = EdgeDetector(
+                canny_low=canny_low,
+                canny_high=canny_high,
+                use_adaptive_threshold=adaptive_threshold
+            )
+            edges = detector.process(image_gray)
+            
+            if debug:
+                edge_count = np.sum(edges > 0)
+                total_pixels = edges.shape[0] * edges.shape[1]
+                edge_pct = (edge_count / total_pixels) * 100
+                click.echo(f"  Edge pixels detected: {edge_count:,} ({edge_pct:.2f}%)", err=True)
+            
+            # Use edge image for detection (convert back to BGR if needed)
+            if len(image.shape) == 3:
+                image = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+            else:
+                image = edges
 
         # Check image size and auto-enable sliding window for large images
         megapixels = get_image_megapixels(image)
