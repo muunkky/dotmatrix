@@ -1,0 +1,25 @@
+{
+  "sprint_id": "sprint-gitban-feedback-sent-20251203",
+  "sprint_name": "Gitban-Feedback-Sent",
+  "sprint_folder": "sprint-gitban-feedback-sent-20251203",
+  "created_at": "2025-12-03T14:28:28.881429",
+  "start_date": null,
+  "end_date": "2025-12-03",
+  "archived_at": "2025-12-03T14:28:28.881429",
+  "card_ids": [
+    "4o90nl",
+    "b3q81e"
+  ],
+  "metrics": {
+    "total_cards": 2,
+    "by_priority": {
+      "P2": 2
+    },
+    "by_type": {
+      "spike": 2
+    },
+    "by_owner": {
+      "Unassigned": 2
+    }
+  }
+}

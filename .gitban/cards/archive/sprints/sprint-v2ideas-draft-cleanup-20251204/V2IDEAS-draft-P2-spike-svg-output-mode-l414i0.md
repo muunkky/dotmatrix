@@ -22,3 +22,5 @@
 - [ ] Research implementation approaches
 - [ ] Create design spike if pursuing
 - [ ] Add to V2 roadmap milestone
+
+{"success":true,"card_id":"76klm4","title":"research-jitter-randomization-algorithms","status":"draft","priority":"P1","owner":"","type":"spike","type_name":"Unknown","archived":false,"content":"","content_type":"text/markdown","content_size_chars":0,"total_lines":0}

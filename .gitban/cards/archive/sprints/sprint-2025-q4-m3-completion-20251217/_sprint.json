@@ -1,0 +1,32 @@
+{
+  "sprint_id": "sprint-2025-q4-m3-completion-20251217",
+  "sprint_name": "2025-Q4-M3-completion",
+  "sprint_folder": "sprint-2025-q4-m3-completion-20251217",
+  "created_at": "2025-12-17T12:00:16.729491",
+  "start_date": null,
+  "end_date": "2025-12-17",
+  "archived_at": "2025-12-17T12:00:16.729491",
+  "card_ids": [
+    "jpr3r1",
+    "6b4iz6",
+    "418dhb",
+    "ajwv8f",
+    "krzyj6"
+  ],
+  "metrics": {
+    "total_cards": 5,
+    "by_priority": {
+      "P1": 4,
+      "P0": 1
+    },
+    "by_type": {
+      "documentation": 1,
+      "feature": 3,
+      "spike": 1
+    },
+    "by_owner": {
+      "Unassigned": 1,
+      "CAMERON": 4
+    }
+  }
+}
