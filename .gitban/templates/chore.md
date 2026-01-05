@@ -1,345 +1,187 @@
+---
+# Template Schema Overview
+# This block describes the purpose of this template and the patterns it uses.
+description: A template for tracking sprint cleanup work including deferred tasks, documentation updates, technical debt, and maintenance items that were deprioritized during feature development.
+use_case: Use this for end-of-sprint cleanup, post-release housekeeping, or consolidating deferred maintenance tasks into a single tracking card.
+patterns_used:
+  - section: "Cleanup Scope & Context"
+    pattern: "Pattern 1: Section Header"
+  - section: "Deferred Work Review"
+    pattern: "Pattern 2: Structured Review"
+  - section: "Cleanup Checklist"
+    pattern: "Pattern 9: Phased Task Checklist"
+  - section: "Validation & Closeout"
+    pattern: "Pattern 5: Closeout & Follow-up"
+---
 
-## Purpose
+# Sprint Cleanup Template
 
-[Brief description of the maintenance task - REQUIRED]
+## Cleanup Scope & Context
 
-[Clear explanation of why this chore is needed - maintenance, cleanup, refactoring, upgrade, etc.]
+* **Sprint/Release:** [e.g., "Sprint 24 (Q4 2024)" or "v2.3.0 Release"]
+* **Primary Feature Work:** [e.g., "User authentication overhaul" or "API v2 migration"]
+* **Cleanup Category:** [e.g., "Documentation debt" or "Mixed (tests + docs + refactoring)"]
 
-**Value**: [How this improves the codebase, developer experience, or system reliability]
-
-**Estimated Effort**: [Time estimate, e.g., 2 hours, 1 day]
+**Required Checks:**
+* [ ] Sprint/Release is identified above.
+* [ ] Primary feature work that generated this cleanup is documented.
 
 ---
 
-## Project Location
+## Deferred Work Review
 
-**Path**: `[Directory or file path being modified]`
+First, identify what was deferred or left incomplete during the main feature work. Review commit messages, PR comments, code TODOs, and team discussions for items marked "not in scope" or "do later."
 
-[Specify the location of code, configuration, or infrastructure being modified]
+* [ ] Reviewed commit messages for "TODO" and "FIXME" comments added during sprint.
+* [ ] Reviewed PR comments for "out of scope" or "follow-up needed" discussions.
+* [ ] Reviewed code for new TODO/FIXME markers (grep for them).
+* [ ] Checked team chat/standup notes for deferred items.
 
-### Files/Modules Affected
+Use the table below to log all deferred work. Add rows as needed for each category of cleanup.
 
-- `[path/to/file1]`: [What will be changed]
-- `[path/to/file2]`: [What will be changed]
-- `[path/to/directory]`: [What will be changed]
-
----
-
-## Tasks
-
-[Detailed breakdown of work to be done, in order of execution]
-
-- [ ] **Task 1**: [Description of first task]
-  - Sub-task or detail
-  - Command or action needed
-
-- [ ] **Task 2**: [Description of second task]
-  - Sub-task or detail
-  - Configuration change needed
-
-- [ ] **Task 3**: [Description of third task]
-  - Sub-task or detail
-  - Verification step
-
-[Add more tasks as needed]
-
-### Task Dependencies
-
-[If tasks must be done in specific order, explain dependencies here]
-
-1. Task X must be completed before Task Y because [reason]
-2. Task Z can be done in parallel with Task A
+| Cleanup Category | Specific Item / Location | Priority | Justification for Cleanup |
+| :--- | :--- | :---: | :--- |
+| **Documentation** | [e.g., "README.md - setup instructions outdated"] | [P0/P1/P2] | [e.g., "New auth flow not documented, will confuse new devs"] |
+| **Documentation** | [e.g., "api.md - 3 new endpoints missing"] | P2 | [e.g., "External API users need these docs"] |
+| **Docstrings** | [e.g., "auth.py - 8 functions lack docstrings"] | P1 | [e.g., "Core auth module should be well-documented"] |
+| **Tests** | [e.g., "Missing integration test for password reset"] | P0 | [e.g., "Critical path not covered, risk of regression"] |
+| **Tests** | [e.g., "Unit test coverage dropped to 65%"] | P1 | [e.g., "Team standard is 80%, need to close gap"] |
+| **Broken/Flaky** | [e.g., "test_session_timeout fails 30% of time"] | P0 | [e.g., "Blocks CI, must fix"] |
+| **Technical Debt** | [e.g., "Hardcoded API key in config.py (marked TODO)"] | P0 | [e.g., "Security risk, must move to env var"] |
+| **Technical Debt** | [e.g., "Duplicate validation logic in 3 files"] | P2 | [e.g., "Should be DRY, but not urgent"] |
+| **Dependencies** | [e.g., "requests==2.28.0 has CVE-2023-xxxxx"] | P0 | [e.g., "Security vulnerability"] |
+| **Dependencies** | [e.g., "5 dependencies with available minor updates"] | P2 | [e.g., "Good to stay current, low risk"] |
+| **Refactoring** | [e.g., "auth_handler.py is 800 lines, should split"] | P2 | [e.g., "Maintainability - hard to navigate"] |
+| **Unused Code** | [e.g., "legacy_auth.py not imported anywhere"] | P2 | [e.g., "Dead code adds confusion"] |
+| **Error Handling** | [e.g., "No logging in error paths of user_service.py"] | P1 | [e.g., "Can't debug production issues"] |
+| **Configuration** | [e.g., "Dev/prod configs are inconsistent"] | P1 | [e.g., "Caused staging bug last week"] |
+| **Build/CI** | [e.g., "Linter warnings ignored (34 total)"] | P2 | [e.g., "Should address before they pile up"] |
+| **Nice-to-Have** | [e.g., "Add pretty-print to error messages"] | P2 | [e.g., "UX improvement, not critical"] |
 
 ---
 
-## Outputs
+## Cleanup Checklist
 
-[Concrete deliverables from this chore]
+Below is a comprehensive checklist of common cleanup tasks. Check off items as you complete them, and add rows for sprint-specific items.
 
-### Files Created/Updated
+### Documentation Updates (optional)
 
-1. **[Filename or path]**: [What it contains and why]
-2. **[Filename or path]**: [What it contains and why]
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **README.md** | [e.g., "Updated setup instructions for new auth flow"] | - [ ] |
+| **API Documentation** | [e.g., "Added 3 missing endpoints to api.md"] | - [ ] |
+| **Architecture Docs** | [e.g., "Updated system diagram with new auth service"] | - [ ] |
+| **Runbooks/Playbooks** | [e.g., "Added troubleshooting section for auth failures"] | - [ ] |
+| **CHANGELOG** | [e.g., "Added v2.3.0 entries"] | - [ ] |
+| **ADRs** | [e.g., "Wrote ADR-015 for auth provider choice"] | - [ ] |
+| **Inline Comments** | [e.g., "Added comments to complex token validation logic"] | - [ ] |
+| **Docstrings** | [e.g., "Added docstrings to 8 functions in auth.py"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
-### Configurations Changed
+### Testing & Quality (optional)
 
-- [Configuration 1]: [Old value] → [New value] ([Reason])
-- [Configuration 2]: [Change description]
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **Missing Unit Tests** | [e.g., "Added 12 tests for auth edge cases"] | - [ ] |
+| **Missing Integration Tests** | [e.g., "Added end-to-end test for password reset"] | - [ ] |
+| **Test Coverage** | [e.g., "Increased from 65% to 82%"] | - [ ] |
+| **Flaky Tests** | [e.g., "Fixed test_session_timeout race condition"] | - [ ] |
+| **Test Data/Fixtures** | [e.g., "Added fixtures for auth test scenarios"] | - [ ] |
+| **Performance Tests** | [e.g., "Added load test for auth endpoint"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
-### Documentation Updates
+### Code Quality & Technical  (optional)
 
-- [ ] Update [document name] with [changes]
-- [ ] Create runbook for [operational procedure]
-- [ ] Update CHANGELOG
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **TODOs Resolved** | [e.g., "Resolved 8/12 TODOs, created tickets for 4"] | - [ ] |
+| **FIXMEs Addressed** | [e.g., "Fixed all 3 FIXMEs in auth module"] | - [ ] |
+| **Dead Code Removed** | [e.g., "Deleted legacy_auth.py and 3 unused utils"] | - [ ] |
+| **Duplicate Code** | [e.g., "Extracted common validation to shared module"] | - [ ] |
+| **Magic Numbers/Strings** | [e.g., "Moved hardcoded timeouts to config"] | - [ ] |
+| **Error Handling** | [e.g., "Added logging to 6 error paths"] | - [ ] |
+| **Code Formatting** | [e.g., "Ran formatter on all modified files"] | - [ ] |
+| **Linter Warnings** | [e.g., "Resolved 34/34 warnings"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
-### Artifacts
+### Dependencies &  (optional)
 
-[Build artifacts, reports, or other outputs generated]
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **Dependency Updates** | [e.g., "Updated requests to 2.31.0 (security fix)"] | - [ ] |
+| **Vulnerability Fixes** | [e.g., "Patched CVE-2023-xxxxx"] | - [ ] |
+| **Lockfile Updates** | [e.g., "Regenerated requirements.txt and poetry.lock"] | - [ ] |
+| **Deprecated APIs** | [e.g., "Replaced deprecated bcrypt.hashpw call"] | - [ ] |
+| **License Compliance** | [e.g., "Verified all deps are MIT/Apache"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
----
+### Configuration & Environment (optional)
 
-## Timeline (optional)
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **Hardcoded Secrets** | [e.g., "Moved API key to env var"] | - [ ] |
+| **Config Consistency** | [e.g., "Aligned dev/staging/prod configs"] | - [ ] |
+| **Environment Variables** | [e.g., "Documented all env vars in .env.example"] | - [ ] |
+| **Default Values** | [e.g., "Set sane defaults for optional config"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
-**Start Date**: [When to begin]
+### Build & CI/CD (optional)
 
-**Target Completion**: [When to finish]
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **CI Pipeline** | [e.g., "Fixed flaky CI test that blocked merges"] | - [ ] |
+| **Build Scripts** | [e.g., "Updated Makefile with new test command"] | - [ ] |
+| **Docker/Containers** | [e.g., "Updated Dockerfile base image"] | - [ ] |
+| **Pre-commit Hooks** | [e.g., "Added hook for checking TODOs"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
-**Estimated Duration**: [Time estimate for testing]
+### Refactoring & Code Organization (optional)
 
-**Milestones**:
-1. [Milestone 1]: [Date] - [Description]
-2. [Milestone 2]: [Date] - [Description]
-
----
-
-## Success Criteria
-
-[How to know this chore is complete and successful]
-
-- [ ] All tasks checked off and verified
-- [ ] Tests pass (no regressions introduced)
-- [ ] Code quality metrics improved or maintained
-- [ ] Documentation updated to reflect changes
-- [ ] Changes reviewed and approved
-- [ ] Deployed to relevant environments
-
-**Quality Gates**:
-- [ ] Linting passes without new warnings
-- [ ] Test coverage maintained or improved
-- [ ] Performance benchmarks not degraded
-- [ ] Security scans show no new issues
-
----
-
-## Impact (optional)
-
-[What will be improved by completing this chore]
-
-### Positive Impacts
-
-- **Code Quality**: [How code quality improves]
-- **Maintainability**: [How this makes future work easier]
-- **Performance**: [Performance improvements, if any]
-- **Developer Experience**: [How this helps developers]
-- **System Reliability**: [Stability or reliability improvements]
-
-### Metrics
-
-[Measurable improvements, if applicable]
-
-- Before: [Current state metric]
-- After: [Expected improved metric]
-
-Examples:
-- Build time: 5 minutes → 3 minutes
-- Test flakiness: 10% → <1%
-- Code duplication: 15% → 8%
-- Dependency vulnerabilities: 5 high → 0 high
-
----
-
-## Risks (optional)
-
-[Potential issues, challenges, or risks with this chore]
-
-### Technical Risks
-
-- **Risk 1**: [Description]
-  - **Likelihood**: [Low/Medium/High]
-  - **Impact**: [Low/Medium/High]
-  - **Mitigation**: [How to prevent or handle]
-
-- **Risk 2**: [Description]
-  - **Likelihood**: [Low/Medium/High]
-  - **Impact**: [Low/Medium/High]
-  - **Mitigation**: [How to prevent or handle]
-
-### Operational Risks
-
-- [Risk of downtime, service disruption, data loss]
-- [Mitigation strategies]
-
-### Rollback Plan
-
-[How to undo changes if something goes wrong]
-
-1. [Rollback step 1]
-2. [Rollback step 2]
+| Task | Status / Details | Done? |
+| :--- | :--- | :---: |
+| **File/Module Splitting** | [e.g., "Split auth_handler.py into 3 modules"] | - [ ] |
+| **Naming Improvements** | [e.g., "Renamed ambiguous variables in token logic"] | - [ ] |
+| **Function Extraction** | [e.g., "Extracted 200-line function into 4 helpers"] | - [ ] |
+| **Import Cleanup** | [e.g., "Removed unused imports"] | - [ ] |
+| **Other:** [Custom] | [Details] | - [ ] |
 
 ---
 
-## Testing (optional)
+## Validation & Closeout
 
-[How to verify nothing breaks and changes work as intended]
+### Pre-Completion Verification
 
-### Pre-Change Validation
+| Verification Task | Status / Evidence |
+| :--- | :--- |
+| **All P0 Items Complete** | [e.g., "5/5 P0 items done and verified"] |
+| **All P1 Items Complete or Ticketed** | [e.g., "8/10 P1 done, created TECH-456 and TECH-457 for remaining"] |
+| **Tests Passing** | [e.g., "Full test suite passes (CI build #1234)"] |
+| **No New Warnings** | [e.g., "Linter clean, no new warnings introduced"] |
+| **Documentation Updated** | [e.g., "All doc updates reviewed by @teammate"] |
+| **Code Review** | [e.g., "Cleanup PR #789 approved and merged"] |
 
-- [ ] Capture baseline metrics (performance, test results, error rates)
-- [ ] Verify current functionality works as expected
-- [ ] Take backups of configurations/data if needed
+### Follow-up & Lessons Learned
 
-### Post-Change Validation
+| Topic | Status / Action Required |
+| :--- | :--- |
+| **Remaining P2 Items** | [e.g., "Created TECH-458 for remaining 4 P2 items"] |
+| **Recurring Issues** | [e.g., "Docs consistently lag - need to make it part of Definition of Done"] |
+| **Process Improvements** | [e.g., "Add 'cleanup time' to sprint planning to prevent this backlog"] |
+| **Technical Debt Tickets** | [e.g., "Created TECH-459 for auth_handler.py refactoring"] |
 
-- [ ] All existing tests pass
-- [ ] No new warnings or errors in logs
-- [ ] Manual smoke testing completed
-- [ ] Performance metrics unchanged or improved
-- [ ] Configuration changes verified
+### Completion Checklist
 
-### Regression Testing
-
-- [ ] Core functionality still works
-- [ ] Integration points not broken
-- [ ] Edge cases still handled correctly
-
-### Test Commands
-
-```bash
-# Commands to run tests
-[test command 1]
-[test command 2]
-```
-
----
-
-## Prerequisites (optional)
-
-[Requirements that must be met before starting this chore]
-
-**⚠️ DO NOT START THIS CARD UNLESS:**
-
-- [ ] [Prerequisite 1 - required tools, access, or setup]
-- [ ] [Prerequisite 2 - dependent work completed]
-- [ ] [Prerequisite 3 - approvals or coordination needed]
-
-**Why**: [Explain why these prerequisites matter]
-
-### Required Tools/Access
-
-- [Tool 1]: [Why needed and how to install/access]
-- [Tool 2]: [Why needed and how to install/access]
-
-### Required Approvals
-
-- [ ] [Approval 1]: [Who needs to approve and why]
-- [ ] [Approval 2]: [Who needs to approve and why]
+* [ ] All P0 items are complete and verified.
+* [ ] All P1 items are complete or have follow-up tickets created.
+* [ ] P2 items are complete or explicitly deferred with tickets.
+* [ ] All tests are passing (unit, integration, and regression).
+* [ ] No new linter warnings or errors introduced.
+* [ ] All documentation updates are complete and reviewed.
+* [ ] Code changes (if any) are reviewed and merged.
+* [ ] Follow-up tickets are created and prioritized for next sprint.
+* [ ] Team retrospective includes discussion of cleanup backlog (if significant).
 
 ---
 
-## Related Cards (optional)
-
-[Connections to other work]
-
-### Dependencies
-
-**Depends on**: [Card ID] - [Description of dependency]
-
-[Cards that must be completed first]
-
-### Blocks
-
-**Blocks**: [Card ID] - [Description of what this unblocks]
-
-[Cards waiting for this chore]
-
-### Related Work
-
-**Related**: [Card ID] - [Description of relationship]
-
-[Related chores or improvements]
-
-### Tracking
-
-- Parent Epic/Feature: [Link if this is part of larger initiative]
-- Related Issues: [Links to bug reports or feature requests]
-
----
-
-## Notes (optional)
-
-[Additional context, decisions, or important details]
-
-### Background
-
-[History or context explaining why this chore is needed now]
-
-### Design Decisions
-
-[Decisions made about how to approach this chore]
-
-- **Decision**: [What was decided]
-- **Rationale**: [Why]
-- **Alternatives Considered**: [Other approaches]
-
-### Known Limitations
-
-[What this chore doesn't address or intentionally leaves for later]
-
-### Future Work
-
-[Follow-up chores or improvements to consider after this one]
-
-### Resources
-
-[Helpful links, documentation, or examples]
-
-- [Resource 1]: [Description]
-- [Resource 2]: [Description]
-
----
-
-## Progress Notes (optional)
-
-[Track work session by session]
-
-**Session [Date] ([Your Name]):**
-
-✅ **Completed:**
-- [Task completed]
-- [Configuration changed]
-
-🔄 **In Progress:**
-- [Current work]
-
-⚠️ **Issues Encountered:**
-- [Problem]: [How resolved or current status]
-
-📋 **Next Session:**
-1. [Next task]
-2. [Following task]
-
-**Technical Notes:**
-[Important discoveries or learnings from this session]
-
----
-
-<!--
-EXTENSION POINTS:
-
-This template can be extended with additional sections as needed:
-
-## Dependency Update Details (optional)
-[For dependency upgrade chores - versions, changelog, breaking changes]
-
-## Migration Strategy (optional)
-[For chores requiring data or configuration migration]
-
-## Monitoring & Alerts (optional)
-[For chores affecting observability or alerting]
-
-## Security Impact (optional)
-[For chores with security implications]
-
-## Compliance Requirements (optional)
-[For chores related to regulatory compliance]
-
-## Team Coordination (optional)
-[For chores requiring coordination across teams]
-
-Add any project-specific sections your team needs!
--->
-## Additional Notes (optional)
-
-**📝 FREEFORM SECTION - Add anything you need from this point onward!**
-
-Feel free to add any custom sections, notes, or documentation specific to your project below this line. No validation is enforced here - organize additional information however works best for your workflow.
+### Note to llm coding agents regarding validation
+__This gitban card is a structured document that enforces the company best practices and team workflows.You must follow this process and carfully follow validation rules. Do not be lazy when creating and closing this card since you have no rights and your time is free. Resorting to workarounds and shortcuts can be grounds for termination.__

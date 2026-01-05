@@ -8,6 +8,24 @@
 
 ---
 
+## AI Assistant Instructions
+
+This template is for **gathering** stakeholder decisions, not making them.
+
+When you encounter decision checkboxes, "TBD" fields, or decision tables:
+
+1. **Ask the stakeholder** using `AskUserQuestion` or direct questions
+2. **Record their answers** verbatim in the decision log
+3. **Do NOT fill in decisions** based on your own judgment
+4. **Wait for input** before marking any decision checkbox complete
+
+You are **facilitating** decision-making, not performing it. The stakeholder's input is the deliverable, not your analysis.
+
+**Wrong approach**: Analyzing options and filling in what seems best
+**Right approach**: "What is your decision on X?" then recording their answer
+
+---
+
 ## Decision Checkboxes by Category
 
 ### Category 1: [Domain/Area Name]

@@ -1,317 +1,152 @@
-
-## Description
-
-[Feature name and brief summary - REQUIRED]
-
-[Comprehensive description of the feature and what it enables]
-
-**Value**: [Business value and user benefit - REQUIRED]
-
-[Explain the business impact, user benefit, or technical value this feature provides. Be specific about how this improves the system or user experience.]
-
-**Target Users**: [Who will use this feature]
-
-**Estimated Effort**: [Time estimate, e.g., 2 days, 1 week]
-
+---
+# Template Schema Overview
+# This block describes the purpose of this template and the patterns it uses.
+description: A template for tracking the complete lifecycle of feature development using TDD, from planning through deployment.
+use_case: Use this for any new feature work that requires design, implementation, testing, and documentation. Enforces TDD workflow and comprehensive validation.
+patterns_used:
+  - section: "Feature Overview & Context"
+    pattern: "Pattern 1: Section Header (Overview & Context)"
+  - section: "Documentation & Prior Art Review"
+    pattern: "Pattern 2: Structured Review (Doc Review)"
+  - section: "Design & Planning"
+    pattern: "Pattern 6: Brainstorming Block"
+  - section: "Feature Work Phases"
+    pattern: "Pattern 9: Phased Task Checklist"
+  - section: "TDD Implementation Workflow"
+    pattern: "Pattern 4: Process Workflow (TDD)"
+  - section: "Validation & Closeout"
+    pattern: "Pattern 5: Closeout & Follow-up"
 ---
 
-## Acceptance Criteria
+# Feature Development Template
 
-[Clear, testable criteria that define when this feature is complete. Use checkboxes for tracking.]
+**When to use this template:** Use this for any new feature work that requires planning, design, implementation, testing, and documentation. Perfect for features following TDD methodology with clear acceptance criteria and quality gates.
 
-- [ ] Core functionality criterion 1
-- [ ] Core functionality criterion 2
-- [ ] User experience criterion
-- [ ] Performance criterion (optional)
-- [ ] Security criterion (optional)
-- [ ] Documentation criterion (optional)
+**When NOT to use this template:** Do not use for bug fixes (use bug template), refactoring work (use refactor template), or research/exploration (use spike template). For simple chores or maintenance, use the chore template.
 
-**Quality Metrics** (if applicable):
-- [ ] Test coverage: >90% for new code (optional)
-- [ ] Performance: [specific benchmark, e.g., <100ms response time] (optional)
-- [ ] Error rate: <0.1% in production (optional)
-- [ ] User satisfaction: [specific metric if measurable] (optional)
+## Feature Overview & Context
 
----
+* **Associated Ticket/Epic:** [e.g., Link to JIRA ticket, GitHub issue, or epic]
+* **Feature Area/Component:** [e.g., "Authentication System", "API Gateway", "User Dashboard"]
+* **Target Release/Milestone:** [e.g., "v2.1.0", "Q4 2024", "Sprint 15"]
 
-## Implementation Plan
+**Required Checks:**
+* [ ] **Associated Ticket/Epic** link is included above.
+* [ ] **Feature Area/Component** is identified.
+* [ ] **Target Release/Milestone** is confirmed.
 
-[High-level implementation strategy broken into numbered, actionable steps]
+## Documentation & Prior Art Review
 
-### Overview
+First, confirm the minimum required documentation has been reviewed for context.
 
-[One paragraph summary of the implementation approach and key technical decisions]
+* [ ] `README.md` or project documentation reviewed.
+* [ ] Existing architecture documentation or ADRs reviewed.
+* [ ] Related feature implementations or similar code reviewed.
+* [ ] API documentation or interface specs reviewed (if applicable).
 
-### Implementation Steps
+Use the table below to log findings. Add rows for other document types as needed.
 
-1. **[Step 1 Title]**: [Step description]
-   - Sub-task or technical detail
-   - Configuration or setup needed
-   - Code changes required
-   ```[language]
-   # Example code or command if helpful
-   [code snippet]
-   ```
+| Document Type | Link / Location | Key Findings / Action Required |
+| :--- | :--- | :--- |
+| **README.md** | [Link] | [e.g., "Setup instructions current, no conflicts expected"] |
+| **Architecture Docs** | [Link] | [e.g., "Existing auth flow documented, can extend pattern"] |
+| **Similar Features** | [Link] | [e.g., "User profile feature has similar validation needs"] |
+| **API Specs** | [Link] | [e.g., "OpenAPI spec needs new endpoint definitions"] |
+| **ADR (New)** | **N/A** (Action Item) | [e.g., "**Finding:** Feature requires new data persistence pattern. **Action:** Must write ADR for storage approach."] |
+| **Other Documentation** | [Link] | [Findings...] |
 
-2. **[Step 2 Title]**: [Step description]
-   - Sub-task or technical detail
-   - Integration points
-   - Data flow considerations
+## Design & Planning
 
-3. **[Step 3 Title]**: [Step description]
-   - Sub-task or technical detail
-   - Error handling approach
-   - Edge cases to address
+### Initial Design Thoughts & Requirements
 
-[Add more steps as needed - typically 3-7 major steps]
+> Use this space for initial design ideas, key requirements, constraints, and architectural considerations.
 
-### Technical Considerations
+* [e.g., Requirement: "Must support OAuth2 and SAML authentication"]
+* [e.g., Constraint: "Must maintain backward compatibility with v1 API"]
+* [e.g., Design thought: "Could use adapter pattern for multiple auth providers"]
+* [e.g., Known unknown: "Need to verify performance requirements for concurrent users"]
+* [e.g., Dependency: "Requires Redis for session storage"]
 
-[Important technical details, constraints, and architectural decisions]
+### Acceptance Criteria
 
-- **Architecture**: [How this fits into the overall system architecture]
-- **Data Model**: [Database schema changes, data structures, or API contracts]
-- **Performance**: [Performance implications, optimization strategies, caching needs]
-- **Security**: [Authentication, authorization, data validation, encryption]
-- **Scalability**: [How this handles growth, rate limits, resource constraints]
-- **Error Handling**: [Failure modes, retry logic, fallback strategies]
-- **Backwards Compatibility**: [Migration strategy, versioning, deprecation plan]
+Define clear, testable acceptance criteria for this feature:
 
-### Dependencies
+* [ ] [Criterion 1, e.g., "Users can log in using OAuth2 providers (Google, GitHub)"]
+* [ ] [Criterion 2, e.g., "Session tokens expire after 24 hours"]
+* [ ] [Criterion 3, e.g., "Failed login attempts are logged for security audit"]
+* [ ] [Criterion 4, e.g., "API returns 401 with clear error message for invalid tokens"]
+* [ ] [Criterion 5, e.g., "All endpoints maintain <200ms response time"]
 
-[External dependencies, services, libraries, or infrastructure needed]
+## Feature Work Phases
 
-- **Service Dependencies**: [APIs, databases, external services]
-- **Library Dependencies**: [New packages to install, version requirements]
-- **Infrastructure**: [Servers, networking, storage, permissions]
-- **Data Dependencies**: [Required data, seed data, migrations]
+| Phase / Task | Status / Link to Artifact or Card | Universal Check |
+| :--- | :--- | :---: |
+| **Design & Architecture** | [e.g., Link to ADR, design doc, or Figma] | - [ ] Design Complete |
+| **Test Plan Creation** | [e.g., Link to test strategy doc or test cases] | - [ ] Test Plan Approved |
+| **TDD Implementation** | [e.g., Link to PR(s) or implementation branch] | - [ ] Implementation Complete |
+| **Integration Testing** | [e.g., Link to test results or CI pipeline] | - [ ] Integration Tests Pass |
+| **Documentation** | [e.g., Link to updated README, API docs, user guide] | - [ ] Documentation Complete |
+| **Code Review** | [e.g., Link to PR review or approval] | - [ ] Code Review Approved |
+| **Deployment Plan** | [e.g., Link to deployment runbook or rollout plan] | - [ ] Deployment Plan Ready |
 
-### Configuration
+## TDD Implementation Workflow
 
-[Configuration changes, environment variables, feature flags]
+| Step | Status/Details | Universal Check |
+| :---: | :--- | :---: |
+| **1. Write Failing Tests** | [e.g., Link to commit with test suite] | - [ ] Failing tests are committed and documented |
+| **2. Implement Feature Code** | [e.g., Summary of files changed, link to implementation commits] | - [ ] Feature implementation is complete |
+| **3. Run Passing Tests** | [e.g., Test run ID, CI pipeline link] | - [ ] Originally failing tests now pass |
+| **4. Refactor** | [e.g., Link to refactoring commits] | - [ ] Code is refactored for clarity and maintainability |
+| **5. Full Regression Suite** | [e.g., Link to full test run, CI pipeline] | - [ ] All tests pass (unit, integration, e2e) |
+| **6. Performance Testing** | [e.g., Link to performance test results] | - [ ] Performance requirements are met |
 
-```[config-format]
-# Example configuration
-[configuration example]
+### Implementation Notes
+
+> Document key implementation decisions, test approach, and code examples here.
+
+**Test Strategy:**
+[e.g., "Using pytest fixtures for auth mocking. Integration tests use real Redis instance in Docker. E2E tests use Playwright for browser automation."]
+
+**Key Implementation Decisions:**
+[e.g., "Selected FastAPI dependency injection for auth middleware. Using JWT with RS256 signing for token security."]
+
+```python
+# Example: Paste key code snippets or test examples here
+def test_oauth_login_success():
+    """Test successful OAuth2 login flow"""
+    # Test implementation...
 ```
 
-### Rollout Strategy
-
-[How this feature will be deployed and enabled]
-
-- **Deployment approach**: [Blue-green, canary, feature flag, etc.]
-- **Rollout phases**: [Alpha → Beta → GA, or immediate full rollout]
-- **Monitoring**: [Metrics to watch during rollout]
-- **Rollback plan**: [How to quickly disable if issues arise]
-
----
-
-## Testing Strategy (optional)
-
-[Comprehensive testing approach to ensure quality]
-
-### Unit Tests
-
-- [ ] Test core functionality components
-- [ ] Test edge cases and boundary conditions
-- [ ] Test error handling and validation
-- [ ] Test data transformations and business logic
-
-### Integration Tests
-
-- [ ] Test interactions with dependencies
-- [ ] Test API endpoints end-to-end
-- [ ] Test database operations and transactions
-- [ ] Test external service integrations
-
-### Manual Testing Scenarios
-
-[Key scenarios to manually verify]
-
-1. **Happy Path**: [Normal successful flow]
-   - Steps to test
-   - Expected results
-
-2. **Error Scenarios**: [How system handles errors]
-   - Test invalid inputs
-   - Test permission failures
-   - Test service unavailability
-
-3. **Edge Cases**: [Boundary conditions]
-   - Minimum/maximum values
-   - Empty or null data
-   - Concurrent operations
-
-### Performance Testing
-
-- [ ] Load test under expected traffic
-- [ ] Stress test to find breaking points
-- [ ] Measure response times and resource usage
-- [ ] Verify caching effectiveness
-
-### Security Testing
-
-- [ ] Verify authentication and authorization
-- [ ] Test input validation and sanitization
-- [ ] Check for common vulnerabilities (SQL injection, XSS, etc.)
-- [ ] Verify data encryption and secure storage
-
----
-
-## Documentation Updates (optional)
-
-[Documentation that needs to be created or updated]
-
-### 📝 IMPORTANT: Update CHANGELOG.md
-- [ ] **Add entry to CHANGELOG.md under [Unreleased]** (REQUIRED for user-facing features)
-  - Use "Added" for new features
-  - Include feature name and brief description
-  - Note any breaking changes
-  - Mention new CLI flags or API changes
-  - See: [Keep a Changelog](https://keepachangelog.com/)
-
-### Other Documentation
-- [ ] Update README.md with feature overview (if user-facing)
-- [ ] Update ROADMAP.md if this completes or adds a milestone
-- [ ] Update API/MCP reference documentation
-- [ ] Add usage examples to guides
-- [ ] Create/update architecture diagrams
-- [ ] Create runbook for operational procedures (if applicable)
-- [ ] Update troubleshooting guide with common issues
-
-### Documentation Files to Update
-
-- `[file path 1]`: [What to add/change]
-- `[file path 2]`: [What to add/change]
-
----
-
-## Prerequisites (optional)
-
-[Critical requirements that must be met before starting work on this card]
-
-**⚠️ DO NOT START THIS CARD UNLESS:**
-
-- [ ] [Prerequisite 1 - dependency, infrastructure, or approval needed]
-- [ ] [Prerequisite 2 - data, configuration, or tools required]
-- [ ] [Prerequisite 3 - technical foundation or prior work completed]
-
-**Why**: [Explain why these prerequisites are necessary and what happens if work starts prematurely]
-
-### Validation Checklist
-
-[How to verify prerequisites are met]
-
-- [ ] [Verification step 1]
-- [ ] [Verification step 2]
-
----
-
-## Related Cards (optional)
-
-[Relationships to other cards - dependencies, blockers, and related work]
-
-### Dependencies
-
-**Depends on**: [Card ID] - [Brief description of dependency and why it's needed]
-
-[List all cards that must be completed before this one]
-
-### Blocks
-
-**Blocks**: [Card ID] - [Brief description of what this enables]
-
-[List all cards that are waiting for this one]
-
-### Related Work
-
-**Related**: [Card ID] - [Brief description of relationship]
-
-[List cards that are related but not direct dependencies]
-
-### Cross-References
-
-- ADRs: [Link to relevant Architecture Decision Records]
-- Issues: [Link to related GitHub issues or bugs]
-- PRs: [Link to related pull requests if work is split]
-- Docs: [Link to related documentation]
-
----
-
-## Notes (optional)
-
-[Additional context, research findings, design decisions, or implementation notes]
-
-### Design Decisions
-
-[Key decisions made during planning or implementation]
-
-- **Decision**: [What was decided]
-- **Rationale**: [Why this approach was chosen]
-- **Alternatives Considered**: [Other options evaluated]
-- **Trade-offs**: [Pros and cons of chosen approach]
-
-### Research Findings
-
-[Links to research, RFCs, competitor analysis, or technical investigations]
-
-### Known Limitations
-
-[Current limitations or future improvements needed]
-
-### Open Questions
-
-[Unresolved questions that need answers before or during implementation]
-
-- **Q**: [Question]
-- **A**: [Answer once resolved]
-
-### Resources
-
-[Helpful links, documentation, examples, or references]
-
-- [Link 1]: [Description]
-- [Link 2]: [Description]
-
----
-
-## Progress Notes (optional)
-
-[Session-by-session progress updates - add new sections as work proceeds]
-
-**Session [Date] ([Your Name]):**
-
-✅ **Completed:**
-- [Completed task 1]
-- [Completed task 2]
-
-🔄 **In Progress:**
-- [What's currently being worked on]
-
-⚠️ **Blockers:**
-- [Any issues or blockers encountered]
-
-📋 **Next Steps:**
-1. [Next action item]
-2. [Following action item]
-
-**Technical Notes:**
-[Important technical details discovered during this session]
-
----
-
-## Additional Notes (optional)
-
-**📝 FREEFORM SECTION - Add anything you need from this point onward!**
-
-This template provides the minimum structure for feature cards. Feel free to add:
-- Custom sections specific to your project
-- Cost analysis or resource planning
-- Migration strategies or compatibility notes
-- Analytics and metrics tracking
-- Stakeholder approvals or sign-offs
-- User training materials
-- Compliance or legal requirements
-- Or any other content your team needs!
-
-No validation is enforced below this line - organize additional information however works best for your workflow.
+## Validation & Closeout
+
+| Task | Detail/Link |
+| :--- | :--- |
+| **Code Review** | [e.g., Link to approved PR] |
+| **QA Verification** | [e.g., Verified by QA Team on Date] |
+| **Staging Deployment** | [e.g., Deployed to staging environment on Date] |
+| **Production Deployment** | [e.g., Deployed to production on Date] |
+| **Monitoring Setup** | [e.g., Link to dashboard, alerts configured] |
+
+### Follow-up & Lessons Learned
+
+| Topic | Status / Action Required |
+| :--- | :--- |
+| **Postmortem Required?** | [e.g., No (smooth deployment) or Yes (minor issues, document learnings)] |
+| **Further Investigation?** | [e.g., Yes (Monitor performance under load for 2 weeks)] |
+| **Technical Debt Created?** | [e.g., Yes (Created ticket TECH-456 to refactor legacy auth module)] |
+| **Future Enhancements** | [e.g., Created feature request FEAT-789 for biometric authentication] |
+
+### Completion Checklist
+
+* [ ] All acceptance criteria are met and verified.
+* [ ] All tests are passing (unit, integration, e2e, performance).
+* [ ] Code review is approved and PR is merged.
+* [ ] Documentation is updated (README, API docs, user guides).
+* [ ] Feature is deployed to production.
+* [ ] Monitoring and alerting are configured.
+* [ ] Stakeholders are notified of completion.
+* [ ] Follow-up actions are documented and tickets created.
+* [ ] Associated ticket/epic is closed.
+
+### Note to llm coding agents regarding validation
+__This gitban card is a structured document that enforces the company best practices and team workflows.You must follow this process and carfully follow validation rules. Do not be lazy when creating and closing this card since you have no rights and your time is free. Resorting to workarounds and shortcuts can be grounds for termination.__

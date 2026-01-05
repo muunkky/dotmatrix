@@ -1,480 +1,386 @@
+---
+# Template Schema Overview
+# This block describes the purpose of this template and the patterns it uses.
+description: A template for tracking the process of investigating and fixing a bug using modern best practices including TDD, IaC, DaC, and comprehensive testing strategies.
+use_case: Use this for professional bug fixes that follow industry best practices. This template enforces Test-Driven Development (TDD), Infrastructure as Code (IaC), Documentation as Code (DaC), and prevents technical debt through rigorous processes.
+patterns_used:
+  - section: "Bug Overview & Context"
+    pattern: "Pattern 1: Section Header (Overview & Context)"
+  - section: "Documentation & Code Review"
+    pattern: "Pattern 2: Structured Review (Doc Review)"
+  - section: "Root Cause Investigation"
+    pattern: "Pattern 3: Iterative Log (Troubleshooting)"
+  - section: "TDD Implementation Workflow"
+    pattern: "Pattern 4: Process Workflow (TDD Fix)"
+  - section: "Validation & Finalization"
+    pattern: "Pattern 5: Closeout & Follow-up"
+---
 
-## Bug Description
+# Bug Fix Template
 
-**Summary**: [Brief description of the bug - REQUIRED]
+## Bug Overview & Context
 
-[Clear, concise description of the bug and what's broken]
+* **Ticket/Issue ID:** [e.g., JIRA-1234 or GitHub Issue #567]
+* **Affected Component/Service:** [e.g., "Authentication Service" or "Payment Processing Module"]
+* **Severity Level:** [e.g., P0 - Critical/Production Down, P1 - High/Major Feature Broken, P2 - Medium/Minor Issue]
+* **Discovered By:** [e.g., Customer Report, Monitoring Alert, QA Testing]
+* **Discovery Date:** [e.g., 2025-11-19]
+* **Reporter:** [e.g., Name or Support Ticket ID]
 
-**Severity**: [P0/Critical, P1/High, P2/Medium, P3/Low]
-
-**Value of Fix**: [Why fixing this bug is important - user impact, business impact, or technical debt]
-
-**Discovered**: [When/how this bug was discovered - production, testing, user report]
-
-**Reporter**: [Who reported this - user, QA, developer, monitoring system]
+**Required Checks:**
+* [ ] Ticket/Issue ID is linked above
+* [ ] Component/Service is clearly identified
+* [ ] Severity level is assigned based on impact
 
 ---
 
-## Impact Assessment (optional)
+## Bug Description
 
-[Analysis of how this bug affects users, system, and business]
+### What's Broken
 
-### User Impact
+[Provide a clear, concise description of the bug. Focus on the observable problem, not the solution.]
 
-- **Affected Users**: [Number or percentage of users affected]
-- **User Impact**: [What users experience - can't complete task, see errors, experience delays]
-- **Frequency**: [How often does this occur - always, intermittently, under specific conditions]
-- **Workaround Available**: [Yes/No - describe if available]
-  - [If yes, describe the workaround]
+**Example:** "Users cannot complete checkout when using saved payment methods. The 'Confirm Payment' button returns a 500 error instead of processing the transaction."
 
-### System Impact
+### Expected Behavior
 
-- **System Availability**: [Does this cause downtime or service degradation]
-- **Data Integrity**: [Is data corrupted, lost, or inconsistent]
-- **Performance**: [Does this cause slowdowns or resource exhaustion]
-- **Cascading Effects**: [Does this trigger other failures or issues]
+[Describe what should happen when the system works correctly.]
 
-### Business Impact
+**Example:** "When a user clicks 'Confirm Payment' with a saved payment method, the system should process the transaction and redirect to the order confirmation page within 2 seconds."
 
-- **Revenue Impact**: [Lost sales, blocked transactions, refunds needed]
-- **Compliance Impact**: [Regulatory violations, security concerns]
-- **Reputation Impact**: [User complaints, negative reviews, trust issues]
-- **Operational Impact**: [Support load, manual workarounds needed]
+### Actual Behavior
 
-### Priority Justification
+[Describe what actually happens when the bug occurs.]
 
-**Why [P0/Critical, P1/High, P2/Medium, P3/Low]**:
-- [Explanation of why this priority level is appropriate]
-- [Comparison to priority definitions for this project]
+**Example:** "When a user clicks 'Confirm Payment' with a saved payment method, the system returns a 500 Internal Server Error and displays 'Transaction Failed' message. No transaction is processed."
+
+### Reproduction Rate
+
+[How often does this bug occur?]
+* [ ] 100% - Always reproduces
+* [ ] 75% - Usually reproduces
+* [ ] 50% - Sometimes reproduces
+* [ ] 25% - Rarely reproduces
+* [ ] Cannot reproduce consistently
 
 ---
 
 ## Steps to Reproduce
 
-[Detailed, numbered steps that consistently reproduce the bug]
+**Prerequisites:**
+* [e.g., User account with saved payment method]
+* [e.g., Test environment access]
+* [e.g., Items in shopping cart]
 
-### Prerequisites
+**Reproduction Steps:**
 
-[Any setup, configuration, or state needed before reproduction]
+1. [e.g., Log in to application as test user `test@example.com`]
+2. [e.g., Add item to cart (SKU: TEST-001)]
+3. [e.g., Navigate to checkout page]
+4. [e.g., Select saved payment method "Visa ending in 1234"]
+5. [e.g., Click "Confirm Payment" button]
+6. [e.g., Observe 500 error response]
 
-- [Prerequisite 1]
-- [Prerequisite 2]
+**Error Messages / Stack Traces:**
 
-### Reproduction Steps
+```
+[Paste exact error message and stack trace here]
 
-1. **[Action 1]**: [Detailed description including UI elements, API calls, or commands]
-   ```[language]
-   # Code or command if applicable
-   [example]
-   ```
-
-2. **[Action 2]**: [Detailed description]
-   - [Sub-detail if needed]
-   - [Expected intermediate state]
-
-3. **[Action 3]**: [Detailed description]
-
-4. **[Action 4]**: [Continue until bug is observed]
-
-### Expected Behavior
-
-[What should happen if the system worked correctly]
-
-- Expected result: [Specific, measurable outcome]
-- Expected state: [System state after actions]
-- Expected output: [Messages, data, UI state]
-
-### Actual Behavior
-
-[What actually happens - the bug manifestation]
-
-- Actual result: [What went wrong]
-- Error messages:
-  ```
-  [Exact error message text]
-  [Stack trace if applicable]
-  ```
-- Unexpected state: [How system state is incorrect]
-
-### Reproduction Rate
-
-- **Consistency**: [Always/Sometimes/Rarely]
-- **Success rate**: [X out of Y attempts]
-- **Conditions affecting reproduction**: [Timing, data state, concurrency, etc.]
-
----
-
-## Environment
-
-[Detailed environment information where bug occurs]
-
-### System Environment
-
-- **OS**: [Windows 11/macOS 14/Ubuntu 22.04/etc.]
-- **OS Version**: [Specific version, build number]
-- **Architecture**: [x64/ARM/etc.]
-
-### Software Environment
-
-- **Application Version**: [Specific version where bug occurs]
-- **Python Version**: [Python 3.11.5]
-- **Node Version**: [If applicable]
-- **Package Versions**: [Key dependency versions]
-  ```
-  package1==1.2.3
-  package2==4.5.6
-  ```
-
-### Runtime Environment
-
-- **Deployment**: [Local dev/Staging/Production]
-- **Configuration**: [Relevant config settings]
-- **Environment Variables**: [Relevant env vars]
-
-### Browser (if web app)
-
-- **Browser**: [Chrome 120 / Firefox 121 / Safari 17]
-- **Device**: [Desktop / Mobile / Tablet]
-- **Screen Size**: [If layout-related]
-
-### Data Environment
-
-- **Data Volume**: [How much data involved]
-- **Data State**: [Specific data conditions that trigger bug]
-- **Test Data**: [Sample data that reproduces issue]
-
----
-
-## Root Cause Analysis (optional)
-
-[Deep investigation into why this bug occurs - fill in after investigation]
-
-### Investigation Findings
-
-[What was discovered during debugging]
-
-- **Code Location**: [File(s) and line number(s) where bug originates]
-  - `[path/to/file.py:123]`: [Description]
-
-- **Logic Error**: [Flawed algorithm, incorrect assumption, off-by-one, etc.]
-
-- **Missing Validation**: [Input validation, boundary checks, null checks missing]
-
-- **Race Condition**: [Concurrency issues, timing dependencies]
-
-- **Integration Issue**: [API contract mismatch, dependency behavior change]
-
-### Technical Details
-
-[Technical explanation of the root cause]
-
-```[language]
-# Problematic code
-[code snippet showing the bug]
+Example:
+500 Internal Server Error
+{
+  "error": "NullPointerException: Cannot read property 'token' of undefined",
+  "timestamp": "2025-11-19T14:32:00Z",
+  "path": "/api/payments/process"
+}
 ```
 
-**Problem**: [Explanation of what's wrong with this code]
+---
 
-**Why This Happens**: [Circumstances that trigger the bug]
+## Environment Details
 
-### Historical Context
-
-- **When Introduced**: [Which version/commit introduced this bug]
-- **Related Changes**: [Recent changes that may have caused this]
-- **Regression**: [Is this a regression of previously working functionality]
+| Environment Aspect | Required | Value | Notes |
+| :--- | :--- | :--- | :--- |
+| **Environment** | Optional | [e.g., Production, Staging, Local] | [Where bug occurs] |
+| **OS** | Optional | [e.g., Ubuntu 22.04, Windows 11, macOS 14] | [Operating system] |
+| **Browser** | Optional | [e.g., Chrome 120, Firefox 121, Safari 17] | [If web application] |
+| **Application Version** | Optional | [e.g., v2.5.3] | [Current deployed version] |
+| **Database Version** | Optional | [e.g., PostgreSQL 15.2] | [If applicable] |
+| **Runtime/Framework** | Optional | [e.g., Node.js 20.10, Python 3.11, .NET 8] | [Language runtime] |
+| **Dependencies** | Optional | [e.g., Express 4.18.2, Django 4.2] | [Key libraries] |
+| **Infrastructure** | Optional | [e.g., AWS ECS, Kubernetes 1.28, Docker] | [Deployment platform] |
 
 ---
 
-## Solution
+## Impact Assessment
 
-[Proposed fix for the bug]
+| Impact Category | Severity | Details |
+| :--- | :--- | :--- |
+| **User Impact** | [High/Medium/Low/None] | [e.g., "All checkout attempts fail - 0% success rate"] |
+| **Business Impact** | [High/Medium/Low/None] | [e.g., "Revenue loss estimated at $10K/hour"] |
+| **System Impact** | [High/Medium/Low/None] | [e.g., "Payment service throwing errors, affecting API health"] |
+| **Data Impact** | [High/Medium/Low/None] | [e.g., "No data loss, but failed transactions not logged"] |
+| **Security Impact** | [High/Medium/Low/None] | [e.g., "None - error does not expose sensitive data"] |
+
+**Business Justification for Priority:**
+
+[Explain why this bug has the assigned priority level based on the impact above. This helps stakeholders understand urgency.]
+
+**Example:** "Assigned P0 because all checkout functionality is broken, resulting in direct revenue loss and customer complaints. This affects 100% of purchase attempts."
+
+---
+
+## Documentation & Code Review
+
+Before diving into troubleshooting, review existing documentation and code to understand the system context.
+
+| Item | Applicable | File / Location | Notes / Evidence | Key Findings / Action Required |
+|---|:---:|---|---|---|
+| README or component documentation reviewed | [yes/no] | README.md / docs/README.md / src/<component>/README.md | Verify usage examples, MCP config, quick start, card filename conventions | Example: "Documentation outdated - missing v2.5 payment flow changes." Action: Update README/docs to reflect current payment token field (`token`) and MCP config examples. |
+| Related ADRs (Architecture Decision Records) reviewed | [yes/no] | docs/decisions/*.md (e.g., ADR-001-ephemeral-filenames.md) | Check ADRs that affect ID formats, filename patterns, or token handling | Example: "ADR-042 describes payment token handling — may be relevant." Action: Link ADRs to card and ensure implementation follows ADR or create follow-up ADR. |
+| API documentation reviewed | [yes/no] | docs/api.md / openapi.yaml / docs/swagger.yaml / src/<service>/api_spec.md | Confirm endpoints, request/response schemas (e.g., payment token field), error formats | Example: "API spec shows required 'token' field - missing in client requests." Action: Align API spec and client code; update docs and add schema validation tests. |
+| Test suite documentation reviewed | [yes/no] | TESTING.md / tests/ / scripts/run_tests_structured.py / docs/tests.md | Ensure test guidance, structured runner usage, required markers, and failing-to-passing workflow for TDD | Example: "No integration test for saved payment method flow." Action: Add failing test, implement fix, run via structured runner (python scripts/run_tests_structured.py), add markers and CI entry. |
+| IaC configuration reviewed (Terraform, CloudFormation, etc.) | [yes/no] | infra/ / terraform/ / k8s/ / cloudformation/ / .github/workflows/ | Validate environment variables, secrets, deployment manifests, and any PAYMENT_TOKEN_FIELD or related configs | Example: "No PAYMENT_TOKEN_FIELD found in IaC." Action: Verify env/config names, add required variables to IaC, document changes, and run IaC plan in staging. |
+| New Documentation (Action Item) | N/A | **N/A** | Use this row to record required docs to create/update after fix | Example Finding: "No documentation for payment error handling." Action: Create/update docs (DaC) and link to PR/issue; mark as done when published. |
+
+---
+
+## Root Cause Investigation
+
+Use this section to systematically investigate the root cause. Document each hypothesis, test, and finding. This demonstrates rigorous debugging practices.
+
+| Iteration # | Hypothesis | Test/Action Taken | Outcome / Findings |
+| :---: | :--- | :--- | :--- |
+| **1** | [e.g., Payment token is missing from request] | [e.g., Inspected request payload in browser DevTools] | [e.g., Confirmed - token field is undefined] |
+| **2** | [e.g., Token retrieval from database fails] | [e.g., Checked database for saved payment record] | [e.g., Record exists with valid token] |
+| **3** | [e.g., Frontend not sending token correctly] | [e.g., Reviewed frontend code - found token mapping bug] | [e.g., Root cause identified] |
+
+---
+
+### Hypothesis testing iterations
+
+**Iteration 1:** [Hypothesis Summary]
+
+**Hypothesis:** [e.g., The payment token is missing from the API request payload]
+
+**Test/Action Taken:** [e.g., Used browser DevTools Network tab to inspect the POST request to `/api/payments/process`. Examined request body JSON.]
+
+**Outcome:** [e.g., Confirmed - the request body shows `"token": undefined`. Expected a string token value like `"tok_abc123"`. This confirms the token is not being sent.]
+
+---
+
+**Iteration 2:** [Hypothesis Summary]
+
+**Hypothesis:** [e.g., The token is not being retrieved from the database correctly]
+
+**Test/Action Taken:** [e.g., Queried the database directly: `SELECT * FROM payment_methods WHERE user_id = 123 AND method_id = 'pm_xyz'`. Verified token column value.]
+
+**Outcome:** [e.g., Rejected - Database record exists and has valid token value `"tok_abc123"`. The problem is not in data storage, but in data retrieval or mapping.]
+
+---
+
+**Iteration 3:** [Hypothesis Summary]
+
+**Hypothesis:** [e.g., Frontend code is not correctly mapping the saved payment method token to the API request]
+
+**Test/Action Taken:** [e.g., Reviewed frontend code in `CheckoutPage.tsx`. Found that the code references `paymentMethod.cardToken` but the object property is actually `paymentMethod.token` (no "card" prefix).]
+
+**Outcome:** [e.g., Root cause identified - Property name mismatch. Frontend tries to access `paymentMethod.cardToken` (undefined) instead of `paymentMethod.token` (correct).]
+
+---
+
+### Root Cause Summary
+
+**Root Cause:**
+
+[Provide a clear, concise summary of the root cause once identified.]
+
+**Example:** "The frontend code in `CheckoutPage.tsx` line 87 attempts to access `paymentMethod.cardToken`, but the API response object uses the property name `paymentMethod.token` (without 'card' prefix). This mismatch causes the token value to be undefined when constructing the payment request, resulting in a 500 error from the backend when it cannot validate the missing token."
+
+**Code/Config Location:**
+
+[e.g., "File: `src/components/CheckoutPage.tsx`, Line: 87"]
+
+**Why This Happened:**
+
+[e.g., "A recent API change in v2.5.0 standardized all token fields to use 'token' instead of 'cardToken'. The backend was updated, but the frontend was not updated to match the new property name."]
+
+---
+
+## Solution Design
 
 ### Fix Strategy
 
-[High-level approach to fixing the bug]
+[Describe your approach to fixing the bug. This demonstrates thoughtful planning, not just rushing to code.]
 
-- **Approach**: [What needs to change - code fix, config change, data migration]
-- **Complexity**: [Simple/Medium/Complex]
-- **Risk**: [Low/Medium/High risk of side effects]
+**Example:** "Update the frontend code to use the correct property name `paymentMethod.token` instead of `paymentMethod.cardToken`. Add a TypeScript type definition to prevent similar property name mismatches in the future. Follow TDD approach: write a failing test first, implement the fix, then verify the test passes."
 
 ### Code Changes
 
-[Specific code changes needed]
+[List the files and changes required. Be specific about what will change and why.]
 
-```[language]
-# Fixed code
-[code snippet showing the fix]
-```
-
-**Explanation**: [Why this fixes the bug]
-
-### Implementation Steps
-
-1. **[Step 1]**: [First change to make]
-2. **[Step 2]**: [Second change to make]
-3. **[Step 3]**: [Additional steps]
-
-### Alternative Solutions
-
-[Other approaches considered and why not chosen]
-
-- **Alternative 1**: [Description]
-  - **Pros**: [Advantages]
-  - **Cons**: [Disadvantages]
-  - **Why Not Chosen**: [Reason]
+**Example:**
+* `src/components/CheckoutPage.tsx` - Update line 87 to use `paymentMethod.token`
+* `src/types/PaymentMethod.ts` - Add strict TypeScript interface to enforce correct property names
+* `src/components/CheckoutPage.test.tsx` - Add test case for saved payment method flow
 
 ### Rollback Plan
 
-[How to quickly revert if fix causes issues]
+[Every fix needs a rollback plan in case the fix causes new issues. This is professional risk management.]
 
-1. [Rollback step 1]
-2. [Rollback step 2]
-
----
-
-## Testing & Verification (optional)
-
-[Comprehensive testing to ensure bug is fixed]
-
-### Bug Reproduction Verification
-
-- [ ] Confirm bug is reproducible in current version
-- [ ] Document reproduction rate before fix
-- [ ] Capture screenshots/logs of bug manifestation
-
-### Fix Verification
-
-- [ ] Apply fix to test environment
-- [ ] Verify original reproduction steps no longer trigger bug
-- [ ] Confirm expected behavior now occurs
-- [ ] Test fix multiple times (10+ attempts for intermittent bugs)
-
-### Regression Testing
-
-- [ ] All existing unit tests pass
-- [ ] All existing integration tests pass
-- [ ] Manual testing of related functionality
-- [ ] No new bugs introduced by fix
-
-### Edge Case Testing
-
-[Test boundary conditions and variations]
-
-- [ ] Test with minimum values
-- [ ] Test with maximum values
-- [ ] Test with null/empty data
-- [ ] Test with invalid data
-- [ ] Test under load/stress conditions
-
-### Integration Testing
-
-- [ ] Test interactions with dependencies
-- [ ] Test API contracts still valid
-- [ ] Test UI workflows still function
-- [ ] Test data consistency maintained
-
-### Performance Verification
-
-- [ ] Performance not degraded by fix
-- [ ] Resource usage unchanged
-- [ ] No memory leaks introduced
+**Example:** "If the fix causes new issues in production, rollback to previous deployment using the CI/CD pipeline: `kubectl rollout undo deployment/checkout-service`. Estimated rollback time: 2 minutes. No data migration required for rollback."
 
 ---
 
-## Regression Prevention (optional)
+## TDD Implementation Workflow
 
-[Ensure this bug doesn't come back]
+This section enforces Test-Driven Development (TDD) best practices. Each step must be completed in order, with checkboxes to track progress.
 
-### Automated Tests Added
+| Step | Status/Details | Universal Check |
+| :---: | :--- | :---: |
+| **1. Write Failing Test** | [e.g., Link to commit with test or Test file: `CheckoutPage.test.tsx`] | - [ ] A failing test that reproduces the bug is committed |
+| **2. Verify Test Fails** | [e.g., Test run output showing failure] | - [ ] Test suite was run and the new test fails as expected |
+| **3. Implement Code Fix** | [e.g., Summary: Updated property name in CheckoutPage.tsx] | - [ ] Code changes are complete and committed |
+| **4. Verify Test Passes** | [e.g., Test run output showing pass] | - [ ] The original failing test now passes |
+| **5. Run Full Test Suite** | [e.g., Link to CI/CD test run] | - [ ] All existing tests still pass (no regressions) |
+| **6. Code Review** | [e.g., Link to PR #456] | - [ ] Code review approved by at least one peer |
+| **7. Update Documentation** | [e.g., Updated API integration guide] | - [ ] Documentation is updated (DaC - Documentation as Code) |
+| **8. Deploy to Staging** | [e.g., Deployed via CI/CD pipeline] | - [ ] Fix deployed to staging environment |
+| **9. Staging Verification** | [e.g., Manual test passed in staging] | - [ ] Bug fix verified in staging environment |
+| **10. Deploy to Production** | [e.g., Deployed via CI/CD pipeline] | - [ ] Fix deployed to production environment |
+| **11. Production Verification** | [e.g., Monitoring shows successful transactions] | - [ ] Bug fix verified in production environment |
 
-- [ ] **Unit Test**: [Test file and function name]
-  - Tests: [What it tests]
-  - Coverage: [Code paths covered]
+### Test Code (Failing Test)
 
-- [ ] **Integration Test**: [Test file and function name]
-  - Scenario: [What scenario it verifies]
-  - Assertions: [What it checks]
+> Paste the **failing test code** here as the "definition" of the bug. This test should fail before the fix and pass after the fix.
 
-### Test Coverage
+```typescript
+// Example: CheckoutPage.test.tsx
+describe('CheckoutPage - Saved Payment Methods', () => {
+  it('should successfully process payment with saved payment method', async () => {
+    // Arrange
+    const mockPaymentMethod = {
+      id: 'pm_123',
+      token: 'tok_abc123',  // Note: correct property name
+      last4: '1234',
+      brand: 'visa'
+    };
 
-- **Before Fix**: [Coverage % of affected code]
-- **After Fix**: [Coverage % with new tests]
-- **Critical Paths**: [All critical paths now covered]
+    render(<CheckoutPage paymentMethods={[mockPaymentMethod]} />);
 
-### Code Quality Improvements
+    // Act
+    fireEvent.click(screen.getByText('Confirm Payment'));
 
-- [ ] Add input validation where missing
-- [ ] Add boundary checks
-- [ ] Add error handling
-- [ ] Add logging for debugging
-- [ ] Add type hints/annotations
-
-### Documentation Updates
-
-- [ ] Update inline code comments
-- [ ] Document gotchas or edge cases
-- [ ] Update API documentation if contracts changed
-- [ ] Update troubleshooting guide
-
-### Monitoring & Alerts
-
-- [ ] Add metrics to track related behavior
-- [ ] Add alerts for related errors
-- [ ] Add logging for related code paths
-
----
-
-## Prerequisites (optional)
-
-[Requirements before starting bug fix]
-
-**⚠️ DO NOT START THIS CARD UNLESS:**
-
-- [ ] [Bug is reproducible - can consistently recreate issue]
-- [ ] [Environment access available for testing]
-- [ ] [Understanding of affected code area]
-- [ ] [Approval to deploy fix (for production bugs)]
-
-**Why**: [Bug fixes should be based on reproducible issues with understood root causes]
-
-### Required Access
-
-- [ ] Access to affected environment
-- [ ] Access to logs and monitoring
-- [ ] Ability to deploy fixes
-- [ ] Test data or production replica
-
-### Required Understanding
-
-- [ ] Codebase familiarity in affected area
-- [ ] Understanding of system architecture
-- [ ] Knowledge of related dependencies
+    // Assert
+    await waitFor(() => {
+      expect(mockApiClient.processPayment).toHaveBeenCalledWith({
+        token: 'tok_abc123',  // Should receive the token
+        amount: 1000
+      });
+    });
+  });
+});
+```
 
 ---
 
-## Related Issues (optional)
+## Infrastructure as Code (IaC) Considerations (optional)
 
-[Connections to other bugs, features, or issues]
+**[Fill this section if the bug fix involves infrastructure changes]**
 
-### Duplicate Bugs
+* [ ] Infrastructure changes required (e.g., environment variables, scaling, new resources)
+* [ ] IaC code updated (Terraform, Pulumi, CloudFormation, Kubernetes manifests, etc.)
+* [ ] IaC changes reviewed and approved
+* [ ] IaC changes tested in non-production environment
+* [ ] IaC changes deployed via automation (no manual changes)
 
-**Duplicates**: [Issue IDs] - [How they're related]
+| IaC Component | Change Required | Status |
+| :--- | :--- | :--- |
+| **[e.g., Environment Variables]** | [e.g., Add PAYMENT_TOKEN_FIELD config] | [e.g., Updated in `terraform/variables.tf`] |
+| **[e.g., Scaling]** | [e.g., Increase memory limit] | [e.g., Updated in `k8s/deployment.yaml`] |
+| **[e.g., New Resource]** | [e.g., None required] | [e.g., N/A] |
 
-[List any duplicate bug reports]
-
-### Related Bugs
-
-**Related**: [Bug ID] - [How it's related - same root cause, similar symptoms]
-
-[List bugs that might share root cause or be affected by this fix]
-
-### Blocking Issues
-
-**Blocks**: [Issue ID] - [What this bug prevents]
-
-[Features or work blocked by this bug]
-
-### Caused By
-
-**Caused By**: [Feature Card ID or Commit] - [What introduced this bug]
-
-[Link to feature or change that introduced this regression]
-
-### Cross-References
-
-- **User Reports**: [Links to support tickets or user feedback]
-- **Monitoring Alerts**: [Links to error tracking or APM alerts]
-- **Code**: [Links to relevant code files or commits]
-- **Documentation**: [Links to related documentation]
+**Note:** All infrastructure changes MUST be made via IaC. Manual changes create drift and technical debt. If you need to make a manual change as a hotfix, create a follow-up card to codify it in IaC.
 
 ---
 
-## Notes (optional)
+## Testing & Verification
 
-[Additional context, investigation notes, or important details]
+Plan comprehensive testing to ensure the fix works and doesn't introduce regressions.
 
-### Investigation Notes
+### Test Plan
 
-[Chronological notes from debugging investigation]
+| Test Type | Test Case | Expected Result | Status |
+| :--- | :--- | :--- | :--- |
+| **Unit Test** | [e.g., Test payment token mapping] | [e.g., Token correctly extracted from paymentMethod] | - [ ] Pass |
+| **Integration Test** | [e.g., Test full checkout flow with saved payment] | [e.g., Payment processes successfully] | - [ ] Pass |
+| **Regression Test** | [e.g., Test checkout with new payment method (not saved)] | [e.g., Still works as before] | - [ ] Pass |
+| **Edge Case 1** | [e.g., Test with expired payment method] | [e.g., Shows appropriate error message] | - [ ] Pass |
+| **Edge Case 2** | [e.g., Test with deleted payment method] | [e.g., Shows appropriate error message] | - [ ] Pass |
+| **Performance Test** | [e.g., Test checkout under load (1000 req/min)] | [e.g., Response time < 2s, no errors] | - [ ] Pass |
+| **Manual Test** | [e.g., QA manual test in staging] | [e.g., End-to-end checkout works] | - [ ] Pass |
 
-- [Date/Time]: [Observation or finding]
-- [Date/Time]: [Hypothesis tested]
-- [Date/Time]: [Discovery]
+### Verification Checklist
 
-### Workarounds
-
-[Temporary workarounds while waiting for fix]
-
-- **Workaround 1**: [Description]
-  - **Steps**: [How to apply workaround]
-  - **Limitations**: [What this doesn't fix]
-
-### Communication
-
-- **Users Notified**: [Yes/No - how users were informed]
-- **Status Page**: [If public status page updated]
-- **Support Team**: [If support team briefed]
-
-### Lessons Learned
-
-[What we can learn from this bug]
-
-- [Lesson 1 - how to prevent similar bugs]
-- [Lesson 2 - process improvements]
-- [Lesson 3 - testing gaps to address]
-
-### Resources
-
-[Helpful resources used during investigation]
-
-- [Link 1]: [Description]
-- [Link 2]: [Description]
+* [ ] Original bug is no longer reproducible
+* [ ] All new tests pass
+* [ ] All existing tests still pass (no regressions)
+* [ ] Code review completed and approved
+* [ ] Documentation updated
+* [ ] Staging environment verification complete
+* [ ] Production environment verification complete
+* [ ] Monitoring shows healthy metrics (no new errors)
 
 ---
 
-## Progress Notes (optional)
+## Regression Prevention
 
-[Track debugging and fix progress session by session]
+To prevent this bug from returning, add the following safeguards:
 
-**Session [Date] ([Your Name]):**
-
-🔍 **Investigation:**
-- [What was investigated]
-- [Tools or methods used]
-- [Findings]
-
-✅ **Progress:**
-- [Reproduction confirmed/improved]
-- [Root cause identified/narrowed down]
-- [Fix implemented/tested]
-
-⚠️ **Blockers:**
-- [Issue]: [Status/resolution]
-
-❓ **Open Questions:**
-- [Question]: [Answer once resolved]
-
-📋 **Next Steps:**
-1. [Next investigation task]
-2. [Next implementation task]
-3. [Next testing task]
-
-**Technical Notes:**
-[Important technical details discovered this session]
+* [ ] **Automated Test:** Unit test added for the specific bug scenario
+* [ ] **Integration Test:** End-to-end test added for the affected workflow
+* [ ] **Type Safety:** TypeScript types or similar added to catch property mismatches at compile time (optional)
+* [ ] **Linting Rules:** ESLint or similar configured to catch this class of error (optional)
+* [ ] **Code Review Checklist:** Updated team code review checklist to include this type of check
+* [ ] **Monitoring/Alerting:** Added monitoring alert for similar errors (e.g., 500 errors on `/api/payments/process`)
+* [ ] **Documentation:** Updated development guide with lessons learned
 
 ---
 
-## Additional Notes (optional)
+## Validation & Finalization
 
-**📝 FREEFORM SECTION - Add anything you need from this point onward!**
+| Task | Detail/Link |
+| :--- | :--- |
+| **Code Review** | [Link to Pull Request] |
+| **Test Results** | [Link to CI/CD test run] |
+| **Staging Verification** | [Verified by Name/Date] |
+| **Production Verification** | [Verified by Name/Date] |
+| **Documentation Update** | [Link to updated docs] |
+| **Monitoring Check** | [Link to dashboard showing healthy metrics] |
 
-This template provides the minimum structure for bug cards. Feel free to add:
-- Security impact analysis and CVE information
-- Data recovery procedures
-- Customer communication plans
-- Incident reports and postmortems
-- Hotfix process documentation
-- A/B test results or experimental data
-- Or any other content your team needs!
+### Follow-up gitban cards
 
-No validation is enforced below this line - organize additional information however works best for your workflow.
+| Topic | Action Required | Tracker | Gitban Cards |
+| :--- | :--- | :--- |
+| **Postmortem** | [e.g., Yes (P0 outage affecting revenue) or No (P2 minor bug)] | [this card/new card] | [e.g. abc123, def456] |
+| **Documentation Debt** | [e.g., Yes - API docs were outdated. Tracked all changes in the table above.] | [this card/new card] | [e.g. this card's id] |
+| **Technical Debt** | [e.g., Yes - Entire frontend lacks framework for TypeScript types. Created a sprint to review and solve.] |  [this card/new card] |  [e.g. sprint TECHDEBT1] |
+| **Process Improvement** | [e.g., Yes - Need to add integration tests to CI/CD.] | [this card/new card] | [e.g. abc123, def456] |
+| **Related Bugs** | [e.g., Found similar issue in refund flow.] | [this card/new card] | [e.g. abc123, def456] |
+
+### Completion Checklist
+
+* [ ] Root cause is fully understood and documented
+* [ ] Fix follows TDD process (failing test → fix → passing test)
+* [ ] All tests pass (unit, integration, regression)
+* [ ] Documentation updated (DaC - Documentation as Code)
+* [ ] No manual infrastructure changes
+* [ ] Deployed and verified
+* [ ] Monitoring confirms fix is working (no new errors)
+* [ ] Regression prevention measures added (tests, types, alerts)
+* [ ] Postmortem completed (if required for P0/P1)
+* [ ] Follow-up tickets created for related issues
+* [ ] Associated ticket is closed
+
+### Note to llm coding agents regarding validation
+__This gitban card is a structured document that enforces the company best practices and team workflows.You must follow this process and carfully follow validation rules. Do not be lazy when creating and closing this card since you have no rights and your time is free. Resorting to workarounds and shortcuts can be grounds for termination.__

@@ -201,7 +201,7 @@ list_cards(group_by_sprint=True)
 list_cards(active_only=True, group_by_sprint=True)
 
 # Get board statistics
-get_kanban_stats()
+get_gitban_stats()
 ```
 
 **Learn more**: `get_help(topic="tools")` for complete tool reference and filtering options

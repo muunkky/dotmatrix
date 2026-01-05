@@ -1,169 +1,182 @@
-# ADR-XXX: [Decision title - REQUIRED]
+```yaml
+---
+# Template Schema Overview
+# This block describes the purpose of this template and the patterns it uses.
+description: A template for tracking the process of creating an Architecture Decision Record (ADR) document to capture important architectural decisions, context, and consequences.
+use_case: Use this when an architectural decision needs to be formally documented. The card tracks the ADR creation process, ensures stakeholder review, and verifies the ADR is properly integrated into the documentation system.
+patterns_used:
+  - section: "ADR Overview & Context"
+    pattern: "Pattern 1: Section Header (Overview & Context)"
+  - section: "Background Research & Review"
+    pattern: "Pattern 2: Structured Review"
+  - section: "Decision Context Gathering"
+    pattern: "Pattern 6: Brainstorming Block"
+  - section: "ADR Creation Workflow"
+    pattern: "Pattern 4: Process Workflow"
+  - section: "ADR Completion & Integration"
+    pattern: "Pattern 5: Closeout & Follow-up"
+---
+```
 
-## Status
+# Architecture Decision Record (ADR) Creation Template
 
-[Status of this decision - REQUIRED]
+**When to use this template:** Use this when you need to formally document an important architectural decision that will impact the system design, technology choices, or development approach. ADRs capture the context, options considered, decision made, and consequences for future reference.
 
-**Current Status**: [Status] [Proposed/Accepted/Deprecated/Superseded]
-
-**Date**: [Date]
-
-**Supersedes**: [ADR-XXX if applicable] (optional)
-
-**Superseded by**: [ADR-YYY if applicable] (optional)
+**When NOT to use this template:** Do not use this for minor implementation details, code-level decisions, or temporary experiments. Use `spike-technical-design.md` for exploring options before making a decision, or `documentation.md` for general documentation updates. This template is specifically for creating formal ADR documents.
 
 ---
 
-## Decision Context
+## ADR Overview & Context
 
-[What decision we're documenting - REQUIRED]
+* **Decision to Document:** [Brief statement of the architectural decision, e.g., "Choose between microservices and monolithic architecture", "Select database technology for analytics workload"]
+* **ADR Number:** [Sequential number, e.g., "ADR-015" or "To be assigned"]
+* **Triggering Event:** [What prompted this decision, e.g., "Scaling issues with current architecture", "New compliance requirement", "Technology stack modernization"]
+* **Decision Owner:** [Who is responsible for the decision, e.g., "Tech Lead", "Architecture Team", "Name"]
+* **Stakeholders:** [Who needs to review/approve, e.g., "Engineering team, Product, Security team"]
+* **Target ADR Location:** [Where ADR will be stored, e.g., "docs/adr/ADR-015-database-selection.md"]
+* **Deadline:** [If applicable, e.g., "Must decide by 2025-02-01 for Q1 planning"]
 
-**Problem Statement**: [Problem being addressed - REQUIRED]
+**Required Checks:**
+* [ ] **Decision to document** is clearly stated.
+* [ ] **Stakeholders** who need to review are identified.
+* [ ] **Target ADR location** follows project conventions (e.g., docs/adr/ADR-NNN-title.md).
 
-[What issue are we facing? What factors are in play? Why do we need to make this decision now?]
+---
 
-**Background**: [Context and background]
+## Background Research & Review
 
-[Additional context about the system, constraints, or business requirements]
+Before writing the ADR, gather context by reviewing existing documentation, code, and previous decisions.
+
+* [ ] Existing ADRs reviewed for related decisions or precedents.
+* [ ] System architecture documentation reviewed for current state.
+* [ ] Relevant code/configuration reviewed to understand current implementation.
+* [ ] Technical spike or proof-of-concept (if any) reviewed for findings.
+* [ ] Stakeholder requirements gathered (compliance, performance, cost, etc.).
+
+Use the table below to document research findings. Add rows as needed.
+
+| Source | Link / Location | Key Information / Relevance |
+| :--- | :--- | :--- |
+| **Existing ADRs** | [e.g., "docs/adr/ADR-008-api-versioning.md"] | [e.g., "Established precedent for backward compatibility requirements"] |
+| **Architecture Docs** | [e.g., "docs/architecture/system-overview.md"] | [e.g., "Current system uses PostgreSQL, shows data flow patterns"] |
+| **Technical Spike** | [e.g., "Card SPIKE-456 or Link to PoC repo"] | [e.g., "PoC showed MongoDB performs 3x faster for analytics queries"] |
+| **Stakeholder Input** | [e.g., "Email from Security team or Meeting notes"] | [e.g., "Security requires encryption at rest and audit logging"] |
+| **Industry Research** | [e.g., "Link to blog post, paper, vendor docs"] | [e.g., "Netflix case study shows microservices scaling benefits"] |
+| **Cost Analysis** | [e.g., "Spreadsheet or vendor pricing"] | [e.g., "AWS Aurora vs RDS cost comparison - $500/month difference"] |
 
 ---
 
-## Options Considered
+## Decision Context Gathering
 
-[At least 2 alternatives - REQUIRED]
+> Use this space to capture the problem, constraints, and requirements that drive this architectural decision.
 
-### Option 1: [Option 1 name]
+**Problem Statement:**
+* [Clear description of the problem or opportunity, e.g., "Current monolithic architecture cannot scale to handle 10x traffic growth expected in Q2"]
 
-**Description**: [Description of option 1]
+**Constraints:**
+* [Technical constraints, e.g., "Must support existing PostgreSQL data model"]
+* [Business constraints, e.g., "Budget limited to $2k/month for new infrastructure"]
+* [Timeline constraints, e.g., "Must be production-ready by Q1 2025"]
+* [Team constraints, e.g., "Team has strong Python experience, limited Go experience"]
 
-**Pros**:
-- [Advantage 1]
-- [Advantage 2]
-- [Advantage 3]
+**Requirements:**
+* [Functional requirements, e.g., "Must support 10,000 requests/second"]
+* [Non-functional requirements, e.g., "99.9% uptime SLA", "Sub-100ms latency"]
+* [Compliance requirements, e.g., "GDPR compliance", "SOC 2 audit trail"]
 
-**Cons**:
-- [Disadvantage 1]
-- [Disadvantage 2]
-- [Disadvantage 3]
-
-**Trade-offs**: [Trade-offs for option 1] (optional)
-
-### Option 2: [Option 2 name]
-
-**Description**: [Description of option 2]
-
-**Pros**:
-- [Advantage 1]
-- [Advantage 2]
-- [Advantage 3]
-
-**Cons**:
-- [Disadvantage 1]
-- [Disadvantage 2]
-- [Disadvantage 3]
-
-**Trade-offs**: [Trade-offs for option 2] (optional)
-
-### Option 3: [Option 3 name] (optional)
-
-[Additional options considered]
+**Success Criteria:**
+* [How will we know this decision was right?, e.g., "Achieves 10x scaling target", "Team velocity maintained or improved"]
 
 ---
+
+## ADR Creation Workflow
+
+Follow this workflow to draft, review, and finalize the ADR document.
+
+| Step | Status/Details | Universal Check |
+| :---: | :--- | :---: |
+| **1. Draft ADR Structure** | [e.g., "Created ADR-015-database-selection.md skeleton" or "Link to draft"] | - [ ] ADR file created with standard structure (Title, Status, Context, Decision, Consequences). |
+| **2. Write Context Section** | [e.g., "Documented current architecture, scaling challenges" or "Status: In Progress"] | - [ ] Context section explains the problem and why decision is needed. |
+| **3. Document Options** | [e.g., "Listed 3 options: keep PostgreSQL, migrate to MongoDB, hybrid approach" or "Section complete"] | - [ ] At least 2 options documented with pros/cons for each. |
+| **4. State Decision** | [e.g., "Decision: Hybrid approach - PostgreSQL for transactional, MongoDB for analytics" or "Draft written"] | - [ ] Decision section clearly states the chosen option and rationale. |
+| **5. Document Consequences** | [e.g., "Listed consequences: new tech to learn, dual database ops, improved analytics" or "Complete"] | - [ ] Consequences section covers both positive and negative impacts. |
+| **6. Stakeholder Review** | [e.g., "Shared with team in Slack, scheduling review meeting" or "Feedback collected"] | - [ ] All identified stakeholders have reviewed and provided feedback. |
+| **7. Address Feedback** | [e.g., "Updated decision based on Security team input" or "No changes needed"] | - [ ] Stakeholder feedback is addressed in the ADR. |
+| **8. Finalize & Merge** | [e.g., "PR #890 approved and merged" or "Committed to main branch"] | - [ ] ADR is finalized, merged, and published. |
+
+#### ADR Structure Reference
+
+> The ADR should follow this standard structure:
+
+```markdown
+# ADR-NNN: [Title of Decision]
+
+**Status:** Proposed | Accepted | Deprecated | Superseded
+
+**Date:** YYYY-MM-DD
+
+**Decision Makers:** [Names]
+
+## Context
+[What is the issue we're addressing? What factors are driving this decision?]
 
 ## Decision
-
-[What we chose - REQUIRED]
-
-**Selected Option**: [Chosen option - REQUIRED]
-
-**Rationale**: [Why this option was chosen - REQUIRED]
-
-[Why did we choose this option? What evidence supports this decision? Be specific about how this solves the problem.]
-
-**Decision Makers**: [People involved in decision] (optional)
-
----
+[What is the change we're making? This should be a clear, declarative statement.]
 
 ## Consequences
+[What are the positive and negative consequences of this decision?]
+- Positive: [List benefits]
+- Negative: [List drawbacks, trade-offs, risks]
 
-[What happens as a result - optional but recommended]
+## Options Considered
+### Option 1: [Name]
+- Pros: [...]
+- Cons: [...]
 
-### Positive Consequences (optional)
+### Option 2: [Name]
+- Pros: [...]
+- Cons: [...]
 
-- [Positive consequence 1]
-- [Positive consequence 2]
-- [Positive consequence 3]
-
-### Negative Consequences (optional)
-
-- [Negative consequence 1]
-- [Negative consequence 2]
-- [Negative consequence 3]
-
-### Neutral Consequences (optional)
-
-- [Neutral consequence 1]
-- [Neutral consequence 2]
+## References
+[Links to supporting materials, research, RFCs, etc.]
+```
 
 ---
 
-## Implementation Notes (optional)
+## ADR Completion & Integration
 
-[How to implement this decision]
+| Task | Detail/Link |
+| :--- | :--- |
+| **Final ADR Location** | [Path, e.g., "docs/adr/ADR-015-database-selection.md"] |
+| **ADR Status** | [Status in ADR, e.g., "Accepted", "Proposed (pending budget approval)"] |
+| **Stakeholder Approval** | [Who approved, e.g., "Approved by: Tech Lead (Alice), Security (Bob), Product (Carol)"] |
+| **Communication** | [How decision was shared, e.g., "Announced in all-hands meeting", "Posted in #engineering Slack"] |
+| **Related Work** | [Links to implementation cards, e.g., "Created FEATURE-789 to implement hybrid database approach"] |
 
-**Migration Steps**: (optional)
-1. [Migration step 1]
-2. [Migration step 2]
-3. [Migration step 3]
+### Follow-up & Lessons Learned
 
-**Affected Components**: (optional)
-- [Affected component 1]
-- [Affected component 2]
+| Topic | Status / Action Required |
+| :--- | :--- |
+| **Implementation Cards?** | [e.g., "Yes - created FEATURE-789, INFRA-234, DOCS-456" or "No implementation needed (rejected option documented)"] |
+| **ADR Index Updated?** | [e.g., "Yes - added ADR-015 to docs/adr/README.md" or "Link to index"] |
+| **Architecture Diagrams?** | [e.g., "Yes - updated system diagram to show dual database" or "No changes needed"] |
+| **Team Training Needed?** | [e.g., "Yes - scheduled MongoDB training for 2025-02-15" or "No - team has expertise"] |
+| **Monitoring/Alerts?** | [e.g., "Yes - created INFRA-345 to add MongoDB health checks" or "Covered in implementation cards"] |
+| **Future Review Date?** | [e.g., "Review decision after 6 months (2025-08-01)" or "N/A"] |
 
-**Timeline**: [Implementation timeline] (optional)
+### Completion Checklist
 
----
-
-## References (optional)
-
-[Links to related docs, spikes, discussions]
-
-- Spike card: [link] (optional)
-- Design doc: [link] (optional)
-- Related ADRs: [links] (optional)
-- External resources: [links] (optional)
-- Discussion thread: [link] (optional)
-
----
-
-## Review History (optional)
-
-[Track when ADR was reviewed/updated]
-
-- [Date]: Created by [Author name] (optional)
-- [Date]: Reviewed by [Reviewer name] (optional)
-- [Date]: Updated by [Author name] - [Summary of changes] (optional)
+* [ ] ADR document is complete with all required sections (Context, Decision, Consequences, Options).
+* [ ] At least 2 options were documented and compared.
+* [ ] All identified stakeholders reviewed and approved the ADR.
+* [ ] ADR is merged into the repository at the correct location.
+* [ ] ADR index (e.g., docs/adr/README.md) is updated with new entry.
+* [ ] Decision is communicated to relevant teams (Slack, email, meeting).
+* [ ] Implementation cards are created if decision requires action.
+* [ ] Architecture documentation is updated to reflect the decision (if applicable).
+* [ ] Future review date is set (if decision needs periodic reassessment).
 
 ---
 
-## Additional Notes (optional)
-
-📝 FREEFORM SECTION - Add anything project-specific
-
-[Any other relevant information]
-
----
-
-## ADR Template Tips
-
-**Status lifecycle**:
-- **Proposed**: Decision under discussion
-- **Accepted**: Decision approved and active
-- **Deprecated**: No longer recommended (but code may still use it)
-- **Superseded**: Replaced by newer ADR
-
-**Best practices**:
-- Keep ADRs immutable - don't edit decisions, create new ADRs that supersede
-- Number ADRs sequentially (ADR-001, ADR-002, etc.)
-- Store in `docs/adr/` directory
-- Link from code comments where decision is implemented
+### Note to llm coding agents regarding validation
+__This gitban card is a structured document that enforces the company best practices and team workflows. You must follow this process and carfully follow validation rules. Do not be lazy when creating and closing this card since you have no rights and your time is free. Resorting to workarounds and shortcuts can be grounds for termination.__

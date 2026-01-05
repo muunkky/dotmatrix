@@ -18,12 +18,17 @@ Templates have been copied from the gitban package for customization:
 
 ## Using Templates
 
-Templates are automatically applied when creating cards:
-```python
-# Uses bug.md template
-create_card("Fix crash", card_type="bug")
+Follow this workflow to create well-structured cards:
 
-# Uses custom variant
+1. **List templates:** `list_templates()` - see available templates
+2. **Read template:** `read_template('bug')` - see required sections
+3. **Write content:** Follow template structure in your card content
+4. **Create card:** `create_card("Fix crash", card_type="bug", content=...)`
+5. **If validation fails:** Card is created as 'draft' - use `get_validation_fixes()` to see errors
+6. **Fix and promote:** Use `edit_card()` or `append_card()`, then `move_to_todo()`
+
+```python
+# Create card with custom variant
 create_card("Fix crash", card_type="bug", template="bug-regression")
 ```
 
