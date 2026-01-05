@@ -1,20 +1,88 @@
-{"timestamp": "2025-12-02T10:51:50.931431Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Roadmap upsert replaces full milestone; partial updates cause data loss", "tool": "create_card", "operation": "create_card_start"}
-{"timestamp": "2025-12-02T10:51:50.934431Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
-{"timestamp": "2025-12-02T10:51:50.950432Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
-{"timestamp": "2025-12-02T10:57:50.542989Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Roadmap upsert should be safe, merge-friendly, and patchable", "tool": "create_card", "operation": "create_card_start"}
-{"timestamp": "2025-12-02T10:58:07.195627Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Roadmap upsert should be safe, merge-friendly, and patchable", "tool": "create_card", "operation": "create_card_start"}
-{"timestamp": "2025-12-02T10:58:07.195627Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
-{"timestamp": "2025-12-02T10:58:07.197626Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
-{"timestamp": "2025-12-02T11:12:49.551040Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Feedback card type validated as spike template", "tool": "create_card", "operation": "create_card_start"}
-{"timestamp": "2025-12-02T11:12:49.552042Z", "level": "WARNING", "logger": "gitban.tools", "message": "Invalid priority: P3"}
-{"timestamp": "2025-12-02T11:13:00.713179Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Feedback card type validated as spike template", "tool": "create_card", "operation": "create_card_start"}
-{"timestamp": "2025-12-02T11:13:00.714180Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
-{"timestamp": "2025-12-02T11:13:00.730182Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=True", "operation": "template_validation"}
-{"timestamp": "2025-12-02T11:13:00.734177Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 1dhu3b", "operation": "create_card_success", "card_id": "1dhu3b"}
-{"timestamp": "2025-12-02T17:43:39.913642Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting kanban stats", "operation": "get_kanban_stats_start"}
-{"timestamp": "2025-12-02T17:43:39.915641Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 41 cards", "operation": "get_kanban_stats_cards_found"}
-{"timestamp": "2025-12-02T17:43:39.915641Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_kanban_stats_no_subprocess"}
-{"timestamp": "2025-12-02T17:43:39.916641Z", "level": "INFO", "logger": "gitban.tools", "message": "Kanban stats completed", "operation": "get_kanban_stats_success"}
-{"timestamp": "2025-12-02T17:55:14.520695Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: roadmap-upsert-requires-title-for-partial-updates", "tool": "create_card", "operation": "create_card_start"}
-{"timestamp": "2025-12-02T17:55:14.536691Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
-{"timestamp": "2025-12-02T17:55:14.560689Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
+{"timestamp": "2025-12-04T00:11:44.599151Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: V2IDEAS-Draft-Cleanup, card_ids=['76klm4', 'lkq4fw', '2tcloq', 'rkmalh', 'ur97jd', 'wgm15h', 'ziem86', 'qx7c8r', 'bhzkqy', 'boy9jk', '82dq8g', 'i01n40', 'ad4n1u', 'eni281', 'jahj1f', 'l414i0'], all_done=False, owner=None, preview=False"}
+{"timestamp": "2025-12-04T01:21:22.019887Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: adr-jitter-randomization-approach", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-04T01:21:22.030856Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-04T01:21:22.040890Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-04T01:21:22.042892Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: bh0tpw", "operation": "create_card_success", "card_id": "bh0tpw"}
+{"timestamp": "2025-12-04T01:22:24.601550Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: adr-ascii-text-output-design", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-04T01:22:24.602550Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-04T01:22:24.603551Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-04T01:22:24.604549Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: ycrgen", "operation": "create_card_success", "card_id": "ycrgen"}
+{"timestamp": "2025-12-05T11:53:42.819512Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-05T11:53:42.823511Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 35 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-05T11:53:42.823511Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-05T11:53:42.824511Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-05T12:08:08.285832Z", "level": "INFO", "logger": "gitban.tools", "message": "Health check called", "operation": "health_check_start"}
+{"timestamp": "2025-12-05T12:08:08.299835Z", "level": "INFO", "logger": "gitban.tools", "message": "Health check completed", "operation": "health_check_success"}
+{"timestamp": "2025-12-05T12:09:31.361812Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: drift-balanced-jitter-with-cluster-constraints", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-05T12:09:31.369815Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-05T12:09:31.374812Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-05T12:09:31.376814Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: npbumo", "operation": "create_card_success", "card_id": "npbumo"}
+{"timestamp": "2025-12-05T12:09:45.564456Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-05T12:09:45.566457Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 36 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-05T12:09:45.567456Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-05T12:09:45.567456Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T00:35:28.224692Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-06T00:35:28.240690Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 37 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-06T00:35:28.241690Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-06T00:35:28.241690Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T17:40:22.548605Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-06T17:40:22.568607Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 37 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-06T17:40:22.568607Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-06T17:40:22.569607Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T17:48:26.092070Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-06T17:48:26.095075Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 37 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-06T17:48:26.095679Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-06T17:48:26.095679Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T17:55:53.075851Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-06T17:55:53.080853Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 37 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-06T17:55:53.080853Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-06T17:55:53.080853Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T17:56:35.481860Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-06T17:56:35.484859Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 37 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-06T17:56:35.484859Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-06T17:56:35.484859Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T17:59:50.872628Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-06T17:59:50.875656Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 37 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-06T17:59:50.875656Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-06T17:59:50.876630Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-06T18:01:27.985616Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: organized output directories with run naming", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-06T18:01:27.993617Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-06T18:01:27.998615Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-06T18:01:27.999646Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 418dhb", "operation": "create_card_success", "card_id": "418dhb"}
+{"timestamp": "2025-12-06T18:30:45.806616Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add size warnings for large images with convex detection", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-06T18:30:45.807617Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-06T18:30:45.809618Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-06T18:30:45.811617Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: vz1xw9", "operation": "create_card_success", "card_id": "vz1xw9"}
+{"timestamp": "2025-12-16T23:42:50.830246Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-16T23:42:50.835242Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-16T23:42:50.835242Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-16T23:42:50.835242Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-17T11:32:03.553030Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-17T11:32:03.560026Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-17T11:32:03.560026Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-17T11:32:03.561028Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-17T11:37:21.777372Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Triage DotMatrix Board - Review Stale Cards and Update Roadmap Status", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-17T11:37:21.784374Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-17T11:37:21.857048Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-17T11:37:21.859804Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: pn661q", "operation": "create_card_success", "card_id": "pn661q"}
+{"timestamp": "2025-12-17T11:58:33.956370Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-17T11:58:33.959368Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 40 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-17T11:58:33.960366Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-17T11:58:33.960366Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-17T12:00:16.715491Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: 2025-Q4-M3-completion, card_ids=['jpr3r1', '6b4iz6', '418dhb', 'ajwv8f', 'krzyj6'], all_done=False, owner=None, preview=False"}
+{"timestamp": "2025-12-17T13:13:21.760159Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-17T13:13:21.762165Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 34 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-17T13:13:21.763165Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-17T13:13:21.763165Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-22T14:18:43.593186Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-22T14:18:43.599188Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 34 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-22T14:18:43.599188Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-22T14:18:43.599188Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2025-12-22T14:19:37.982788Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Improve edge detection with Canny and adaptive thresholding", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2025-12-22T14:19:38.005791Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2025-12-22T14:19:38.012789Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2025-12-22T14:19:38.014790Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: hxsuc4", "operation": "create_card_success", "card_id": "hxsuc4"}
+{"timestamp": "2025-12-22T14:39:03.896610Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2025-12-22T14:39:03.900613Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 35 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2025-12-22T14:39:03.900613Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2025-12-22T14:39:03.901609Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}

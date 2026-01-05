@@ -1,15 +1,18 @@
-{"timestamp": "2025-12-01T12:52:53.539427Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
-{"timestamp": "2025-12-01T12:52:53.547428Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
-{"timestamp": "2025-12-01T12:52:53.548428Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
-{"timestamp": "2025-12-01T14:41:45.952473Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
-{"timestamp": "2025-12-01T14:41:45.958471Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
-{"timestamp": "2025-12-01T14:41:45.960473Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
-{"timestamp": "2025-12-01T14:50:05.467296Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
-{"timestamp": "2025-12-01T14:50:05.474296Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
-{"timestamp": "2025-12-01T14:50:05.475297Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
-{"timestamp": "2025-12-01T17:17:33.430936Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
-{"timestamp": "2025-12-01T17:17:33.436935Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
-{"timestamp": "2025-12-01T17:17:33.438937Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
-{"timestamp": "2025-12-01T17:36:24.486838Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
-{"timestamp": "2025-12-01T17:36:24.492842Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
-{"timestamp": "2025-12-01T17:36:24.494843Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
+{"timestamp": "2025-12-04T00:14:48.916131Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-12-04T00:14:48.922130Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-12-04T00:14:48.924130Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
+{"timestamp": "2025-12-05T11:53:14.895142Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-12-05T11:53:14.900113Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-12-05T11:53:14.904113Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
+{"timestamp": "2025-12-06T00:35:22.704537Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-12-06T00:35:22.710536Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-12-06T00:35:22.712536Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
+{"timestamp": "2025-12-06T17:36:47.043218Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-12-06T17:36:47.050217Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-12-06T17:36:47.052216Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
+{"timestamp": "2025-12-16T23:42:27.995311Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-12-16T23:42:28.001309Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-12-16T23:42:28.002311Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
+{"timestamp": "2025-12-22T14:18:08.978863Z", "level": "INFO", "logger": "gitban", "message": "Logging initialized", "operation": "logging_setup"}
+{"timestamp": "2025-12-22T14:18:08.983829Z", "level": "INFO", "logger": "gitban", "message": "MCP Server starting up", "operation": "startup"}
+{"timestamp": "2025-12-22T14:18:08.985831Z", "level": "INFO", "logger": "gitban", "message": "MCP Server initialized successfully"}
