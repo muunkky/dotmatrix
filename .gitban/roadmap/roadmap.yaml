@@ -76,6 +76,28 @@ changelog:
       - Closed verification card 418dhb documenting existing implementation
     date: '2025-12-06'
     version: unreleased
+  - version: work-session-2024-12-06
+    changes:
+      - Verified organized-output-directories feature already implemented in 
+        run_manager.py
+      - Created comprehensive TDD test suite (test_run_directory_management.py)
+      - 'Updated roadmap: progress-reporting project marked done'
+      - Closed feature card 418dhb (organized-output-dirs verification)
+      - Closed planning spike jpr3r1 (post-release cleanup planning)
+    date: '2024-12-06'
+  - version: unreleased
+    date: '2025-12-17'
+    changes:
+      - 'Triage spike pn661q: Systematically reviewed gitban board and roadmap status'
+      - Identified 5 completed M3 cards ready for archival (6b4iz6, 418dhb, 
+        ajwv8f, krzyj6, jpr3r1)
+      - 'Updated roadmap: marked organized-output-dirs and progress-reporting projects
+        as done'
+      - Downgraded cju1m7 CMYK bug from P0 to P1 (optional blend_overlaps flag, 
+        workarounds exist)
+      - Resolved status inconsistency in card 6b4iz6 (appears in both done and 
+        todo)
+      - Recommended weekly Friday triage sessions to prevent done card backlog
 versions:
   v1:
     id: v1
@@ -558,16 +580,17 @@ versions:
             priority: high
             projects:
               organized-output-dirs:
+                id: organized-output-dirs
+                title: Organized Output Directories with Run Naming
+                description: Auto-create timestamped/named output folders for 
+                  each run
+                status: done
+                sequence: 1
                 completion_notes: Feature already implemented with --run-name 
                   flag and --no-organize for backward compatibility. Uses 
                   run_manager module with create_run_directory() and manifest 
-                  generation.
-                description: Auto-create timestamped/named output folders for 
-                  each run
-                id: organized-output-dirs
-                sequence: 1
-                status: done
-                title: Organized Output Directories with Run Naming
+                  generation. Card 418dhb verified and archived to 
+                  2025-Q4-M3-completion collection.
               config-save-load:
                 id: config-save-load
                 title: Save and Load Config Files
@@ -633,7 +656,8 @@ versions:
                 completion_notes: Implemented comprehensive progress callback 
                   system with metadata propagation. Displays clusters/sec 
                   throughput, ETA calculation, and GPU/CPU render mode. 
-                  Integrated into CLI with user-friendly formatting.
+                  Integrated into CLI with user-friendly formatting. Card 6b4iz6
+                  verified and archived to 2025-Q4-M3-completion collection.
           cmyk-accuracy-optimization:
             id: cmyk-accuracy-optimization
             title: CMYK Accuracy Optimization
@@ -674,7 +698,7 @@ versions:
               small-cluster-detection:
                 id: small-cluster-detection
                 title: Small Cluster Detection (SMALLDOTS Sprint)
-                status: in_progress
+                status: done
                 sequence: 5
                 description: Multi-pass detection algorithm to capture small 
                   halftone clusters missed by standard detection. Reduces orphan
@@ -682,6 +706,11 @@ versions:
                 owner: CAMERON
                 tdd_spec: tests/test_multipass_detection.py
                 docs_ref: docs/architecture/multipass-detection.md
+                completion_notes: 'Fixed in v0.2.0 (f4772fe). Changed threshold from
+                  ratio-based to absolute (0.5) to detect all dot sizes (1px+). Before:
+                  15604 clusters, 64 missed dots, 4335 orphan pixels. After: 15794
+                  clusters, 0 missed dots, 0 orphan pixels. SMALLDOTS sprint completed
+                  with 69 cards archived.'
       m4:
         id: m4
         title: 'M4: GPU Acceleration'
