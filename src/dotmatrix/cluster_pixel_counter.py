@@ -26,6 +26,9 @@ import numpy as np
 from scipy.ndimage import label as ndimage_label
 from scipy.spatial import KDTree
 
+# Import logger
+from .logger import get_logger
+
 # Import GPU functions for acceleration (auto-fallback to CPU if unavailable)
 from .gpu import (
     is_gpu_available,
@@ -198,7 +201,8 @@ def validate_cluster_cache(
         cache_data = json.load(f)
 
     metadata = cache_data.get('metadata', {})
-    cached_hash = metadata.get('source_image_hash')
+    # Check both old and new key names for backward compatibility
+    cached_hash = metadata.get('source_hash') or metadata.get('source_image_hash')
 
     result = {
         'valid': True,  # Cache is always usable, just may not match
@@ -415,13 +419,14 @@ def _nms_centers(
 
     # Always use GPU for NMS when enabled (no thresholds)
     if use_gpu:
+        logger = get_logger(__name__)
         if debug:
-            print(f"[GPU] NMS: {len(centers)} centers, using GPU", file=sys.stderr)
+            logger.debug(f"[GPU] NMS: {len(centers)} centers, using GPU")
         start_time = time_module.perf_counter()
         result = gpu_nms_centers(centers_array, scores, float(min_distance))
         if debug:
             elapsed = time_module.perf_counter() - start_time
-            print(f"[GPU] NMS completed in {elapsed:.3f}s -> {len(result)} centers kept", file=sys.stderr)
+            logger.debug(f"[GPU] NMS completed in {elapsed:.3f}s -> {len(result)} centers kept")
         return [(int(x), int(y)) for x, y in result]
 
     # CPU path (used for small center counts or when GPU disabled)
@@ -885,13 +890,14 @@ def cluster_and_count_pixels(
         color_mode = 'cmyk'
 
     # Debug: Show GPU status at start
+    logger = get_logger(__name__)
     if debug:
         gpu_avail = is_gpu_available()
-        print(f"[GPU] === Cluster Pixel Counter ===", file=sys.stderr)
-        print(f"[GPU] GPU available: {gpu_avail}", file=sys.stderr)
-        print(f"[GPU] use_gpu parameter: {use_gpu}", file=sys.stderr)
-        print(f"[GPU] Image shape: {image_shape}", file=sys.stderr)
-        print(f"[GPU] Color mode: {color_mode}", file=sys.stderr)
+        logger.debug("[GPU] === Cluster Pixel Counter ===")
+        logger.debug(f"[GPU] GPU available: {gpu_avail}")
+        logger.debug(f"[GPU] use_gpu parameter: {use_gpu}")
+        logger.debug(f"[GPU] Image shape: {image_shape}")
+        logger.debug(f"[GPU] Color mode: {color_mode}")
 
     # Phase 1: Complete midtone masks (used for clustering reference)
     # Note: We don't actually need the completed masks for counting,
@@ -902,7 +908,7 @@ def cluster_and_count_pixels(
     if separation_method == 'distance_transform':
         # Use distance transform for better separation of merged dots
         if debug:
-            print(f"[GPU] Finding centers via distance transform...", file=sys.stderr)
+            logger.debug("[GPU] Finding centers via distance transform...")
         start_time = time_module.perf_counter()
         centers = find_black_dot_centers_distance_transform(
             black_mask,
@@ -913,7 +919,7 @@ def cluster_and_count_pixels(
         )
         if debug:
             elapsed = time_module.perf_counter() - start_time
-            print(f"[GPU] Found {len(centers)} centers in {elapsed:.3f}s", file=sys.stderr)
+            logger.debug(f"[GPU] Found {len(centers)} centers in {elapsed:.3f}s")
     else:
         # Default: connected component analysis
         centers = find_black_dot_centers(black_mask)
@@ -954,17 +960,17 @@ def cluster_and_count_pixels(
     use_gpu_counting = use_gpu
 
     if debug:
-        print(f"[GPU] Color counting: {n_pixels:,} pixels", file=sys.stderr)
+        logger.debug(f"[GPU] Color counting: {n_pixels:,} pixels")
         if use_gpu_counting:
-            print(f"[GPU] Color counting: ENABLED", file=sys.stderr)
+            logger.debug("[GPU] Color counting: ENABLED")
         else:
-            print(f"[CPU] Color counting: GPU disabled", file=sys.stderr)
+            logger.debug("[CPU] Color counting: GPU disabled")
 
     # Use GPU-accelerated batch counting when available and beneficial
     if use_gpu_counting and color_mode == 'cmyk':
         # CMYK mode: simple batch counting without overlap detection
         if debug:
-            print(f"[GPU] Starting CMYK batch count for {n_clusters} clusters...", file=sys.stderr)
+            logger.debug(f"[GPU] Starting CMYK batch count for {n_clusters} clusters...")
         start_time = time_module.perf_counter()
         color_masks = {
             'C': cyan_mask > 0,
@@ -975,17 +981,17 @@ def cluster_and_count_pixels(
         counts = gpu_count_cluster_colors(labels, color_masks, n_clusters)
         if debug:
             elapsed = time_module.perf_counter() - start_time
-            print(f"[GPU] CMYK batch count completed in {elapsed:.3f}s", file=sys.stderr)
+            logger.debug(f"[GPU] CMYK batch count completed in {elapsed:.3f}s")
 
         # Batch compute radii and edge flags (O(P) + O(N) instead of O(N×P))
         if debug:
-            print(f"[GPU] Computing edge flags for {n_clusters} clusters...", file=sys.stderr)
+            logger.debug(f"[GPU] Computing edge flags for {n_clusters} clusters...")
         start_time = time_module.perf_counter()
         radii = batch_estimate_radii(labels, black_mask, n_clusters)
         edge_flags = batch_compute_edge_flags(centers, radii, image_shape)
         if debug:
             elapsed = time_module.perf_counter() - start_time
-            print(f"[GPU] Edge flags computed in {elapsed:.3f}s", file=sys.stderr)
+            logger.debug(f"[GPU] Edge flags computed in {elapsed:.3f}s")
 
         # Build results (O(N) - no per-cluster image ops)
         results = []
@@ -1008,7 +1014,7 @@ def cluster_and_count_pixels(
     elif use_gpu_counting and color_mode == 'full':
         # Full mode with GPU: compute overlap masks, then batch count
         if debug:
-            print(f"[GPU] Starting full-color batch count for {n_clusters} clusters...", file=sys.stderr)
+            logger.debug(f"[GPU] Starting full-color batch count for {n_clusters} clusters...")
         start_time = time_module.perf_counter()
 
         # Pre-compute overlap masks
@@ -1039,17 +1045,17 @@ def cluster_and_count_pixels(
         counts = gpu_count_cluster_colors(labels, color_masks, n_clusters)
         if debug:
             elapsed = time_module.perf_counter() - start_time
-            print(f"[GPU] Full-color batch count completed in {elapsed:.3f}s", file=sys.stderr)
+            logger.debug(f"[GPU] Full-color batch count completed in {elapsed:.3f}s")
 
         # Batch compute radii and edge flags (O(P) + O(N) instead of O(N×P))
         if debug:
-            print(f"[GPU] Computing edge flags for {n_clusters} clusters...", file=sys.stderr)
+            logger.debug(f"[GPU] Computing edge flags for {n_clusters} clusters...")
         start_time = time_module.perf_counter()
         radii = batch_estimate_radii(labels, black_mask, n_clusters)
         edge_flags = batch_compute_edge_flags(centers, radii, image_shape)
         if debug:
             elapsed = time_module.perf_counter() - start_time
-            print(f"[GPU] Edge flags computed in {elapsed:.3f}s", file=sys.stderr)
+            logger.debug(f"[GPU] Edge flags computed in {elapsed:.3f}s")
 
         # Build results (O(N) - no per-cluster image ops)
         results = []

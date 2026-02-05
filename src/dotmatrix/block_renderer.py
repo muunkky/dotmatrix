@@ -24,26 +24,7 @@ import cv2
 import numpy as np
 
 from dotmatrix.cluster_pixel_counter import ClusterResult
-
-
-# All 7 colors in BGR format (for cv2 compatibility)
-# Same as cluster_renderer.py for consistency
-COLORS = {
-    'yellow': (0, 255, 255),    # BGR: B=0, G=255, R=255
-    'red': (0, 0, 255),         # BGR: B=0, G=0, R=255 (M∩Y overlap)
-    'green': (0, 255, 0),       # BGR: B=0, G=255, R=0 (C∩Y overlap)
-    'magenta': (255, 0, 255),   # BGR: B=255, G=0, R=255
-    'blue': (255, 0, 0),        # BGR: B=255, G=0, R=0 (C∩M overlap)
-    'cyan': (255, 255, 0),      # BGR: B=255, G=255, R=0
-    'black': (0, 0, 0),         # BGR: B=0, G=0, R=0
-}
-
-# Drawing order: top to bottom (outermost to innermost in terms of halftone)
-# Yellow first (largest coverage), black last (smallest/innermost)
-LAYER_ORDER = ['yellow', 'red', 'green', 'magenta', 'blue', 'cyan', 'black']
-
-# CMYK-only mode: 4 colors without RGB overlaps
-LAYER_ORDER_CMYK = ['yellow', 'magenta', 'cyan', 'black']
+from dotmatrix.colors import COLORS, LAYER_ORDER, LAYER_ORDER_CMYK
 
 
 def calculate_bar_dimensions(

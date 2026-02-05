@@ -1,0 +1,38 @@
+{
+  "sprint_id": "sprint-v2ideas-duplicate-cleanup-20260105",
+  "sprint_name": "v2ideas-duplicate-cleanup",
+  "sprint_folder": "sprint-v2ideas-duplicate-cleanup-20260105",
+  "created_at": "2026-01-05T13:43:12.638550",
+  "start_date": null,
+  "end_date": "2026-01-05",
+  "archived_at": "2026-01-05T13:43:12.638550",
+  "card_ids": [
+    "kja0uf",
+    "8tgh4j",
+    "9l4s43",
+    "g1wnof",
+    "0aojwh",
+    "n1fqa6",
+    "3bn450",
+    "bh0tpw",
+    "ycrgen",
+    "tgayih"
+  ],
+  "metrics": {
+    "total_cards": 10,
+    "by_priority": {
+      "P1": 1,
+      "P2": 9
+    },
+    "by_type": {
+      "chore": 1,
+      "documentation": 2,
+      "feature": 3,
+      "spike": 4
+    },
+    "by_owner": {
+      "CAMERON": 8,
+      "Unassigned": 2
+    }
+  }
+}

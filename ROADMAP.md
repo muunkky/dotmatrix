@@ -4,7 +4,7 @@
 
 ---
 
-## Milestone 1: MVP (v0.1.0) ✅ COMPLETE
+## Milestone 1: MVP (v0.1.0) - COMPLETE
 
 **Status**: Released 2025-10-31
 **Goal**: Basic circle detection CLI with JSON/CSV output
@@ -20,47 +20,47 @@
 - [x] PNG extraction - Export circles by color with transparent backgrounds
 
 ### Acceptance Criteria (Achieved)
-- ✅ Detection rate: >90%
-- ✅ Center accuracy: Within 5px
-- ✅ Radius accuracy: Within 10%
-- ✅ Color accuracy: Within 10% RGB tolerance
-- ✅ Successfully processes 3MP images with 190 circles
+- Detection rate: >90%
+- Center accuracy: Within 5px
+- Radius accuracy: Within 10%
+- Color accuracy: Within 10% RGB tolerance
+- Successfully processes 3MP images with 190 circles
 
 ### Deliverables
-- ✅ Working CLI: `dotmatrix --input image.png --format json`
-- ✅ PNG extraction: `dotmatrix --input image.png --extract output_dir/`
-- ✅ Comprehensive README with usage examples
-- ✅ CHANGELOG.md following Keep a Changelog format
-- ✅ Test suite with 89% coverage
+- Working CLI: `dotmatrix --input image.png --format json`
+- PNG extraction: `dotmatrix --input image.png --extract output_dir/`
+- Comprehensive README with usage examples
+- CHANGELOG.md following Keep a Changelog format
+- Test suite with 89% coverage
 
 ---
 
-## Milestone 2: Smart Filtering & Control (v0.2.0) ✅ COMPLETE
+## Milestone 2: Smart Filtering & Control (v0.2.0) - COMPLETE
 
 **Status**: Released 2025-12-01
 **Goal**: Intelligent filtering, edge detection, and user control over detection parameters
 
 ### Size & Quality Filters
-- [x] **Minimum circle size filter** (`--min-radius N`) ✅ COMPLETED
+- [x] **Minimum circle size filter** (`--min-radius N`) - COMPLETED
   - Ignore noise, flecks, and small artifacts
   - Default: 10px, configurable 1-1000px
   - CLI flag: `--min-radius 20`
   - Test: Verify circles below threshold are excluded
 
-- [x] **Maximum circle size filter** (`--max-radius N`) ✅ COMPLETED
+- [x] **Maximum circle size filter** (`--max-radius N`) - COMPLETED
   - Control detection of very large circles
   - Default: 500px, configurable up to image dimension
   - CLI flag: `--max-radius 1000`
   - Implementation: Passed to cv2.HoughCircles
 
-- [x] **Minimum distance between circles** (`--min-distance N`) ✅ COMPLETED
+- [x] **Minimum distance between circles** (`--min-distance N`) - COMPLETED
   - Prevent overlapping detections
   - Default: 20px, configurable
   - CLI flag: `--min-distance 50`
   - Passes through to cv2.HoughCircles minDist parameter
 
 ### Edge & Boundary Handling
-- [x] **Convex edge detection** (`--convex-edge`) ✅ COMPLETED
+- [x] **Convex edge detection** (`--convex-edge`) - COMPLETED
   - Detect heavily overlapping circles (CMYK/halftone)
   - Uses color quantization and convexity defects
   - O(n log n) deduplication with KD-tree
@@ -74,77 +74,79 @@
   - Test: Synthetic images with circles cut by edges
 
 ### Color Intelligence
-- [x] **Smart color grouping** (`--max-colors N`) ✅ COMPLETED
+- [x] **Smart color grouping** (`--max-colors N`) - COMPLETED
   - Limit output to N most prominent colors
   - Uses k-means clustering on detected circle colors
   - CLI flag: `--max-colors 4`
   - Example: Group 20 similar shades into 4 distinct colors
   - Implementation: K-means clustering with sklearn
 
-- [x] **Configurable color tolerance** (`--color-tolerance N`) ✅ COMPLETED
+- [x] **Configurable color tolerance** (`--color-tolerance N`) - COMPLETED
   - Adjust RGB distance for color grouping
   - Current default: 20 (RGB distance ≤60)
   - New range: 0-100 (0=exact match, 100=very loose)
   - CLI flag: `--color-tolerance 30`
 
-- [x] **Auto-palette detection** (`--palette auto`) ✅ COMPLETED
+- [x] **Auto-palette detection** (`--palette auto`) - COMPLETED
   - Histogram-based dominant color detection
   - Automatically finds print colors (C, M, Y, K)
   - Excludes background colors
 
 ### Detection Tuning
-- [x] **Sensitivity control** (`--sensitivity`) ✅ COMPLETED
+- [x] **Sensitivity control** (`--sensitivity`) - COMPLETED
   - Presets: strict, normal (default), relaxed
   - Maps to HoughCircles param1/param2
   - CLI flag: `--sensitivity relaxed`
   - Implementation: Direct mapping to param1/param2 values
 
-- [x] **Confidence scores** ✅ COMPLETED
+- [x] **Confidence scores** - COMPLETED
   - Add confidence % to each detection (0-100%)
   - Based on detection order (HoughCircles sorts by accumulator)
   - Output field: `"confidence": 95.5`
   - Filter by confidence: `--min-confidence 80`
   - Implementation: Quadratic falloff from detection order
 
-- [x] **Auto-calibration** (`--auto-calibrate`) ✅ COMPLETED
+- [x] **Auto-calibration** (`--auto-calibrate`) - COMPLETED
   - Automatically determine radius bounds from reference color
   - Uses darkest color (black) statistics
   - Two-pass detection strategy
 
 ### Output Enhancements
-- [x] **Filtered extraction** ✅ COMPLETED
+- [x] **Filtered extraction** - COMPLETED
   - Apply filters before PNG extraction
   - Only export circles matching criteria
   - Combine with `--max-colors` for clean output
 
-- [x] **Cluster analysis** ✅ COMPLETED
+- [x] **Cluster analysis** - COMPLETED
   - Debug visualization (`--debug-clusters`)
   - Bounding box calculation
   - Centroid vs pixel anchoring
 
 ### Acceptance Criteria
-- ✅ Size filters work correctly (min/max radius)
-- ✅ Convex edge detection handles overlapping circles
-- ✅ Color grouping reduces output to N colors
-- ✅ Filters combinable without conflicts
-- ✅ Performance impact <20% with all filters enabled
+- Size filters work correctly (min/max radius)
+- Convex edge detection handles overlapping circles
+- Color grouping reduces output to N colors
+- Filters combinable without conflicts
+- Performance impact <20% with all filters enabled
 
 ---
 
-## Milestone 3: Performance & Scale (v0.3.0) ⚡ Q2 2026
+## Milestone 3: Performance & Scale (v0.3.0) - IN PROGRESS
 
+**Status**: In Progress (Q1-Q2 2026)
 **Goal**: Handle massive images, batch processing, and production workloads
 
 ### Large Image Support
-- [x] **Chunked processing** (`--chunk-size`) ✅ COMPLETED
+- [x] **Chunked processing** (`--chunk-size`) - COMPLETED
   - Process images in tiles/chunks for >20MP images
   - Overlap tiles to prevent edge artifacts
   - Spatial indexing for seamless stitching
   - Target: 200MP images on 8GB RAM
 
-- [x] **Sliding window** ✅ COMPLETED
+- [x] **Sliding window** - COMPLETED
   - Memory-efficient processing for massive files
   - Seam artifact prevention
+  - Integrated with GPU acceleration for rendering
 
 - [ ] **Progressive detection**
   - Coarse-to-fine pyramid approach
@@ -152,16 +154,51 @@
   - Refine with high-res pass
   - CLI flag: `--progressive`
 
-- [x] **Image size warnings** ✅ COMPLETED
+- [x] **Image size warnings** - COMPLETED
   - Warn when image exceeds recommended size
   - Progress indicators for large operations
 
+### Cluster Rendering (Added Q1 2026)
+- [x] **Flower pattern renderer** - COMPLETED
+  - CMYK cluster visualization as flower patterns
+  - Black center with CMY petals
+  - Exposed area calculation for accurate pixel counts
+  - GPU-accelerated rendering (30-100x speedup)
+  - CLI flag: `--render-method flower`
+
+- [x] **Bullseye pattern renderer** - COMPLETED
+  - Concentric circles visualization
+  - CMYK layer ordering
+  - CLI flag: `--render-method bullseye`
+
+- [x] **Block pattern renderer** - COMPLETED
+  - Stacked horizontal bars
+  - Exact pixel count preservation
+  - CLI flag: `--render-method block`
+
+- [x] **Treemap pattern renderer** - COMPLETED
+  - WinDirStat-style proportional rectangles
+  - Dynamic sizing option
+  - CLI flag: `--render-method treemap`
+
+- [x] **Drift correction** - COMPLETED
+  - Automatic drift detection and correction
+  - Cluster-based analysis for drift patterns
+  - Sub-pixel accuracy improvements
+
+- [x] **Jitter/randomization** - COMPLETED
+  - Gaussian and uniform jitter algorithms
+  - Position and size jitter parameters
+  - Reproducible via seed parameter
+  - CLI flags: `--jitter-position`, `--jitter-size`, `--jitter-seed`
+
 ### Performance Optimization
-- [x] **GPU acceleration** ✅ COMPLETED
-  - CUDA support for cluster analysis and rendering
-  - Fall back to CPU gracefully
-  - CLI flag: `--gpu` (default: auto-detect)
-  - 30-100x speedup on compatible hardware
+- [x] **GPU acceleration** - COMPLETED
+  - CUDA support via CuPy for cluster analysis and rendering
+  - Graceful fallback to CPU when GPU unavailable
+  - Pre-loading CUDA libraries for reliability
+  - CLI flag: `--gpu` (auto-detect by default)
+  - Achieved 30-100x speedup on compatible hardware
 
 - [ ] **Multi-threading**
   - Parallel color extraction (embarrassingly parallel)
@@ -207,11 +244,23 @@
   - Auto-adjust based on available RAM
 
 ### Performance Benchmarks
-- [x] **Benchmark suite** ✅ COMPLETED
+- [x] **Benchmark suite** - COMPLETED
   - Test images: 1MP, 5MP, 20MP, 50MP, 100MP
   - Measure: processing time, memory usage, accuracy
   - Document: Performance metrics in BENCHMARKS.md
   - CI integration: Detect performance regressions
+  - GPU benchmark tests included
+
+### SVG Output (Added Q1 2026)
+- [x] **SVG renderer** - COMPLETED
+  - Vector output for scalable graphics
+  - CMYK color grouping
+  - Coordinate precision optimization
+  - CLI flag: `--output-format svg`
+
+- [ ] **Jitter integration for SVG**
+  - Apply jitter algorithms to SVG output
+  - Drift validation in vector format
 
 ### Testing & Quality
 - [ ] Load tests with large images
@@ -221,15 +270,19 @@
 - [ ] Test suite target: >93% coverage
 
 ### Acceptance Criteria
-- ✅ Process 50MP images successfully
-- ✅ Process 100MP images with downsampling
-- ✅ Batch process 100 images efficiently
-- ✅ Multi-threading shows 2-4x speedup
-- ✅ Memory usage scales linearly, not quadratically
+- Process 50MP images successfully
+- Process 100MP images with downsampling
+- GPU acceleration 30-100x speedup
+- Flower/bullseye/block/treemap renderers working
+- Drift correction implemented
+- Jitter algorithms implemented with reproducibility
+- [ ] Batch process 100 images efficiently
+- [ ] Multi-threading shows 2-4x speedup
+- Memory usage scales linearly, not quadratically
 
 ---
 
-## Milestone 4: Advanced Analysis (v0.4.0) 🧠 Q3 2026
+## Milestone 4: Advanced Analysis (v0.4.0) - Q3 2026
 
 **Goal**: Deep analysis, pattern recognition, and statistical insights
 
@@ -313,14 +366,14 @@
 - [ ] Test suite target: >94% coverage
 
 ### Acceptance Criteria
-- ✅ Grid detection works on regular patterns
-- ✅ Statistical analysis accurate and comprehensive
-- ✅ HTML reports are visually impressive
-- ✅ Ellipse detection >85% accuracy
+- Grid detection works on regular patterns
+- Statistical analysis accurate and comprehensive
+- HTML reports are visually impressive
+- Ellipse detection >85% accuracy
 
 ---
 
-## Milestone 5: Debug & Visualization (v0.5.0) 🎨 Q4 2026
+## Milestone 5: Debug & Visualization (v0.5.0) - Q4 2026
 
 **Goal**: Visual debugging, validation, and developer tools
 
@@ -374,13 +427,13 @@
 - [ ] Test suite target: >95% coverage
 
 ### Acceptance Criteria
-- ✅ Visualization clearly shows detections
-- ✅ Ground truth comparison accurate
-- ✅ Debug tools helpful for troubleshooting
+- Visualization clearly shows detections
+- Ground truth comparison accurate
+- Debug tools helpful for troubleshooting
 
 ---
 
-## Milestone 6: Integration & Extensibility (v0.6.0) 🔌 Q1 2027
+## Milestone 6: Integration & Extensibility (v0.6.0) - Q1 2027
 
 **Goal**: API, integrations, and plugin architecture
 
@@ -440,14 +493,14 @@
 - [ ] Test suite target: >95% coverage
 
 ### Acceptance Criteria
-- ✅ Python API clean and intuitive
-- ✅ REST API production-ready
-- ✅ Docker deployment successful
-- ✅ Plugin system extensible
+- Python API clean and intuitive
+- REST API production-ready
+- Docker deployment successful
+- Plugin system extensible
 
 ---
 
-## Milestone 7: Machine Learning (v0.7.0) 🤖 Q2 2027
+## Milestone 7: Machine Learning (v0.7.0) - Q2 2027
 
 **Goal**: ML-based detection and advanced AI features
 
@@ -490,13 +543,13 @@
 - [ ] Test suite target: >95% coverage
 
 ### Acceptance Criteria
-- ✅ ML detector achieves >95% accuracy
-- ✅ ML model inference <500ms per image
-- ✅ Graceful fallback to Hough if ML unavailable
+- ML detector achieves >95% accuracy
+- ML model inference <500ms per image
+- Graceful fallback to Hough if ML unavailable
 
 ---
 
-## Milestone 8: GUI Application (v1.0.0) 🖥️ Q3 2027
+## Milestone 8: GUI Application (v1.0.0) - Q3 2027
 
 **Goal**: Professional desktop application with real-time preview
 
@@ -557,14 +610,14 @@
 - [ ] Accessibility testing (WCAG 2.1)
 
 ### Acceptance Criteria
-- ✅ GUI intuitive for non-technical users
-- ✅ Real-time preview <100ms latency
-- ✅ Cross-platform compatibility
-- ✅ Installer size <100MB
+- GUI intuitive for non-technical users
+- Real-time preview <100ms latency
+- Cross-platform compatibility
+- Installer size <100MB
 
 ---
 
-## Milestone 9: Video & Real-time (v1.1.0) 📹 Q4 2027
+## Milestone 9: Video & Real-time (v1.1.0) - Q4 2027
 
 **Goal**: Process video files and real-time camera feeds
 
@@ -612,13 +665,13 @@
 - [ ] Test suite target: >95% coverage
 
 ### Acceptance Criteria
-- ✅ Process 1080p video at >15 FPS
-- ✅ Real-time detection at 30 FPS (720p)
-- ✅ Temporal tracking accurate across frames
+- Process 1080p video at >15 FPS
+- Real-time detection at 30 FPS (720p)
+- Temporal tracking accurate across frames
 
 ---
 
-## Milestone 10: Cloud & Enterprise (v1.2.0) ☁️ Q1 2028
+## Milestone 10: Cloud & Enterprise (v1.2.0) - Q1 2028
 
 **Goal**: Cloud deployment, scale, and enterprise features
 
@@ -681,14 +734,14 @@
 - [ ] Security testing (OWASP)
 
 ### Acceptance Criteria
-- ✅ Lambda deployment under 10s cold start
-- ✅ K8s deployment scales to 100s of pods
-- ✅ API handles 1000+ requests/second
-- ✅ 99.9% uptime SLA
+- Lambda deployment under 10s cold start
+- K8s deployment scales to 100s of pods
+- API handles 1000+ requests/second
+- 99.9% uptime SLA
 
 ---
 
-## Long-term Vision (v2.0+) 🚀 2028+
+## Long-term Vision (v2.0+) - 2028+
 
 ### Cutting-Edge Research
 - [ ] **3D circle/sphere detection**
@@ -762,21 +815,21 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
 ## Feedback & Suggestions
 
 Have ideas for the roadmap? We'd love to hear them!
-- 🐛 **Bug reports**: [GitHub Issues](https://github.com/username/dotmatrix/issues)
-- 💡 **Feature requests**: [GitHub Discussions](https://github.com/username/dotmatrix/discussions)
-- 💬 **Community chat**: [Discord Server](https://discord.gg/dotmatrix)
+- **Bug reports**: [GitHub Issues](https://github.com/username/dotmatrix/issues)
+- **Feature requests**: [GitHub Discussions](https://github.com/username/dotmatrix/discussions)
+- **Community chat**: [Discord Server](https://discord.gg/dotmatrix)
 
 ---
 
-**Last Updated**: 2025-12-01
+**Last Updated**: 2026-01-07
 **Current Version**: v0.2.0
 **Next Release**: v0.3.0 (Q2 2026)
 
 ---
 
 ## Legend
-- ✅ **COMPLETE**: Fully implemented and released
-- 🚀 **NEXT UP**: Currently in planning/development
-- 📋 **PLANNED**: Scheduled for future development
-- 🔮 **FUTURE**: On roadmap but not yet scheduled
-- 🤖 **RESEARCH**: Experimental/research phase
+- **COMPLETE**: Fully implemented and released
+- **NEXT UP**: Currently in planning/development
+- **PLANNED**: Scheduled for future development
+- **FUTURE**: On roadmap but not yet scheduled
+- **RESEARCH**: Experimental/research phase

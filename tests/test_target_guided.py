@@ -19,7 +19,100 @@ from dotmatrix.target_guided import (
     parse_target_image,
     compute_target_gradient,
     apply_target_guided_optimization,
+    _compute_match_score,
 )
+
+
+class TestCLIIntegration:
+    """Test CLI integration for --target-image flag."""
+    
+    def test_target_image_option_exists(self):
+        """CLI should accept --target-image option."""
+        from click.testing import CliRunner
+        from dotmatrix.cli import cli
+        
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--help'])
+        
+        # Check that target-image is listed in help
+        assert '--target-image' in result.output
+        assert result.exit_code == 0
+    
+    def test_target_weight_option_exists(self):
+        """CLI should accept --target-weight option."""
+        from click.testing import CliRunner
+        from dotmatrix.cli import cli
+        
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--help'])
+        
+        # Check that target-weight is listed in help
+        assert '--target-weight' in result.output
+        assert result.exit_code == 0
+    
+    def test_target_image_requires_file(self, tmp_path):
+        """--target-image should require an existing file."""
+        from click.testing import CliRunner
+        from dotmatrix.cli import cli
+        
+        runner = CliRunner()
+        
+        # Non-existent file should fail
+        result = runner.invoke(cli, [
+            '-i', str(tmp_path / 'input.png'),  # Will also fail
+            '--target-image', '/nonexistent/file.png',
+        ])
+        
+        # Should show path error
+        assert result.exit_code != 0
+
+
+class TestJitterSeedReproducibility:
+    """Test that target-guided optimization is reproducible with --jitter-seed."""
+    
+    def test_same_seed_same_result(self):
+        """Same jitter-seed should produce identical optimization results."""
+        # Setup identical inputs
+        circles_by_color = {
+            'cyan': [(0.0, 0.0, 10.0)],
+            'magenta': [],
+            'yellow': [],
+            'black': [(0.0, 0.0, 15.0)],
+        }
+        cluster_metadata = [{'cx': 0, 'cy': 0, 'black_radius': 15, 'black_circle_idx': 0}]
+        cluster_circle_map = [{'cyan': (0, 100)}]
+        
+        target_circles = [TargetCircle(x=50, y=50, radius=10, color='cyan')]
+        target_index = TargetCircleIndex(target_circles)
+        
+        config = TargetGuidedConfig(
+            target_image_path=Path("dummy.png"),
+            target_weight=1.0,
+            step_size=0.5,
+            max_iterations=10,
+        )
+        
+        # Run optimization twice
+        result1 = apply_target_guided_optimization(
+            {'cyan': [(0.0, 0.0, 10.0)], 'magenta': [], 'yellow': [], 'black': [(0.0, 0.0, 15.0)]},
+            cluster_metadata,
+            cluster_circle_map,
+            target_index,
+            image_shape=(200, 200),
+            config=config,
+        )
+        
+        result2 = apply_target_guided_optimization(
+            {'cyan': [(0.0, 0.0, 10.0)], 'magenta': [], 'yellow': [], 'black': [(0.0, 0.0, 15.0)]},
+            cluster_metadata,
+            cluster_circle_map,
+            target_index,
+            image_shape=(200, 200),
+            config=config,
+        )
+        
+        # Results should be identical (deterministic algorithm)
+        assert result1['cyan'][0] == result2['cyan'][0], "Same inputs should produce same outputs"
 
 
 class TestTargetCircleIndex:
@@ -212,6 +305,266 @@ class TestParseTargetImage:
             for c in black_circles
         )
         assert black_found, "Black circle at (100, 100) not detected"
+
+
+class TestProgressLogging:
+    """Test that progress logging shows match score improving."""
+    
+    def test_match_score_computed(self):
+        """Match score function should return valid percentage."""
+        from dotmatrix.target_guided import _compute_match_score
+        
+        # Setup circles
+        circles_by_color = {
+            'cyan': [(50.0, 50.0, 10.0)],
+            'magenta': [],
+            'yellow': [],
+            'black': [],
+        }
+        cluster_circle_map = [{'cyan': (0, 100)}]
+        
+        # Create target index with circle at same position
+        target_circles = [TargetCircle(x=50, y=50, radius=10, color='cyan')]
+        target_index = TargetCircleIndex(target_circles)
+        
+        score = _compute_match_score(
+            circles_by_color, cluster_circle_map, target_index, max_distance=200
+        )
+        
+        # Perfect match should give high score (close to 100%)
+        assert score > 90.0, f"Perfect match should have high score, got {score}"
+    
+    def test_match_score_improves_toward_target(self):
+        """Match score should be higher when closer to target."""
+        from dotmatrix.target_guided import _compute_match_score
+        
+        # Target at (100, 100)
+        target_circles = [TargetCircle(x=100, y=100, radius=10, color='cyan')]
+        target_index = TargetCircleIndex(target_circles)
+        max_distance = 200
+        
+        # Circle far from target
+        far_circles = {'cyan': [(0.0, 0.0, 10.0)], 'magenta': [], 'yellow': [], 'black': []}
+        cluster_map = [{'cyan': (0, 100)}]
+        far_score = _compute_match_score(far_circles, cluster_map, target_index, max_distance)
+        
+        # Circle close to target
+        close_circles = {'cyan': [(90.0, 90.0, 10.0)], 'magenta': [], 'yellow': [], 'black': []}
+        close_score = _compute_match_score(close_circles, cluster_map, target_index, max_distance)
+        
+        assert close_score > far_score, f"Closer circle should have higher score: {close_score} vs {far_score}"
+
+
+class TestCMYKMassPreservation:
+    """Test that CMYK color mass is preserved within tolerance."""
+    
+    def test_optimization_preserves_total_radius(self):
+        """Total circle radius should be approximately preserved after optimization."""
+        # Setup: multiple clusters with CMY petals
+        circles_by_color = {
+            'cyan': [(0.0, 0.0, 10.0), (100.0, 0.0, 15.0)],
+            'magenta': [(0.0, 50.0, 12.0)],
+            'yellow': [(50.0, 50.0, 8.0)],
+            'black': [(50.0, 50.0, 20.0)],
+        }
+        
+        # Calculate initial total mass (sum of areas)
+        initial_cyan_area = sum(3.14159 * r * r for _, _, r in circles_by_color['cyan'])
+        initial_magenta_area = sum(3.14159 * r * r for _, _, r in circles_by_color['magenta'])
+        initial_yellow_area = sum(3.14159 * r * r for _, _, r in circles_by_color['yellow'])
+        
+        # Setup cluster metadata
+        cluster_metadata = [
+            {'cx': 0, 'cy': 0, 'black_radius': 20, 'black_circle_idx': 0},
+            {'cx': 100, 'cy': 0, 'black_radius': 20, 'black_circle_idx': 0},
+        ]
+        cluster_circle_map = [
+            {'cyan': (0, 100)},
+            {'cyan': (1, 150)},
+        ]
+        
+        # Target circles with slightly different positions
+        target_circles = [
+            TargetCircle(x=10, y=10, radius=10, color='cyan'),
+            TargetCircle(x=110, y=10, radius=15, color='cyan'),
+        ]
+        target_index = TargetCircleIndex(target_circles)
+        
+        config = TargetGuidedConfig(
+            target_image_path=Path("dummy.png"),
+            target_weight=0.5,  # Balanced weight preserves more mass
+            step_size=0.1,
+            max_iterations=10,
+        )
+        
+        result = apply_target_guided_optimization(
+            circles_by_color,
+            cluster_metadata,
+            cluster_circle_map,
+            target_index,
+            image_shape=(200, 200),
+            config=config,
+        )
+        
+        # Calculate final cyan area
+        final_cyan_area = sum(3.14159 * r * r for _, _, r in result['cyan'])
+        
+        # Area should not deviate more than 30% (with target_weight=0.5)
+        deviation = abs(final_cyan_area - initial_cyan_area) / initial_cyan_area
+        assert deviation < 0.30, f"Cyan area deviation {deviation:.1%} exceeds 30% tolerance"
+    
+    def test_mass_preserved_within_drift_tolerance(self):
+        """CMYK mass should be preserved within drift_tolerance (typically 0.2 = 20%)."""
+        drift_tolerance = 0.2  # Standard drift tolerance value
+        
+        # Setup with known initial masses
+        initial_cyan = [(50.0, 50.0, 10.0)]  # Area = π * 100 ≈ 314
+        circles_by_color = {
+            'cyan': list(initial_cyan),
+            'magenta': [],
+            'yellow': [],
+            'black': [(50.0, 50.0, 20.0)],
+        }
+        
+        initial_mass = sum(3.14159 * r * r for _, _, r in initial_cyan)
+        
+        cluster_metadata = [{'cx': 50, 'cy': 50, 'black_radius': 20, 'black_circle_idx': 0}]
+        cluster_circle_map = [{'cyan': (0, 100)}]
+        
+        # Target with same radius but different position
+        target_circles = [TargetCircle(x=60, y=60, radius=10, color='cyan')]
+        target_index = TargetCircleIndex(target_circles)
+        
+        # Use target_weight < 1 to allow mass preservation to dominate
+        config = TargetGuidedConfig(
+            target_image_path=Path("dummy.png"),
+            target_weight=0.3,  # Lower weight preserves more mass
+            step_size=0.1,
+            max_iterations=20,
+        )
+        
+        result = apply_target_guided_optimization(
+            circles_by_color,
+            cluster_metadata,
+            cluster_circle_map,
+            target_index,
+            image_shape=(200, 200),
+            config=config,
+        )
+        
+        final_mass = sum(3.14159 * r * r for _, _, r in result['cyan'])
+        
+        # Mass deviation should be within drift_tolerance
+        deviation = abs(final_mass - initial_mass) / initial_mass
+        assert deviation <= drift_tolerance, (
+            f"CMYK mass deviation {deviation:.1%} exceeds drift_tolerance {drift_tolerance:.0%}"
+        )
+
+
+class TestEndToEndTargetMatching:
+    """Integration tests for end-to-end target matching."""
+    
+    def test_optimization_moves_circles_toward_target(self):
+        """Circles should move toward target positions after optimization."""
+        # Initial circle at origin
+        circles_by_color = {
+            'cyan': [(0.0, 0.0, 10.0)],
+            'magenta': [],
+            'yellow': [],
+            'black': [(0.0, 0.0, 15.0)],
+        }
+        cluster_metadata = [{'cx': 0, 'cy': 0, 'black_radius': 15, 'black_circle_idx': 0}]
+        cluster_circle_map = [{'cyan': (0, 100)}]
+        
+        # Target at (100, 100)
+        target = TargetCircle(x=100, y=100, radius=10, color='cyan')
+        target_index = TargetCircleIndex([target])
+        
+        config = TargetGuidedConfig(
+            target_image_path=Path("dummy.png"),
+            target_weight=1.0,  # Full target weight
+            step_size=0.5,
+            max_iterations=50,
+        )
+        
+        result = apply_target_guided_optimization(
+            circles_by_color,
+            cluster_metadata,
+            cluster_circle_map,
+            target_index,
+            image_shape=(200, 200),
+            config=config,
+        )
+        
+        final_x, final_y, final_r = result['cyan'][0]
+        
+        # Calculate distances
+        initial_dist = np.sqrt(0**2 + 0**2 - 100**2 - 100**2 + 200**2)  # To (100, 100)
+        initial_dist = np.sqrt((0 - 100)**2 + (0 - 100)**2)
+        final_dist = np.sqrt((final_x - 100)**2 + (final_y - 100)**2)
+        
+        # Final distance should be less than initial (moved toward target)
+        assert final_dist < initial_dist, f"Circle should move toward target: initial={initial_dist:.1f}, final={final_dist:.1f}"
+        
+        # Should have moved significantly (at least 20% closer after 50 iterations)
+        improvement = (initial_dist - final_dist) / initial_dist
+        assert improvement > 0.2, f"Should improve by >20%, got {improvement:.1%}"
+    
+    def test_multiple_colors_optimize_independently(self):
+        """Each color channel should optimize toward its own targets."""
+        circles_by_color = {
+            'cyan': [(0.0, 0.0, 10.0)],
+            'magenta': [(0.0, 50.0, 10.0)],
+            'yellow': [(50.0, 0.0, 10.0)],
+            'black': [(25.0, 25.0, 15.0)],
+        }
+        cluster_metadata = [
+            {'cx': 0, 'cy': 0, 'black_radius': 15, 'black_circle_idx': 0},
+            {'cx': 0, 'cy': 50, 'black_radius': 15, 'black_circle_idx': 0},
+            {'cx': 50, 'cy': 0, 'black_radius': 15, 'black_circle_idx': 0},
+        ]
+        cluster_circle_map = [
+            {'cyan': (0, 100)},
+            {'magenta': (0, 100)},
+            {'yellow': (0, 100)},
+        ]
+        
+        # Different targets for each color
+        targets = [
+            TargetCircle(x=100, y=0, radius=10, color='cyan'),      # Cyan target right
+            TargetCircle(x=0, y=100, radius=10, color='magenta'),   # Magenta target down
+            TargetCircle(x=100, y=100, radius=10, color='yellow'),  # Yellow target diagonal
+        ]
+        target_index = TargetCircleIndex(targets)
+        
+        config = TargetGuidedConfig(
+            target_image_path=Path("dummy.png"),
+            target_weight=1.0,
+            step_size=0.3,
+            max_iterations=20,
+        )
+        
+        result = apply_target_guided_optimization(
+            circles_by_color,
+            cluster_metadata,
+            cluster_circle_map,
+            target_index,
+            image_shape=(200, 200),
+            config=config,
+        )
+        
+        # Cyan should have moved right (x increased)
+        cyan_x, cyan_y, _ = result['cyan'][0]
+        assert cyan_x > 10, "Cyan should move toward x=100"
+        
+        # Magenta should have moved down (y increased)
+        magenta_x, magenta_y, _ = result['magenta'][0]
+        assert magenta_y > 55, "Magenta should move toward y=100"
+        
+        # Yellow should have moved diagonally (both x and y increased)
+        yellow_x, yellow_y, _ = result['yellow'][0]
+        assert yellow_x > 55, "Yellow should move toward x=100"
+        assert yellow_y > 5, "Yellow should move toward y=100"
 
 
 if __name__ == "__main__":

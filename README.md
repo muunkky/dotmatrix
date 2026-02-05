@@ -4,19 +4,21 @@
 
 DotMatrix is a Python command-line tool that detects circles in images and outputs their center coordinates, radius, and color. It handles overlapping and occluded circles using advanced computer vision techniques.
 
+> **Documentation**: [docs/README.md](docs/README.md) | **Contributing**: [DEVELOPMENT.md](docs/DEVELOPMENT.md) | **Architecture**: [Architectural Guidelines](docs/architectural-guidelines.md)
+
 ## Features
 
-- 🎯 **Accurate circle detection** using Hough Circle Transform
-- 🎨 **Color extraction** for each detected circle (RGB/CMYK)
-- 📊 **Multiple output formats**: JSON and CSV
-- 🖼️ **PNG extraction**: Generate separate images by color with transparent backgrounds
-- 🔄 **Handles overlapping circles** with convex edge detection (best-in-class for CMYK/halftone)
-- ⚡ **GPU acceleration** via CUDA/CuPy for 5-20x faster rendering
-- 🖨️ **CMYK cluster rendering**: Reconstitute images from detected halftone patterns
-- 🎛️ **Multiple render methods**: flower, bullseye, block, treemap, exact
-- 📐 **Sliding window processing**: Handle images >20 megapixels efficiently
-- 🚀 **Fast processing** with optimized algorithms
-- 📝 **Simple command-line interface** with mode presets
+- **Accurate circle detection** using Hough Circle Transform
+- **Color extraction** for each detected circle (RGB/CMYK)
+- **Multiple output formats**: JSON and CSV
+- **PNG extraction**: Generate separate images by color with transparent backgrounds
+- **Handles overlapping circles** with convex edge detection (best-in-class for CMYK/halftone)
+- **GPU acceleration** via CUDA/CuPy for 5-20x faster rendering
+- **CMYK cluster rendering**: Reconstitute images from detected halftone patterns
+- **Multiple render methods**: flower, planetary, bullseye, block, treemap, exact
+- **Sliding window processing**: Handle images >20 megapixels efficiently
+- **Fast processing** with optimized algorithms
+- **Simple command-line interface** with mode presets
 
 ## Installation
 
@@ -116,7 +118,7 @@ Output Options:
   --output-dir PATH       Output directory for extracted files (default: output/)
   --no-extract            JSON output only (no file extraction)
   --reconstitute          Generate reconstituted image from clusters
-  --render-method [bullseye|block|treemap|exact|flower|cmyk-blend]  Rendering style
+  --render-method [bullseye|block|treemap|exact|flower|planetary|cmyk-blend]  Rendering style
   --render-scale INTEGER  Output scale multiplier (default: 1)
 
 GPU Options:
@@ -214,6 +216,71 @@ dotmatrix --input image.png --min-distance 30 --min-radius 15
 - Useful for grid patterns or well-spaced circles
 - Default of 20px works well for most images
 
+### Edge Detection Preprocessing (M2: Overlapping Circles)
+
+Enhance circle detection accuracy on overlapping circles using Canny edge detection:
+
+```bash
+# Enable edge detection with defaults (canny_low=50, canny_high=150)
+dotmatrix --input halftone.png --edge-detection
+
+# Tune thresholds for noisier images (lower values detect weaker edges)
+dotmatrix --input halftone.png --edge-detection --canny-low 30 --canny-high 100
+
+# Tune thresholds for cleaner images (higher values reduce false positives)
+dotmatrix --input halftone.png --edge-detection --canny-low 70 --canny-high 200
+
+# Add adaptive thresholding for uneven lighting (halftone printing artifacts)
+dotmatrix --input halftone.png --edge-detection --adaptive-threshold
+
+# Combine with other detection options
+dotmatrix --input halftone.png --edge-detection --sensitivity relaxed --min-radius 20
+
+# Debug mode: see edge detection statistics
+dotmatrix --input halftone.png --edge-detection --debug
+```
+
+**About Edge Detection:**
+- **Algorithm**: Canny edge detection with L2 gradient and hysteresis thresholding
+- **Use case**: Overlapping circles in CMYK halftone patterns (M2 milestone)
+- **Performance**: 12-15% overhead (well under 20% target)
+- **Accuracy**: Reduces false positive rate from 22% → 8.5% on test dataset
+- **When enabled**: Preprocesses image before Hough Circle Transform
+
+**Threshold Parameters:**
+- `--canny-low`: Low threshold for hysteresis (default: 50)
+  - Weak edges with gradient > low threshold kept if connected to strong edges
+  - Lower values → detect weaker edges (more noise, more circles)
+- `--canny-high`: High threshold for hysteresis (default: 150)
+  - Strong edges with gradient > high threshold always kept
+  - Higher values → stricter edge detection (fewer false positives)
+
+**Adaptive Thresholding:**
+- `--adaptive-threshold`: Enable local adaptive thresholding (Gaussian method)
+  - Compensates for uneven lighting across image
+  - Uses 11-pixel block size to adapt to local conditions
+  - Useful for halftone printing artifacts with varying ink density
+
+**When to Use:**
+- **Use edge-detection** for overlapping circles in halftone patterns
+- **Use edge-detection** when standard detection has high false positive rate
+- **Use adaptive-threshold** for images with uneven lighting/shadows
+- **Lower thresholds** for noisy or low-contrast images
+- **Raise thresholds** for clean, high-contrast images
+- **Skip edge-detection** for well-separated circles (unnecessary overhead)
+- **Skip edge-detection** for very blurry/low-contrast images (poor edge quality)
+
+**Example Results (50 overlapping circles):**
+```bash
+$ dotmatrix --input overlapping_halftone.png --edge-detection --verbose
+# Before: 22% false positive rate, 18% false negative rate
+# After: 8.5% false positive rate, 12% false negative rate
+# Performance overhead: +14.2% runtime
+```
+
+**Algorithm Details:**
+See [ADR-008: Edge Detection Algorithm](docs/adr/ADR-008-edge-detection-algorithm.md) for technical rationale, alternatives considered, and validation results.
+
 ### Convex Edge Detection (Best for Overlapping Circles)
 
 For images with heavily overlapping circles (like CMYK halftones), use convex edge detection:
@@ -248,11 +315,11 @@ dotmatrix --input image.png --convex-edge --palette cmyk --quantize-output debug
 - `rgb`: White, Black, Red, Green, Blue
 
 **When to Use:**
-- ✅ **Use convex-edge** for CMYK halftone patterns with overlapping circles
-- ✅ **Use convex-edge** when standard detection misses circles due to heavy overlap
-- ✅ **Use convex-edge** when you know the exact colors in your image
-- ❌ **Use standard detection** for well-separated circles
-- ❌ **Use standard detection** when colors are unknown/varied
+- **Use convex-edge** for CMYK halftone patterns with overlapping circles
+- **Use convex-edge** when standard detection misses circles due to heavy overlap
+- **Use convex-edge** when you know the exact colors in your image
+- **Use standard detection** for well-separated circles
+- **Use standard detection** when colors are unknown/varied
 
 **Example (16 overlapping CMYK circles):**
 ```bash
@@ -288,10 +355,10 @@ Detected palette: ~black, ~cyan, ~magenta, ~yellow, RGB(255,120,60), RGB(80,200,
 - Works with chunked processing for large images
 
 **When to Use:**
-- ✅ **Use auto-palette** when you don't know the exact colors in the image
-- ✅ **Use auto-palette** for images with non-standard color palettes
-- ✅ **Use auto-palette** to discover what colors are actually present
-- ❌ **Use preset palettes** when you know the exact colors (faster)
+- **Use auto-palette** when you don't know the exact colors in the image
+- **Use auto-palette** for images with non-standard color palettes
+- **Use auto-palette** to discover what colors are actually present
+- **Use preset palettes** when you know the exact colors (faster)
 
 ### Chunked Processing for Large Images
 
@@ -346,10 +413,10 @@ Auto-optimized window size: 2000px (based on VRAM)
 ```
 
 **When to Use GPU:**
-- ✅ Large images (>10 megapixels)
-- ✅ Flower renderer with blend overlaps
-- ✅ Batch processing multiple images
-- ❌ Small images (<1 megapixel) - CPU is fast enough
+- Large images (>10 megapixels)
+- Flower renderer with blend overlaps
+- Batch processing multiple images
+- Small images (<1 megapixel) - CPU is fast enough
 
 **Requirements:**
 - NVIDIA GPU with CUDA support
@@ -382,7 +449,8 @@ dotmatrix --input image.png -m halftone --reconstitute --render-method flower --
 | Method | Description | Best For |
 |--------|-------------|----------|
 | `bullseye` | Concentric circles | Quick visualization |
-| `flower` | Black center with CMY petals | Best visual quality |
+| `flower` | Black center with CMY petals overlapping | Best visual quality |
+| `planetary` | Black center with CMY moons tangent | Clean color separation |
 | `block` | Stacked horizontal bars | 100% pixel accuracy |
 | `treemap` | Proportional rectangles | Compact visualization |
 | `exact` | Pixel-accurate strips | Measurement verification |
@@ -402,7 +470,138 @@ dotmatrix -m halftone --reconstitute --render-method flower --petal-rotation clu
 dotmatrix -m halftone --reconstitute --render-method flower --blend-overlaps
 ```
 
+**Planetary Renderer Options:**
+
+Like flower, but CMY dots are positioned tangent to the black surface (like moons orbiting a planet) instead of overlapping:
+
+```bash
+# Basic planetary rendering
+dotmatrix -m halftone --reconstitute --render-method planetary
+
+# With rotation and jitter (same options as flower)
+dotmatrix -m halftone --reconstitute --render-method planetary --petal-rotation random --jitter-position 20
+
+# SVG output (default)
+dotmatrix -m halftone --reconstitute --render-method planetary --output-format svg
+
+# PNG output
+dotmatrix -m halftone --reconstitute --render-method planetary --output-format png
+```
+
+**Jitter/Randomization Options:**
+
+Add controlled randomization to break up grid patterns and create more organic results:
+
+```bash
+# Add position jitter (25% of radius)
+dotmatrix -m halftone --reconstitute --render-method flower --jitter-position 25
+
+# Add size jitter (20% variation)
+dotmatrix -m halftone --reconstitute --render-method flower --jitter-size 20
+
+# Combine position and size jitter
+dotmatrix -m halftone --reconstitute --render-method flower --jitter-position 25 --jitter-size 20
+
+# Use reproducible jitter with seed
+dotmatrix -m halftone --reconstitute --render-method flower --jitter-position 25 --jitter-seed 42
+
+# Choose jitter algorithm (gaussian = more natural, uniform = strict range)
+dotmatrix -m halftone --reconstitute --render-method flower --jitter-position 25 --jitter-algorithm gaussian
+```
+
+**About Jitter:**
+- `--jitter-position N`: Percentage of radius for position offset (0-100)
+- `--jitter-size N`: Percentage of radius for size variation (0-100)
+- `--jitter-seed N`: Random seed for reproducible results
+- `--jitter-algorithm`: `gaussian` (recommended) or `uniform`
+- Gaussian uses 3-sigma rule: 99.7% of values within specified range
+- See [ADR-002](docs/adr/ADR-002-jitter-randomization-strategy.md) for details
+
+**Drift-Balanced Jitter (Color-Preserving):**
+
+Drift correction adjusts circle sizes after jitter to maintain accurate CMYK color reproduction. Without drift, jitter can cause color imbalance. With drift, circles are iteratively resized to compensate.
+
+```bash
+# Enable drift-balanced jitter (recommended for accurate color)
+dotmatrix --reconstitute --render-method flower --jitter-position 25 --drift --output-format svg
+
+# Customize drift parameters
+dotmatrix --reconstitute --render-method flower --jitter-position 25 --drift \
+  --drift-tolerance 0.2 --drift-max-iterations 10 --drift-max-step 2.0
+
+# Multi-step jitter-drift pipeline (compound multiple iterations)
+dotmatrix --reconstitute --render-method flower --jitter-position 25 --drift \
+  --jitter-steps 5 --jitter-seed 42
+```
+
+**About Drift:**
+- `--drift`: Enable drift-balanced jitter (size compensation after position jitter)
+- `--drift-tolerance N`: Acceptable color deviation threshold (0.0-1.0, default: 0.2)
+- `--drift-max-iterations N`: Max adjustment iterations per step (default: 10)
+- `--drift-max-step N`: Maximum size adjustment per iteration (default: 2.0)
+- `--jitter-steps N`: Number of jitter-drift cycles to apply (default: 1)
+  - Each step applies jitter then drift correction
+  - Seed increments per step (seed+0, seed+1, seed+2...) for variety
+  - More steps = more organic randomization while preserving colors
+
+**Centroid-Guided Position Drift (Color Accuracy):**
+
+Move petals toward the centroid of their color's pixels in the source image. This replaces random position jitter with **intelligent position optimization** that improves color coverage accuracy.
+
+```bash
+# Enable centroid-guided position drift (requires --drift)
+dotmatrix --reconstitute --render-method flower --drift \
+  --centroid-drift --jitter-size 20
+
+# Adjust step size (0.0=no movement, 1.0=full movement to centroid)
+dotmatrix --reconstitute --render-method flower --drift \
+  --centroid-drift --centroid-step 0.3 --jitter-size 20
+
+# Combine with multiple jitter-drift cycles
+dotmatrix --reconstitute --render-method flower --drift \
+  --centroid-drift --jitter-steps 3 --jitter-seed 42
+```
+
+**About Centroid Drift:**
+- `--centroid-drift`: Enable centroid-guided position movement (replaces random position jitter)
+- `--centroid-step N`: Fraction of distance to move toward centroid (0.0-1.0, default: 0.5)
+  - Higher values move petals more aggressively toward color centroids
+  - Lower values provide more gradual, conservative movement
+- Works alongside random size jitter (organic variation preserved)
+- Improves color accuracy by positioning petals over their color's pixels
+- **Use case:** Maximizing color fidelity when recreating the source image
+
+**Target-Guided Style Transfer (Experimental):**
+
+Guide dots toward matching a reference halftone's dot pattern. This is for **style transfer** - making one image's halftone look like another image's halftone pattern.
+
+> **Note:** This is different from improving color coverage of the source image. For better color accuracy, use `--centroid-drift`. Target-guided is for artistic style transfer between halftone images.
+
+```bash
+# Basic target-guided optimization (requires --drift)
+dotmatrix --reconstitute --render-method flower --drift \
+  --target-image reference_halftone.png
+
+# Adjust target weight (0.0=pure drift, 1.0=pure target matching, default: 0.5)
+dotmatrix --reconstitute --render-method flower --drift \
+  --target-image reference_halftone.png --target-weight 0.8
+
+# Multi-pass optimization with target
+dotmatrix --reconstitute --render-method flower --drift \
+  --target-image reference_halftone.png --jitter-steps 5 --jitter-seed 42
+```
+
+**About Target-Guided Style Transfer:**
+- `--target-image PATH`: Reference halftone PNG whose dot pattern you want to mimic
+- `--target-weight N`: Balance between target pattern matching and color accuracy (0.0-1.0, default: 0.5)
+  - Higher values prioritize matching the reference pattern
+  - Lower values prioritize color accuracy while still moving toward reference
+- Uses K-D tree for efficient O(log n) nearest-neighbor matching per color channel
+- Requires `--drift` to be enabled (combines with drift balancing)
+- **Use case:** Making multiple images share a similar halftone style, or mimicking a specific halftone aesthetic
+
 ### Edge-Based Color Sampling
+
 
 For images with overlapping circles, use edge sampling to get more accurate colors:
 
@@ -426,10 +625,10 @@ dotmatrix --input image.png --extract output_dir/ --edge-sampling
 - **Recommended for:** Layered/3D dot matrix patterns with overlapping circles
 
 **When to Use:**
-- ✅ **Use edge sampling** when circles overlap or layer over each other
-- ✅ **Use edge sampling** when colors appear incorrect due to averaging
-- ❌ **Use area sampling** (default) for non-overlapping circles
-- ❌ **Use area sampling** for simple, well-separated dot patterns
+- **Use edge sampling** when circles overlap or layer over each other
+- **Use edge sampling** when colors appear incorrect due to averaging
+- **Use area sampling** (default) for non-overlapping circles
+- **Use area sampling** for simple, well-separated dot patterns
 
 **Example:**
 Without edge sampling, a blue circle under a black circle appears gray/dark.
@@ -720,14 +919,18 @@ dotmatrix/
 │       ├── runs.py             # Run discovery and management
 │       └── config_loader.py    # Configuration save/load
 │
-├── docs/
+├── docs/                       # Documentation hub
+│   ├── README.md               # Documentation index (start here!)
+│   ├── DEVELOPMENT.md          # Developer setup & onboarding
+│   ├── OPTIMAL_USAGE.md        # Usage tips for best results
+│   ├── architectural-guidelines.md  # Coding principles & patterns
 │   ├── adr/                    # Architecture Decision Records
-│   │   ├── ADR-001-large-file-processing.md
-│   │   ├── ADR-002-cli-ux-refactoring.md
-│   │   └── ADR-003-block-renderer.md
-│   └── architecture/
-│       ├── color-pipeline.md   # BGR convention documentation
-│       └── pipeline-overview.md # Full architecture overview
+│   │   ├── README.md           # ADR index
+│   │   └── ADR-00*.md          # Individual decisions (11 ADRs)
+│   └── architecture/           # Technical deep-dives
+│       ├── color-pipeline.md   # BGR convention, color processing
+│       ├── pipeline-overview.md # Full system data flow
+│       └── rendering-architecture.md # Renderer patterns
 │
 ├── tests/
 │   ├── data/                   # Test images and ground truth
@@ -739,18 +942,18 @@ dotmatrix/
 └── README.md
 ```
 
-For detailed architecture documentation, see [Pipeline Overview](docs/architecture/pipeline-overview.md).
+For detailed architecture documentation, see the [Documentation Index](docs/README.md).
 
 ## Roadmap
 
-### v0.1.0 - MVP ✅
+### v0.1.0 - MVP - COMPLETE
 - [x] Basic project structure
 - [x] Hough Circle Transform detection
 - [x] Color extraction
 - [x] JSON/CSV output
 - [x] Unit tests
 
-### v0.2.0 - Overlapping Circles ✅
+### v0.2.0 - Overlapping Circles - COMPLETE
 - [x] Convex edge detection for overlapping circles
 - [x] Color palette quantization (CMYK, RGB, custom)
 - [x] Per-color circle detection with convexity analysis
@@ -761,7 +964,7 @@ For detailed architecture documentation, see [Pipeline Overview](docs/architectu
 ### v0.3.0 - GPU & Cluster Rendering (Current)
 - [x] GPU acceleration via CuPy/CUDA
 - [x] Cluster pixel counting with KDTree
-- [x] Multiple render methods (flower, bullseye, block, treemap)
+- [x] Multiple render methods (flower, planetary, bullseye, block, treemap)
 - [x] Sliding window for large images
 - [x] Cluster caching for fast render iteration
 - [x] Mode presets (standard, halftone, cmyk-sep)
@@ -848,6 +1051,68 @@ Typical memory consumption:
 - **25 megapixels** (5000×5000): ~125-500 MB depending on method
 
 For detailed performance analysis, see [ADR-001: Large File Processing](docs/adr/ADR-001-large-file-processing.md).
+
+## Logging and Debugging
+
+DotMatrix includes a comprehensive logging system for debugging and performance analysis.
+
+### Basic Logging
+
+By default, DotMatrix shows INFO-level messages on the console and writes DEBUG-level logs to `log/dotmatrix.log`:
+
+```bash
+# Normal operation (INFO+ on console)
+dotmatrix -i image.png
+
+# Verbose mode (DEBUG on console)
+dotmatrix -i image.png --verbose
+
+# Debug mode (includes additional debug output)
+dotmatrix -i image.png --debug
+```
+
+### Log Files
+
+Logs are automatically written to `log/dotmatrix.log` with:
+- **Rotation**: 10MB max file size
+- **Retention**: 5 backup files (50MB total)
+- **Format**: Human-readable with timestamps
+- **Level**: DEBUG (all operations logged)
+
+Example log output:
+```
+2026-01-05 14:23:15 - dotmatrix.cli - INFO - Starting circle detection
+2026-01-05 14:23:15 - dotmatrix.cluster_pixel_counter - DEBUG - [GPU] GPU available: True
+2026-01-05 14:23:16 - dotmatrix.cluster_pixel_counter - DEBUG - [GPU] Found 1250 centers in 0.245s
+2026-01-05 14:23:18 - dotmatrix.cli - INFO - Performance: circle_detection {"operation": "circle_detection", "duration_ms": 2456.78}
+```
+
+### Performance Metrics
+
+With `--verbose` or `--debug`, DotMatrix logs performance metrics for key operations:
+- **Circle detection**: Total time and circles found
+- **GPU operations**: Acceleration status and timing
+- **Cluster counting**: CMYK pixel counting performance
+- **Rendering**: Flower/block renderer progress
+
+These metrics help identify bottlenecks and optimize processing.
+
+### Troubleshooting
+
+**Enable debug logging:**
+```bash
+dotmatrix -i image.png --debug --verbose > output.json 2> debug.log
+```
+
+**Common debug scenarios:**
+- **No circles detected**: Check `--min-radius` and `--max-radius` settings
+- **Too many false positives**: Increase `--min-confidence` or use `--sensitivity strict`
+- **Slow performance**: Check logs for GPU status, consider `--gpu` or chunking
+- **Memory issues**: Use `--chunk-size` for large images
+
+**Log location:** `log/dotmatrix.log` (relative to working directory)
+
+For architectural details, see [ADR-007: Logging Architecture](docs/adr/ADR-007-logging-architecture.md).
 
 ## Contributing
 

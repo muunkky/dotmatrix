@@ -2,14 +2,14 @@
 
 ```mermaid
 flowchart TD
-    subgraph Input["📥 Input Layer"]
+    subgraph Input["Input Layer"]
         CLI["cli.py<br/>Entry Point"]
         ConfigL["config_loader.py<br/>JSON/YAML Config"]
         ConfigP["config.py<br/>Settings"]
         ImageL["image_loader.py<br/>cv2.imread → BGR"]
     end
     
-    subgraph Detection["🔍 Detection Layer"]
+    subgraph Detection["Detection Layer"]
         CircleD["circle_detector.py<br/>Hough Transform"]
         ConvexD["convex_detector.py<br/>CMYK Separation"]
         ColorPal["color_palette_detector.py<br/>Palette Detection"]
@@ -17,7 +17,7 @@ flowchart TD
         HistC["histogram_colors.py<br/>Histogram Analysis"]
     end
     
-    subgraph Color["🎨 Color Processing"]
+    subgraph Color["Color Processing"]
         ColorExt["color_extractor.py<br/>Extract from Circles"]
         ColorClust["color_clustering.py<br/>Group Similar Colors"]
         BlackV["black_verification.py<br/>Detection QA"]
@@ -26,24 +26,24 @@ flowchart TD
         FitM["fit_metric.py<br/>Fit Quality"]
     end
     
-    subgraph Cluster["📊 Cluster Processing"]
+    subgraph Cluster["Cluster Processing"]
         ClusterPC["cluster_pixel_counter.py<br/>KDTree Assignment"]
         SlidingW["sliding_window.py<br/>Large Image Tiles"]
     end
     
-    subgraph GPU["⚡ GPU Acceleration"]
+    subgraph GPU["GPU Acceleration"]
         GPUCore["gpu.py<br/>CuPy/CUDA Setup"]
         GPURend["gpu_renderer.py<br/>Parallel Rendering"]
     end
     
-    subgraph Render["🖼️ Rendering Layer"]
+    subgraph Render["Rendering Layer"]
         CircleR["circle_renderer.py<br/>Flower Pattern"]
         ClusterR["cluster_renderer.py<br/>Bullseye Pattern"]
         BlockR["block_renderer.py<br/>Stacked Bars"]
         TreemapR["treemap_renderer.py<br/>Proportional Rects"]
     end
     
-    subgraph Output["📤 Output Layer"]
+    subgraph Output["Output Layer"]
         Formatter["formatter.py<br/>JSON/CSV"]
         ImageExt["image_extractor.py<br/>PNG Export"]
         Manifest["manifest.py<br/>Run Metadata"]

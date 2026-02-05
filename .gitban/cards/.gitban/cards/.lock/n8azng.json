@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "n8azng",
+  "created_at": "2026-01-05T20:37:50.677523+00:00",
+  "template_name": "spike-user-validation",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "validate-jitter-aesthetic-with-design-team",
+    "priority": "P2",
+    "status": "backlog",
+    "type": "spike",
+    "sprint": "V2IDEAS",
+    "filename": "V2IDEAS-backlog-P2-spike-validate-jitter-aesthetic-with-design-team-n8azng.md"
+  }
+}

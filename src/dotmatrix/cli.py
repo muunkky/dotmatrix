@@ -1,5 +1,6 @@
 """Command-line interface for DotMatrix."""
 
+import os
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 from pathlib import Path
@@ -8,6 +9,7 @@ import cv2
 
 from . import __version__
 from .config_loader import load_config, merge_config_with_cli_args, validate_config
+from .logger import setup_logging, get_logger
 
 
 # Create the main CLI group
@@ -39,7 +41,12 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
 @click.option(
     '--debug',
     is_flag=True,
-    help='Enable debug output'
+    help='Enable debug output and logging'
+)
+@click.option(
+    '--verbose', '-v',
+    is_flag=True,
+    help='Enable verbose console output (shows DEBUG level logs)'
 )
 @click.option(
     '--mode', '-m',
@@ -242,10 +249,15 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     help='Generate reconstituted image from detected clusters (default: enabled)'
 )
 @optgroup.option(
+    '--output-svg',
+    is_flag=True,
+    help='Generate SVG output in addition to PNG (only with --reconstitute)'
+)
+@optgroup.option(
     '--render-method',
-    type=click.Choice(['bullseye', 'block', 'treemap', 'exact', 'flower', 'cmyk-blend'], case_sensitive=False),
+    type=click.Choice(['bullseye', 'block', 'treemap', 'exact', 'flower', 'planetary', 'cmyk-blend'], case_sensitive=False),
     default='bullseye',
-    help='Reconstitution method: bullseye (circles), block (stacked bars), treemap (proportional rectangles), exact (pixel-accurate strips), flower (black center with CMY petals), cmyk-blend (subtractive color mixing)'
+    help='Reconstitution method: bullseye (circles), block (stacked bars), treemap (proportional rectangles), exact (pixel-accurate strips), flower (black center with CMY petals overlapping), planetary (black center with CMY moons tangent), cmyk-blend (subtractive color mixing)'
 )
 @optgroup.option(
     '--segment-height',
@@ -315,6 +327,98 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=click.Path(path_type=Path),
     help='Save settings to config file'
 )
+# Jitter/Randomization Options (V2 Feature)
+@optgroup.group('Jitter/Randomization', help='Break up grid patterns with controlled randomization')
+@optgroup.option(
+    '--jitter-position',
+    type=int,
+    default=0,
+    help='Position jitter strength as percentage of circle radius (default: 0=disabled). Recommended: 25 for moderate randomization, 50+ for extreme effects'
+)
+@optgroup.option(
+    '--jitter-size',
+    type=int,
+    default=0,
+    help='Size jitter strength as percentage of circle radius (default: 0=disabled). Recommended: 20 for subtle variation, 50+ for extreme effects'
+)
+@optgroup.option(
+    '--jitter-seed',
+    type=int,
+    default=1,
+    help='Random seed for reproducible jitter (default: 1). Use different seeds for varied randomization'
+)
+@optgroup.option(
+    '--jitter-algorithm',
+    type=click.Choice(['gaussian', 'uniform'], case_sensitive=False),
+    default='gaussian',
+    help='Jitter distribution algorithm: gaussian (default, natural) or uniform (even distribution)'
+)
+@optgroup.option(
+    '--jitter-exclude',
+    type=str,
+    default='',
+    help='Colors to exclude from jitter (c=cyan, m=magenta, y=yellow, k=black). Example: "ck" excludes cyan and black'
+)
+@optgroup.option(
+    '--drift',
+    is_flag=True,
+    default=False,
+    help='Enable drift-balanced jitter: compensates size to maintain cluster color balance (requires jitter enabled)'
+)
+@optgroup.option(
+    '--drift-tolerance',
+    type=float,
+    default=0.2,
+    help='Drift balance tolerance (0.0-1.0, default: 0.2). Lower values enforce stricter color balance'
+)
+@optgroup.option(
+    '--drift-max-iterations',
+    type=int,
+    default=10,
+    help='Maximum drift correction iterations (default: 10)'
+)
+@optgroup.option(
+    '--drift-max-step',
+    type=float,
+    default=2.0,
+    help='Maximum size adjustment per iteration (default: 2.0 = 2x growth/shrink)'
+)
+@optgroup.option(
+    '--jitter-steps',
+    type=int,
+    default=1,
+    help='Number of jitter-drift iterations (default: 1). Each step applies jitter then drift-correction, accumulating effects. Higher values create more organic randomization. Seed increments per step for variety.'
+)
+@optgroup.option(
+    '--target-image',
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help='[Style Transfer] Reference halftone PNG whose dot pattern to mimic. Dots will move toward matching the reference pattern. Use for artistic style transfer between halftones, NOT for improving color accuracy. Requires --drift.'
+)
+@optgroup.option(
+    '--target-weight',
+    type=float,
+    default=0.5,
+    help='[Style Transfer] Pattern matching strength (0.0-1.0, default: 0.5). 0.0=ignore reference pattern, 1.0=prioritize pattern matching over color accuracy.'
+)
+@optgroup.option(
+    '--centroid-drift',
+    is_flag=True,
+    default=False,
+    help='[Color Accuracy] Enable centroid-guided position drift: moves petals toward the centroid of their color pixels in source image. Improves color coverage accuracy. Requires --drift and source image access.'
+)
+@optgroup.option(
+    '--centroid-step',
+    type=float,
+    default=0.5,
+    help='[Color Accuracy] Centroid drift step size (0.0-1.0, default: 0.5). Fraction of distance to move toward centroid per iteration.'
+)
+@optgroup.option(
+    '--output-format',
+    type=click.Choice(['svg', 'png'], case_sensitive=False),
+    default='svg',
+    help='Output format for flower rendering: svg (default, vector) or png (pixel-based)'
+)
 # Performance Options
 @optgroup.group('Performance', help='Processing performance settings')
 @optgroup.option(
@@ -380,7 +484,7 @@ from .config_loader import load_config, merge_config_with_cli_args, validate_con
     type=click.Path(exists=True, path_type=Path),
     help='Load clusters from specific path (default: auto-load from output dir if valid)'
 )
-def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, edge_detection, canny_low, canny_high, adaptive_threshold, auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters):
+def cli(ctx, config, input, output, format, debug, verbose, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, output_svg, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, jitter_position, jitter_size, jitter_seed, jitter_algorithm, jitter_exclude, drift, drift_tolerance, drift_max_iterations, drift_max_step, jitter_steps, target_image, target_weight, centroid_drift, centroid_step, output_format, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, edge_detection, canny_low, canny_high, adaptive_threshold, auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters):
     """DotMatrix: Detect circles in images.
 
     Identifies the center coordinates, radius, and color of circles in images,
@@ -409,19 +513,108 @@ def cli(ctx, config, input, output, format, debug, output_dir, no_extract, mode,
 
     Use 'dotmatrix runs list' to view past detection runs.
     """
+    # Setup logging system
+    log_file = Path("log/dotmatrix.log")
+    setup_logging(
+        log_file=str(log_file),
+        verbose=verbose,
+        debug=debug
+    )
+    logger = get_logger(__name__)
+    
+    if debug:
+        logger.debug("Debug mode enabled")
+    if verbose:
+        logger.debug("Verbose mode enabled")
+    
     # If no subcommand invoked, run detect (for backward compatibility)
     if ctx.invoked_subcommand is None:
-        _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius,
+        _do_detect(config, input, output, format, debug, verbose, output_dir, no_extract, mode, min_radius, max_radius,
                    min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance,
                    edge_sampling, edge_samples, edge_method, exclude_background, use_histogram,
                    color_separation, convex_edge, palette, num_colors, quantize_output, run_name,
-                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, edge_detection, canny_low, canny_high, adaptive_threshold,
+                   no_organize, save_config, no_manifest, no_composite, no_diff, cluster_count, cluster_anchor, debug_clusters, reconstitute, render_method, segment_height, cluster_size, render_scale, color_mode, diff_mode, petal_rotation, petal_offset, petal_distance, exposed_area_sizing, blend_overlaps, jitter_position, jitter_size, jitter_seed, jitter_algorithm, jitter_exclude, drift, drift_tolerance, drift_max_iterations, drift_max_step, jitter_steps, target_image, target_weight, centroid_drift, centroid_step, output_format, chunk_size, sliding_window, window_size, gpu, sensitive_occlusion, morph_enhance, edge_detection, canny_low, canny_high, adaptive_threshold,
                    auto_calibrate, calibrate_from, no_verify_black, verify_abort, no_cache, save_clusters, load_clusters)
 
 
 # ============================================================================
 # Helper functions for _do_detect (extracted for readability)
 # ============================================================================
+
+def _build_descriptive_run_name(run_name, render_method, jitter_position, jitter_size, jitter_seed, output_format, render_scale):
+    """Build a descriptive run name including render parameters.
+    
+    If run_name is explicitly provided, use it as-is.
+    Otherwise, build a name from: method_format_scale_jitter-params
+    
+    Examples:
+        flower_svg_s2_jitter-p50-s30_seed42
+        flower_png_s4_jitter-p150-s100_seed123
+        bullseye_svg_s2
+    """
+    if run_name:
+        return run_name
+    
+    parts = []
+    
+    # Render method
+    if render_method:
+        parts.append(render_method.lower())
+    
+    # Output format
+    parts.append(output_format.lower())
+    
+    # Scale if not default
+    if render_scale != 1:
+        parts.append(f"s{render_scale}")
+    
+    # Jitter parameters (if enabled)
+    if jitter_position > 0 or jitter_size > 0:
+        jitter_parts = []
+        if jitter_position > 0:
+            jitter_parts.append(f"p{jitter_position}")
+        if jitter_size > 0:
+            jitter_parts.append(f"s{jitter_size}")
+        jitter_str = "-".join(jitter_parts)
+        parts.append(f"jitter-{jitter_str}")
+        
+        # Add seed if specified
+        if jitter_seed is not None:
+            parts.append(f"seed{jitter_seed}")
+    
+    return "_".join(parts) if parts else None
+
+
+def _build_output_filename(base_name, render_method, jitter_position, jitter_size, jitter_seed, render_scale, extension):
+    """Build descriptive output filename.
+    
+    Examples:
+        reconstituted_flower_s2_jitter-p50-s30_seed42.svg
+        reconstituted_flower_s4_jitter-p150-s100.png
+    """
+    parts = [base_name]
+    
+    if render_method:
+        parts.append(render_method.lower())
+    
+    if render_scale != 1:
+        parts.append(f"s{render_scale}")
+    
+    if jitter_position > 0 or jitter_size > 0:
+        jitter_parts = []
+        if jitter_position > 0:
+            jitter_parts.append(f"p{jitter_position}")
+        if jitter_size > 0:
+            jitter_parts.append(f"s{jitter_size}")
+        jitter_str = "-".join(jitter_parts)
+        parts.append(f"jitter-{jitter_str}")
+        
+        if jitter_seed is not None:
+            parts.append(f"seed{jitter_seed}")
+    
+    filename = "_".join(parts) + extension
+    return filename
+
 
 def _apply_mode_presets(mode, convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute, debug):
     """Apply mode preset settings, returning updated values."""
@@ -653,8 +846,10 @@ def _format_and_output_results(results, format, output, run_dir, no_extract, deb
             click.echo(f"Results written to: {output_file}", err=True)
 
 
-def _do_detect(config, input, output, format, debug, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, edge_detection=False, canny_low=50, canny_high=150, adaptive_threshold=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, no_cache=False, save_clusters=None, load_clusters=None):
+def _do_detect(config, input, output, format, debug, verbose, output_dir, no_extract, mode, min_radius, max_radius, min_distance, color_tolerance, max_colors, sensitivity, min_confidence, dedup_distance, edge_sampling, edge_samples, edge_method, exclude_background, use_histogram, color_separation, convex_edge, palette, num_colors, quantize_output, run_name, no_organize, save_config, no_manifest, no_composite, no_diff=False, cluster_count=False, cluster_anchor='centroid', debug_clusters=False, reconstitute=False, render_method='bullseye', segment_height=10, cluster_size=20, render_scale=2, color_mode='full', diff_mode='mask', petal_rotation='fixed', petal_offset=0.0, petal_distance=0.35, exposed_area_sizing=False, blend_overlaps=False, jitter_position=0, jitter_size=0, jitter_seed=None, jitter_algorithm='gaussian', jitter_exclude='', drift=False, drift_tolerance=0.2, drift_max_iterations=10, drift_max_step=2.0, jitter_steps=1, target_image=None, target_weight=0.5, centroid_drift=False, centroid_step=0.5, output_format='svg', chunk_size='auto', sliding_window=False, window_size=500, gpu=None, sensitive_occlusion=False, morph_enhance=False, edge_detection=False, canny_low=50, canny_high=150, adaptive_threshold=False, auto_calibrate=False, calibrate_from=None, no_verify_black=False, verify_abort=False, no_cache=False, save_clusters=None, load_clusters=None):
     """Internal function for circle detection."""
+    logger = get_logger(__name__)
+    
     # Apply mode presets - these set defaults that can be overridden by explicit flags
     convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute = _apply_mode_presets(
         mode, convex_edge, palette, sensitive_occlusion, morph_enhance, reconstitute, debug
@@ -861,7 +1056,9 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
         if reconstitute and megapixels > LARGE_IMAGE_THRESHOLD_MP and not sliding_window:
             sliding_window = True
-            render_method = 'flower'  # Sliding window uses flower renderer
+            # Only default to flower if no render method specified; planetary also supported
+            if render_method is None or render_method.lower() == 'bullseye':
+                render_method = 'flower'  # Sliding window default renderer
             click.echo(
                 f"Large image detected ({megapixels:.1f} MP) - auto-enabling sliding window mode",
                 err=True
@@ -928,7 +1125,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                 # Check if we're using sliding window - skip full-image detection
                 render_method_lower = render_method.lower() if render_method else 'bullseye'
-                skip_full_detection = sliding_window and reconstitute and render_method_lower == 'flower'
+                skip_full_detection = sliding_window and reconstitute and render_method_lower in ('flower', 'planetary')
 
                 if skip_full_detection:
                     # Sliding window mode - defer detection to per-tile processing
@@ -996,7 +1193,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                 render_method_lower = render_method.lower() if render_method else 'bullseye'
                 color_mode_lower = color_mode.lower() if color_mode else 'full'
 
-                if sliding_window and reconstitute and render_method_lower == 'flower':
+                if sliding_window and reconstitute and render_method_lower in ('flower', 'planetary'):
                     from .sliding_window import process_sliding_window
                     from .cluster_pixel_counter import (
                         save_clusters as do_save_clusters,
@@ -1006,7 +1203,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     )
                     from .circle_renderer import render_flower_global_blend
 
-                    click.echo(f"Using sliding window mode (size={window_size}, method=flower)...", err=True)
+                    click.echo(f"Using sliding window mode (size={window_size}, method={render_method_lower})...", err=True)
 
                     def progress_cb(tile_num, total_tiles, status):
                         click.echo(f"  [{tile_num}/{total_tiles}] {status}", err=True)
@@ -1042,6 +1239,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                     # Try to load from cache (unless --no-cache forces re-detection)
                     cache_loaded = False
+                    partial_count = 0
                     if not no_cache and cache_path.exists():
                         try:
                             validation = validate_cluster_cache(cache_path, source_hash)
@@ -1049,6 +1247,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 cluster_results, cache_meta = do_load_clusters(cache_path)
                                 click.echo(f"  Loaded {len(cluster_results)} clusters from cache: {cache_path}", err=True)
                                 cache_loaded = True
+                                partial_count = sum(1 for r in cluster_results if r.partial)
                             else:
                                 # Hash mismatch - re-detect
                                 click.echo(f"  Cache invalid (image changed), re-detecting...", err=True)
@@ -1056,62 +1255,124 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             click.echo(f"  Cache load failed ({e}), re-detecting...", err=True)
 
                     if cache_loaded:
-                        # Render from cached clusters
+                        # Render from cached clusters (SVG by default, PNG optional)
                         h, w = image.shape[:2]
                         
-                        # Show GPU/CPU status
-                        if use_gpu_for_sw:
-                            click.echo(f"  Rendering {len(cluster_results)} clusters with GPU (CUDA)...", err=True)
+                        if output_format == 'svg':
+                            # SVG rendering (default) - GPU can accelerate geometry calculations
+                            gpu_status = "GPU" if use_gpu_for_sw else "CPU"
+                            click.echo(f"  Rendering {len(cluster_results)} clusters as SVG ({gpu_status})...", err=True)
+                            
+                            if render_method_lower == 'planetary':
+                                from .circle_renderer import render_planetary_svg
+                                svg_output = render_planetary_svg(
+                                    cluster_results,
+                                    (h, w),
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=petal_rotation,
+                                    base_rotation=petal_offset,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                )
+                            else:
+                                from .circle_renderer import render_flower_svg
+                                svg_output = render_flower_svg(
+                                    cluster_results,
+                                    (h, w),
+                                    petal_distance=petal_distance,
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=petal_rotation,
+                                    base_rotation=petal_offset,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                    target_image=target_image,
+                                    target_weight=target_weight,
+                                    centroid_drift=False,  # Not available in sliding window mode
+                                    centroid_step=centroid_step,
+                                    ink_masks=None,
+                                )
+                            
+                            reconstituted = None  # SVG only
+                            click.echo(f"  Rendered {len(cluster_results)} clusters from cache", err=True)
                         else:
-                            click.echo(f"  Rendering {len(cluster_results)} clusters with CPU...", err=True)
-
-                        def render_progress(current, total, phase, metadata=None):
-                            if metadata:
-                                pct = metadata.get('percentage', 0)
-                                elapsed = metadata.get('elapsed_seconds', 0)
-                                throughput = metadata.get('throughput_per_second', 0)
-                                eta = metadata.get('eta_seconds', 0)
+                            # PNG rendering (legacy pixel-based)
+                            if use_gpu_for_sw:
+                                from .gpu_renderer import render_flower_global_blend_gpu
                                 
-                                if throughput > 0:
-                                    click.echo(
-                                        f"  [Render] {current}/{total} ({pct}%) "
-                                        f"[~{throughput:.1f} clusters/sec, ETA {eta:.1f}s]",
-                                        err=True
-                                    )
-                                else:
-                                    click.echo(f"  [Render] {current}/{total} ({pct}%)", err=True)
-
-                        if use_gpu_for_sw:
-                            from .gpu_renderer import render_flower_global_blend_gpu
-                            reconstituted = render_flower_global_blend_gpu(
-                                cluster_results,
-                                (h, w),
-                                petal_distance=petal_distance,
-                                scale=render_scale,
-                                skip_partial=False,
-                                rotation_mode='fixed',
-                                base_rotation=0.0,
-                                use_gpu=True,
-                                progress_callback=render_progress,
-                            )
-                        else:
-                            reconstituted = render_flower_global_blend(
-                                cluster_results,
-                                (h, w),
-                                petal_distance=petal_distance,
-                                scale=render_scale,
-                                skip_partial=False,
-                                rotation_mode='fixed',
-                                base_rotation=0.0,
-                                progress_callback=render_progress,
-                            )
-
+                                click.echo(f"Rendering {len(cluster_results)} clusters with GPU (CUDA)...", err=True)
+                                reconstituted = render_flower_global_blend_gpu(
+                                    cluster_results,
+                                    (h, w),
+                                    petal_distance=petal_distance,
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=petal_rotation,
+                                    base_rotation=petal_offset,
+                                    rotation_seed=jitter_seed,
+                                    use_gpu=True,
+                                    progress_callback=progress_cb,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                    target_image=target_image,
+                                    target_weight=target_weight,
+                                )
+                            else:
+                                click.echo(f"Rendering {len(cluster_results)} clusters with CPU...", err=True)
+                                reconstituted = render_flower_global_blend(
+                                    cluster_results,
+                                    (h, w),
+                                    petal_distance=petal_distance,
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=petal_rotation,
+                                    base_rotation=petal_offset,
+                                    rotation_seed=jitter_seed,
+                                    progress_callback=progress_cb,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                    target_image=target_image,
+                                    target_weight=target_weight,
+                                )
+                        
                         sw_stats = {
                             'total_tiles': 0,
                             'total_rendered': len(cluster_results),
                             'loaded_from_cache': True,
                         }
-                        click.echo(f"  Rendered {len(cluster_results)} clusters from cache", err=True)
                     else:
                         # Detection path (cache miss or --no-cache)
                         click.echo("  (Skipping full-image detection for memory efficiency)", err=True)
@@ -1128,6 +1389,19 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             debug=debug,
                             progress_callback=progress_cb if not debug else None,
                             use_gpu=use_gpu_for_sw,
+                            rotation_mode=petal_rotation,
+                            base_rotation=petal_offset,
+                            rotation_seed=jitter_seed,
+                            jitter_position=jitter_position,
+                            jitter_size=jitter_size,
+                            jitter_seed=jitter_seed,
+                            jitter_algorithm=jitter_algorithm,
+                            jitter_exclude=jitter_exclude,
+                            drift=drift,
+                            drift_tolerance=drift_tolerance,
+                            drift_max_iterations=drift_max_iterations,
+                            drift_max_step=drift_max_step,
+                            jitter_steps=jitter_steps,
                         )
                         click.echo(f"  Processed {sw_stats['total_tiles']} tiles, "
                                   f"{sw_stats['total_rendered']} clusters rendered", err=True)
@@ -1155,24 +1429,62 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                     # Save output for sliding window mode
                     if output_dir and not no_extract:
                         from .run_manager import create_run_directory, copy_input_file
-                        run_dir = create_run_directory(output_dir, run_name, organize=not no_organize)
+                        
+                        # Build descriptive run name if not explicitly provided
+                        descriptive_run_name = _build_descriptive_run_name(
+                            run_name, render_method, jitter_position, jitter_size, 
+                            jitter_seed, output_format, render_scale
+                        )
+                        run_dir = create_run_directory(output_dir, descriptive_run_name, organize=not no_organize)
                         copy_input_file(Path(input), run_dir)
 
-                        reconstituted_path = run_dir / 'reconstituted.png'
-                        cv2.imwrite(str(reconstituted_path), reconstituted)
-                        click.echo(f"  - reconstituted.png (sliding window flower, scale={render_scale})")
+                        if output_format == 'svg':
+                            # SVG output (default)
+                            filename = _build_output_filename(
+                                'reconstituted', render_method, jitter_position, jitter_size,
+                                jitter_seed, render_scale, '.svg'
+                            )
+                            svg_path = run_dir / filename
+                            with open(svg_path, 'w', encoding='utf-8') as f:
+                                f.write(svg_output)
+                            click.echo(f"  - {filename} (sliding window {render_method_lower}, {len(svg_output)} bytes)")
+                            output_files = [svg_path]
+                        else:
+                            # PNG output from GPU/CPU rendering
+                            filename = _build_output_filename(
+                                'reconstituted', render_method, jitter_position, jitter_size,
+                                jitter_seed, render_scale, '.png'
+                            )
+                            reconstituted_path = run_dir / filename
+                            cv2.imwrite(str(reconstituted_path), reconstituted)
+                            click.echo(f"  - {filename} (sliding window {render_method_lower})")
+                            output_files = [reconstituted_path]
 
-                        # Generate composite and diff images for visual QA
-                        from .image_extractor import generate_composite_from_images, generate_diff_from_images
-                        output_files = [reconstituted_path]
+                            # Generate composite and diff (PNG only)
+                            composite = cv2.addWeighted(image, 0.5, reconstituted, 0.5, 0)
+                            composite_path = run_dir / 'composite.png'
+                            cv2.imwrite(str(composite_path), composite)
+                            click.echo(f"  - composite.png (50/50 blend)")
+                            output_files.append(composite_path)
 
-                        composite_path = generate_composite_from_images(image, reconstituted, run_dir)
-                        click.echo(f"  - composite.png (50/50 blend overlay)")
-                        output_files.append(composite_path)
+                            diff = cv2.absdiff(image, reconstituted)
+                            diff_path = run_dir / 'diff.png'
+                            cv2.imwrite(str(diff_path), diff)
+                            click.echo(f"  - diff.png (absolute difference)")
+                            output_files.append(diff_path)
+                            click.echo(f"  - reconstituted.png (sliding window {render_method_lower}, scale={render_scale})")
+                            output_files = [reconstituted_path]
+                            
+                            # Generate composite and diff images for visual QA (PNG only)
+                            from .image_extractor import generate_composite_from_images, generate_diff_from_images
+                            
+                            composite_path = generate_composite_from_images(image, reconstituted, run_dir)
+                            click.echo(f"  - composite.png (50/50 blend overlay)")
+                            output_files.append(composite_path)
 
-                        diff_path = generate_diff_from_images(image, reconstituted, run_dir)
-                        click.echo(f"  - diff.png (pixel difference)")
-                        output_files.append(diff_path)
+                            diff_path = generate_diff_from_images(image, reconstituted, run_dir)
+                            click.echo(f"  - diff.png (pixel difference)")
+                            output_files.append(diff_path)
 
                         # Create manifest
                         if not no_manifest:
@@ -1183,7 +1495,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 'convex_edge': convex_edge,
                                 'cluster_count': len(cluster_results),
                                 'partial_clusters': partial_count,
-                                'render_method': 'flower',
+                                'render_method': render_method_lower,
                                 'color_mode': color_mode_lower,
                                 'sliding_window': True,
                                 'window_size': window_size,
@@ -1206,59 +1518,120 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
 
                 # Standard mode - full-image processing
                 elif cluster_count or reconstitute or debug_clusters:
-                    from .cluster_pixel_counter import cluster_and_count_pixels, generate_cluster_debug_image
+                    from .cluster_pixel_counter import (
+                        cluster_and_count_pixels,
+                        generate_cluster_debug_image,
+                        load_clusters as do_load_clusters,
+                        save_clusters as do_save_clusters,
+                        validate_cluster_cache,
+                        compute_image_hash
+                    )
                     from .convex_detector import separate_cmyk_inks
                     from .gpu import is_gpu_available, get_gpu_info
                     import json as json_module
 
-                    click.echo("Running cluster pixel counting...", err=True)
+                    # Compute source hash once for cache validation
+                    source_hash = compute_image_hash(Path(input))
 
-                    # Check GPU availability for standard mode
-                    gpu_available = is_gpu_available()
-                    use_gpu = gpu if gpu is not None else gpu_available
-
-                    if use_gpu and gpu_available:
-                        click.echo("  (GPU acceleration enabled)", err=True)
-                    elif gpu and not gpu_available:
-                        gpu_info = get_gpu_info()
-                        error_msg = gpu_info.get('error', 'Unknown error')
-                        click.echo(f"  Warning: --gpu requested but GPU unavailable: {error_msg}", err=True)
-                        use_gpu = False
-
-                    # Get ink masks (with quantization for clean separation)
-                    # Note: separate_cmyk_inks expects BGR format (native cv2)
-                    ink_masks = separate_cmyk_inks(image)
-
-                    # Map CLI anchor choice to parameter value
-                    anchor_method_value = 'nearest_pixel' if cluster_anchor == 'pixel' else 'centroid'
-
-                    # Run cluster counting (request debug info if debug_clusters enabled)
-                    result = cluster_and_count_pixels(
-                        cyan_mask=ink_masks['cyan'],
-                        magenta_mask=ink_masks['magenta'],
-                        yellow_mask=ink_masks['yellow'],
-                        black_mask=ink_masks['black'],
-                        image_shape=image_rgb.shape[:2],
-                        color_mode=color_mode_lower,
-                        anchor_method=anchor_method_value,
-                        return_debug_info=debug_clusters,
-                        use_gpu=use_gpu,
-                        debug=debug
-                    )
-
-                    # Handle return value based on debug mode
-                    if debug_clusters:
-                        cluster_results, debug_info = result
+                    # Determine cache path
+                    input_path = Path(input)
+                    if load_clusters:
+                        cache_path = Path(load_clusters)
+                    elif save_clusters:
+                        cache_path = Path(save_clusters)
                     else:
-                        cluster_results = result
+                        cache_path = input_path.parent / f"{input_path.stem}_clusters.json"
+
+                    # Try to load from cache (unless --no-cache forces re-detection)
+                    cache_loaded = False
+                    cluster_results = None
+                    partial_count = 0
+                    
+                    if not no_cache and cache_path.exists():
+                        try:
+                            validation = validate_cluster_cache(cache_path, source_hash)
+                            if validation['hash_match']:
+                                cluster_results, cache_meta = do_load_clusters(cache_path)
+                                click.echo(f"  Loaded {len(cluster_results)} clusters from cache: {cache_path}", err=True)
+                                cache_loaded = True
+                                partial_count = sum(1 for r in cluster_results if r.partial)
+                            else:
+                                # Hash mismatch - re-detect
+                                click.echo(f"  Cache invalid (image changed), re-detecting...", err=True)
+                        except Exception as e:
+                            click.echo(f"  Cache load failed ({e}), re-detecting...", err=True)
+                    
+                    # Run detection if not loaded from cache
+                    if not cache_loaded:
+                        click.echo("Running cluster pixel counting...", err=True)
+
+                        # Check GPU availability for standard mode
+                        gpu_available = is_gpu_available()
+                        use_gpu = gpu if gpu is not None else gpu_available
+
+                        if use_gpu and gpu_available:
+                            click.echo("  (GPU acceleration enabled)", err=True)
+                        elif gpu and not gpu_available:
+                            gpu_info = get_gpu_info()
+                            error_msg = gpu_info.get('error', 'Unknown error')
+                            click.echo(f"  Warning: --gpu requested but GPU unavailable: {error_msg}", err=True)
+                            use_gpu = False
+
+                        # Get ink masks (with quantization for clean separation)
+                        # Note: separate_cmyk_inks expects BGR format (native cv2)
+                        ink_masks = separate_cmyk_inks(image)
+
+                        # Map CLI anchor choice to parameter value
+                        anchor_method_value = 'nearest_pixel' if cluster_anchor == 'pixel' else 'centroid'
+
+                        # Run cluster counting (request debug info if debug_clusters enabled)
+                        result = cluster_and_count_pixels(
+                            cyan_mask=ink_masks['cyan'],
+                            magenta_mask=ink_masks['magenta'],
+                            yellow_mask=ink_masks['yellow'],
+                            black_mask=ink_masks['black'],
+                            image_shape=image_rgb.shape[:2],
+                            color_mode=color_mode_lower,
+                            anchor_method=anchor_method_value,
+                            return_debug_info=debug_clusters,
+                            use_gpu=use_gpu,
+                            debug=debug
+                        )
+
+                        # Handle return value based on debug mode
+                        if debug_clusters:
+                            cluster_results, debug_info = result
+                        else:
+                            cluster_results = result
+                            debug_info = None
+
+                        click.echo(f"Found {len(cluster_results)} cluster(s)", err=True)
+
+                        # Count partial clusters
+                        partial_count = sum(1 for r in cluster_results if r.partial)
+                        if partial_count > 0:
+                            click.echo(f"  ({partial_count} partial/edge clusters)", err=True)
+
+                        # Save cluster cache for faster re-rendering
+                        from datetime import datetime
+                        
+                        cache_metadata = {
+                            'source_image': str(input),
+                            'source_hash': source_hash,
+                            'detection_params': {
+                                'max_radius': max_radius,
+                                'min_radius': min_radius,
+                                'color_mode': color_mode_lower,
+                                'anchor_method': anchor_method_value,
+                            },
+                            'timestamp': datetime.utcnow().isoformat() + 'Z',
+                        }
+                        do_save_clusters(cluster_results, cache_path, cache_metadata)
+                        click.echo(f"  Cached {len(cluster_results)} clusters to: {cache_path}", err=True)
+                    else:
+                        # Loaded from cache - still need ink_masks for some rendering paths
+                        ink_masks = separate_cmyk_inks(image)
                         debug_info = None
-
-                    click.echo(f"Found {len(cluster_results)} cluster(s)", err=True)
-
-                    # Count partial clusters
-                    partial_count = sum(1 for r in cluster_results if r.partial)
-                    if partial_count > 0:
-                        click.echo(f"  ({partial_count} partial/edge clusters)", err=True)
 
                     # Generate reconstituted image if requested
                     if reconstitute:
@@ -1292,7 +1665,20 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             )
                         elif render_method_lower == 'flower':
                             rotation_mode = petal_rotation.lower() if petal_rotation else 'fixed'
-                            # Determine GPU usage: auto-detect if None, else use explicit setting
+                            
+                            # Create output directory early if needed (for drift debug files)
+                            run_dir = None
+                            if output_dir and not no_extract:
+                                from .run_manager import create_run_directory
+                                
+                                # Build descriptive run name
+                                descriptive_run_name = _build_descriptive_run_name(
+                                    run_name, render_method, jitter_position, jitter_size,
+                                    jitter_seed, output_format, render_scale
+                                )
+                                run_dir = create_run_directory(output_dir, descriptive_run_name, organize=not no_organize)
+                            
+                            # Determine GPU availability for both SVG and PNG rendering
                             from .gpu import is_gpu_available, get_gpu_info
                             gpu_available = is_gpu_available()
 
@@ -1301,15 +1687,17 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 gpu_info = get_gpu_info()
                                 error_msg = gpu_info.get('error', 'Unknown error')
                                 click.echo(f"Warning: --gpu requested but GPU unavailable: {error_msg}", err=True)
-                                click.echo("Falling back to CPU rendering. Install cupy-cuda12x for GPU support.", err=True)
+                                click.echo("Falling back to CPU. Install cupy-cuda12x for GPU support.", err=True)
 
                             use_gpu = gpu if gpu is not None else gpu_available
-
-                            # Use GPU renderer for global blend mode (the primary use case)
-                            if blend_overlaps and use_gpu and gpu_available:
-                                from .gpu_renderer import render_flower_global_blend_gpu
-                                click.echo(f"Rendering {len(cluster_results)} clusters with GPU (CUDA) [flower, scale={render_scale}, rotation={rotation_mode}]...", err=True)
-                                reconstituted = render_flower_global_blend_gpu(
+                            
+                            if output_format == 'svg':
+                                # SVG rendering (default) - GPU can accelerate geometry calculations
+                                from .circle_renderer import render_flower_svg
+                                
+                                click.echo(f"Rendering {len(cluster_results)} clusters as SVG [flower, scale={render_scale}, rotation={rotation_mode}, gpu={use_gpu}]...", err=True)
+                                
+                                svg_output = render_flower_svg(
                                     cluster_results,
                                     image_rgb.shape[:2],
                                     petal_distance=petal_distance,
@@ -1317,17 +1705,31 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                     skip_partial=False,
                                     rotation_mode=rotation_mode,
                                     base_rotation=petal_offset,
-                                    use_gpu=True,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                    target_image=target_image,
+                                    target_weight=target_weight,
+                                    centroid_drift=centroid_drift,
+                                    centroid_step=centroid_step,
+                                    ink_masks=ink_masks,
+                                    output_dir=run_dir,
                                 )
+                                
+                                reconstituted = None  # SVG only
                             else:
+                                # PNG rendering (pixel-based) - GPU accelerates blending operations
                                 from .circle_renderer import render_flower
-                                if gpu_available and not blend_overlaps:
-                                    gpu_status = " (GPU requires --blend-overlaps)"
-                                elif gpu is False:
-                                    gpu_status = " (GPU disabled)"
-                                else:
-                                    gpu_status = ""
-                                click.echo(f"Rendering {len(cluster_results)} clusters with CPU [flower, scale={render_scale}, rotation={rotation_mode}]{gpu_status}...", err=True)
+                                
+                                click.echo(f"Rendering {len(cluster_results)} clusters as PNG [flower, scale={render_scale}, rotation={rotation_mode}, gpu={use_gpu}]...", err=True)
+                                
                                 reconstituted = render_flower(
                                     cluster_results,
                                     image_rgb.shape[:2],
@@ -1336,7 +1738,92 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                     skip_partial=False,
                                     rotation_mode=rotation_mode,
                                     base_rotation=petal_offset,
-                                    blend_overlaps=blend_overlaps
+                                    blend_overlaps=True,  # Global blending for proper CMY
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                    target_image=target_image,
+                                    target_weight=target_weight,
+                                )
+                        elif render_method_lower == 'planetary':
+                            rotation_mode = petal_rotation.lower() if petal_rotation else 'fixed'
+                            
+                            # Create output directory early if needed (for drift debug files)
+                            run_dir = None
+                            if output_dir and not no_extract:
+                                from .run_manager import create_run_directory
+                                
+                                # Build descriptive run name
+                                descriptive_run_name = _build_descriptive_run_name(
+                                    run_name, render_method, jitter_position, jitter_size,
+                                    jitter_seed, output_format, render_scale
+                                )
+                                run_dir = create_run_directory(output_dir, descriptive_run_name, organize=not no_organize)
+                            
+                            # Determine GPU availability
+                            from .gpu import is_gpu_available, get_gpu_info
+                            gpu_available = is_gpu_available()
+
+                            if gpu is True and not gpu_available:
+                                gpu_info = get_gpu_info()
+                                error_msg = gpu_info.get('error', 'Unknown error')
+                                click.echo(f"Warning: --gpu requested but GPU unavailable: {error_msg}", err=True)
+                                click.echo("Falling back to CPU. Install cupy-cuda12x for GPU support.", err=True)
+
+                            use_gpu = gpu if gpu is not None else gpu_available
+                            
+                            if output_format == 'svg':
+                                # SVG rendering
+                                from .circle_renderer import render_planetary_svg
+                                
+                                click.echo(f"Rendering {len(cluster_results)} clusters as SVG [planetary, scale={render_scale}, rotation={rotation_mode}, gpu={use_gpu}]...", err=True)
+                                
+                                svg_output = render_planetary_svg(
+                                    cluster_results,
+                                    image_rgb.shape[:2],
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=rotation_mode,
+                                    base_rotation=petal_offset,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
+                                    drift=drift,
+                                    drift_tolerance=drift_tolerance,
+                                    drift_max_iterations=drift_max_iterations,
+                                    drift_max_step=drift_max_step,
+                                    jitter_steps=jitter_steps,
+                                    output_dir=run_dir,
+                                )
+                                
+                                reconstituted = None  # SVG only
+                            else:
+                                # PNG rendering
+                                from .circle_renderer import render_planetary
+                                
+                                click.echo(f"Rendering {len(cluster_results)} clusters as PNG [planetary, scale={render_scale}, rotation={rotation_mode}, gpu={use_gpu}]...", err=True)
+                                
+                                reconstituted = render_planetary(
+                                    cluster_results,
+                                    image_rgb.shape[:2],
+                                    scale=render_scale,
+                                    skip_partial=False,
+                                    rotation_mode=rotation_mode,
+                                    base_rotation=petal_offset,
+                                    jitter_position=jitter_position,
+                                    jitter_size=jitter_size,
+                                    jitter_seed=jitter_seed,
+                                    jitter_algorithm=jitter_algorithm,
+                                    jitter_exclude=jitter_exclude,
                                 )
                         elif render_method_lower == 'cmyk-blend':
                             from .circle_renderer import render_cmyk_blend
@@ -1355,11 +1842,9 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 image_rgb.shape[:2]
                             )
 
-                        # Determine output path
-                        if output_dir and not no_extract:
-                            # Create run directory if needed
-                            from .run_manager import create_run_directory, copy_input_file
-                            run_dir = create_run_directory(output_dir, run_name, organize=not no_organize)
+                        # Use run_dir that was created earlier (it's already defined above)
+                        if run_dir:
+                            from .run_manager import copy_input_file
 
                             # Copy input file to run directory
                             copy_input_file(Path(input), run_dir)
@@ -1371,9 +1856,44 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                 cv2.imwrite(str(mask_path), mask)
                                 output_files.append(mask_path)
 
-                            reconstituted_path = run_dir / 'reconstituted.png'
-                            # Both renderers return BGR (cv2 native format), write directly
-                            cv2.imwrite(str(reconstituted_path), reconstituted)
+                            # Handle output format (SVG vs PNG)
+                            if reconstituted is None and render_method_lower in ('flower', 'planetary'):
+                                # SVG output (output_format == 'svg')
+                                filename = _build_output_filename(
+                                    'reconstituted', render_method, jitter_position, jitter_size,
+                                    jitter_seed, render_scale, '.svg'
+                                )
+                                svg_path = run_dir / filename
+                                with open(svg_path, 'w', encoding='utf-8') as f:
+                                    f.write(svg_output)
+                                click.echo(f"  - {filename} (SVG vector output, {len(svg_output)} bytes)")
+                                output_files.append(svg_path)
+                                reconstituted_path = None
+                            else:
+                                # PNG output (output_format == 'png' or non-flower methods)
+                                filename = _build_output_filename(
+                                    'reconstituted', render_method, jitter_position, jitter_size,
+                                    jitter_seed, render_scale, '.png'
+                                )
+                                reconstituted_path = run_dir / filename
+                                cv2.imwrite(str(reconstituted_path), reconstituted)
+                                
+                                # Generate SVG output if requested (optional for non-flower methods)
+                                if output_svg:
+                                    from .svg_renderer import render_svg
+                                    click.echo("Generating SVG output...", err=True)
+                                    svg_output = render_svg(
+                                        cluster_results,
+                                        image_rgb.shape[:2],
+                                        scale=render_scale,
+                                        skip_partial=False
+                                    )
+                                    svg_path = run_dir / 'reconstituted.svg'
+                                    with open(svg_path, 'w', encoding='utf-8') as f:
+                                        f.write(svg_output)
+                                    click.echo(f"  - reconstituted.svg (SVG vector output, {len(svg_output)} bytes)")
+                                    output_files.append(svg_path)
+                            
                             if render_method_lower == 'block':
                                 method_desc = f"block pattern, segment_height={segment_height}"
                             elif render_method_lower == 'treemap':
@@ -1381,24 +1901,30 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                             elif render_method_lower == 'exact':
                                 method_desc = f"exact pixel count, scale={render_scale}"
                             elif render_method_lower == 'flower':
-                                method_desc = f"flower pattern, scale={render_scale}"
+                                method_desc = f"flower pattern (SVG), scale={render_scale}"
+                            elif render_method_lower == 'planetary':
+                                method_desc = f"planetary pattern (SVG), scale={render_scale}"
                             elif render_method_lower == 'cmyk-blend':
                                 method_desc = f"cmyk-blend pattern, scale={render_scale}"
                             else:
                                 method_desc = "bullseye pattern"
-                            click.echo(f"  - reconstituted.png ({method_desc})")
-                            output_files.append(reconstituted_path)
+                            
+                            # Only print PNG message if PNG was generated
+                            if reconstituted_path is not None:
+                                click.echo(f"  - reconstituted.png ({method_desc})")
+                                output_files.append(reconstituted_path)
 
-                            # Generate composite and diff images for visual QA
-                            from .image_extractor import generate_composite_from_images, generate_diff_from_images
+                            # Generate composite and diff images for visual QA (PNG only)
+                            if reconstituted_path is not None:
+                                from .image_extractor import generate_composite_from_images, generate_diff_from_images
 
-                            composite_path = generate_composite_from_images(image, reconstituted, run_dir)
-                            click.echo(f"  - composite.png (50/50 blend overlay)")
-                            output_files.append(composite_path)
+                                composite_path = generate_composite_from_images(image, reconstituted, run_dir)
+                                click.echo(f"  - composite.png (50/50 blend overlay)")
+                                output_files.append(composite_path)
 
-                            diff_path = generate_diff_from_images(image, reconstituted, run_dir)
-                            click.echo(f"  - diff.png (pixel difference)")
-                            output_files.append(diff_path)
+                                diff_path = generate_diff_from_images(image, reconstituted, run_dir)
+                                click.echo(f"  - diff.png (pixel difference)")
+                                output_files.append(diff_path)
 
                             # Generate cluster debug visualization if requested
                             if debug_clusters and debug_info is not None:
@@ -1430,7 +1956,7 @@ def _do_detect(config, input, output, format, debug, output_dir, no_extract, mod
                                     manifest_settings['segment_height'] = segment_height
                                 elif render_method_lower == 'treemap':
                                     manifest_settings['cluster_size'] = cluster_size
-                                elif render_method_lower in ('exact', 'flower', 'cmyk-blend'):
+                                elif render_method_lower in ('exact', 'flower', 'planetary', 'cmyk-blend'):
                                     manifest_settings['render_scale'] = render_scale
                                 manifest_data = generate_manifest(
                                     source_file=Path(input),

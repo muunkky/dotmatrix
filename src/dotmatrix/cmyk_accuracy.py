@@ -31,18 +31,7 @@ from typing import Dict, Tuple, Union
 import cv2
 import numpy as np
 
-
-# Color definitions in BGR format (OpenCV's native format)
-COLORS_BGR = {
-    'black':   (0, 0, 0),
-    'white':   (255, 255, 255),
-    'cyan':    (255, 255, 0),      # BGR: high B, high G, low R
-    'magenta': (255, 0, 255),      # BGR: high B, low G, high R
-    'yellow':  (0, 255, 255),      # BGR: low B, high G, high R
-    'red':     (0, 0, 255),        # BGR: low B, low G, high R (secondary: M+Y)
-    'green':   (0, 255, 0),        # BGR: low B, high G, low R (secondary: C+Y)
-    'blue':    (255, 0, 0),        # BGR: high B, low G, low R (secondary: C+M)
-}
+from dotmatrix.colors import COLORS_BGR
 
 
 @dataclass

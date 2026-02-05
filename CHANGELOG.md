@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refactored
+- **ARCHDEBT Sprint** (2026-01-08): Addressed technical debt identified during ARCHREVIEW sprint.
+  - Created [colors.py](src/dotmatrix/colors.py) - Centralized color definitions module with `COLORS`, `COLORS_BGR`, `LAYER_ORDER`, `LAYER_ORDER_CMYK`, `PETAL_ANGLES` constants.
+  - Updated 6 renderer files to import from centralized `colors.py` (block_renderer, treemap_renderer, cluster_renderer, circle_renderer, cmyk_accuracy, gpu_renderer).
+  - Removed duplicate COLORS dict definitions from all renderer files.
+  - Added `RenderParams` and `JitterParams` dataclasses to config.py for renderer configuration.
+  - Updated `from_cli_args()` to accept render and jitter parameters.
+  - Updated [rendering-architecture.md](docs/architecture/rendering-architecture.md) to reflect centralized color definitions.
+
 ### Added
 - **Real-time Progress Indicators**: Added comprehensive progress feedback during rendering operations.
   - GPU/CPU status displayed at render start (e.g., "Rendering with GPU (CUDA)" or "Rendering with CPU").
@@ -24,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Helps users validate detection parameters before running expensive full CMYK separation.
 
 ### Documentation
+- **ARCHREVIEW Sprint** (2026-01-07): Comprehensive documentation and architecture review.
+  - Created [architectural-guidelines.md](docs/architectural-guidelines.md) - 11-section guide covering coding principles, patterns, and extension guidelines.
+  - Created [rendering-architecture.md](docs/architecture/rendering-architecture.md) - Renderer patterns, "How to add a renderer" 6-step guide.
+  - Enhanced [color-pipeline.md](docs/architecture/color-pipeline.md) - Color processing algorithms, k-means clustering, palette detection.
+  - Enhanced [DEVELOPMENT.md](docs/DEVELOPMENT.md) - 6-layer pipeline diagram, architecture documentation links.
+  - Updated [ROADMAP.md](ROADMAP.md) - v0.3.0 status, cluster rendering section, drift/jitter/SVG documentation.
+  - Updated [README.md](README.md) - Jitter/randomization options documentation.
+  - Audited ADRs - Fixed numbering conflicts, created complete index at [docs/adr/README.md](docs/adr/README.md).
+  - Completed deep architectural review spike documenting 6-layer pipeline, ClusterResult data contract, and 8 guiding principles.
 - **ADR-006**: Documented architectural decision for CMYK cluster pixel counting algorithm.
   - 3-phase approach: midtone completion, nearest-pixel clustering, deduplication.
   - 9-element output tuple preventing double-counting of RGB overlaps.

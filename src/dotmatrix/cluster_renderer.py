@@ -16,15 +16,7 @@ import cv2
 import numpy as np
 
 from dotmatrix.cluster_pixel_counter import ClusterResult
-
-
-# CMYK colors in BGR format (for cv2 compatibility)
-COLORS = {
-    'yellow': (0, 255, 255),    # BGR: B=0, G=255, R=255
-    'magenta': (255, 0, 255),   # BGR: B=255, G=0, R=255
-    'cyan': (255, 255, 0),      # BGR: B=255, G=255, R=0
-    'black': (0, 0, 0),         # BGR: B=0, G=0, R=0
-}
+from dotmatrix.colors import COLORS
 
 
 def calculate_cumulative_radii(cluster: ClusterResult) -> Dict[str, float]:

@@ -1,4 +1,9 @@
-# Optimal Usage Guide for DotMatrix
+# CMYK Halftone Detection Guide
+
+> **Part of**: [Documentation Index](README.md)
+>
+> This guide covers optimal settings for **CMYK halftone images with overlapping circles**.
+> For general usage, see the [README](../README.md). For other modes, see [Processing Modes](#other-processing-modes) below.
 
 ## For CMYK Overlapping Circle Images
 
@@ -205,7 +210,7 @@ Black Dot Verification:
   Circles detected: 842
   Radius: mean=31.5, std=8.9, range=[18, 52]
   Warnings:
-    ⚠ Mean radius (31.5) is close to max_radius (35).
+    [WARN] Mean radius (31.5) is close to max_radius (35).
        Some circles may be cut off. Consider raising max_radius.
   Suggested radius range: --min-radius 15 --max-radius 55
 ```
@@ -250,4 +255,38 @@ Useful in automated pipelines to avoid processing misconfigured images.
 2. **Iterate on settings**: Adjust based on warnings and re-run until verification passes
 3. **Use coverage maps**: Identify spatial gaps in detection with `--debug`
 4. **Validate once**: Once you find good settings, disable verification for batch processing
+
+---
+
+## Other Processing Modes
+
+This guide focuses on CMYK halftone detection. DotMatrix also supports:
+
+| Mode | Best For | Command |
+|------|----------|---------|
+| **Standard** | Clean, non-overlapping circles | `dotmatrix -i image.png -m standard` |
+| **Halftone** | Overlapping CMYK dots (this guide) | `dotmatrix -i image.png -m halftone` |
+| **CMYK-Sep** | Full ink layer separation | `dotmatrix -i image.png -m cmyk-sep` |
+
+### Standard Mode (Simple Circles)
+
+For images with non-overlapping, well-defined circles:
+
+```bash
+dotmatrix --input image.png --mode standard --min-radius 10 --max-radius 100
+```
+
+No special edge sampling needed - default settings work well.
+
+### CMYK Separation Mode
+
+For extracting individual ink layers with subtractive color logic:
+
+```bash
+dotmatrix --input image.png --mode cmyk-sep --reconstitute --render-method flower
+```
+
+This applies CMYK AND logic for accurate layer separation.
+
+See the [README](../README.md#processing-modes) for full mode documentation.
 

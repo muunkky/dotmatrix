@@ -1,0 +1,51 @@
+{
+  "sprint_id": "sprint-archreview-complete-20260107",
+  "sprint_name": "archreview-complete-20260107",
+  "sprint_folder": "sprint-archreview-complete-20260107",
+  "created_at": "2026-01-07T23:53:01.043009",
+  "start_date": null,
+  "end_date": "2026-01-07",
+  "archived_at": "2026-01-07T23:53:01.043009",
+  "card_ids": [
+    "nw1w41",
+    "48xfbf",
+    "7chgdu",
+    "qamzem",
+    "o5eync",
+    "6975lw",
+    "njk5lx",
+    "m87osv",
+    "5v0fr0",
+    "dbwrwj",
+    "b09cyg",
+    "pn661q",
+    "hxsuc4",
+    "czq2e6",
+    "zusk6j",
+    "4janms",
+    "wmhy58",
+    "maw60z",
+    "7jk86r",
+    "sxy0kc",
+    "ujhfb4",
+    "wikyff",
+    "n8azng"
+  ],
+  "metrics": {
+    "total_cards": 23,
+    "by_priority": {
+      "P1": 20,
+      "P0": 1,
+      "P2": 2
+    },
+    "by_type": {
+      "chore": 1,
+      "documentation": 8,
+      "spike": 12,
+      "feature": 2
+    },
+    "by_owner": {
+      "CAMERON": 23
+    }
+  }
+}

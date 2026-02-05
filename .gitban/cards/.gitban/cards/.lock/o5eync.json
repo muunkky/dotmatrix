@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "o5eync",
+  "created_at": "2026-01-07T22:11:01.424365+00:00",
+  "template_name": "documentation",
+  "owner": "CAMERON",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "document-rendering-architecture-and-extension-points",
+    "priority": "P1",
+    "status": "todo",
+    "type": "documentation",
+    "sprint": "ARCHREVIEW",
+    "filename": "ARCHREVIEW-todo-P1-documentation-document-rendering-architecture-and-extension-points-o5eync-CAMERON.md"
+  }
+}

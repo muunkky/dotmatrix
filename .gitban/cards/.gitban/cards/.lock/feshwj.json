@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "feshwj",
+  "created_at": "2026-01-08T21:55:15.779934+00:00",
+  "template_name": "spike",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "research-target-guided-dot-optimization-algorithm",
+    "priority": "P1",
+    "status": "backlog",
+    "type": "spike",
+    "sprint": null,
+    "filename": "backlog-P1-spike-research-target-guided-dot-optimization-algorithm-feshwj.md"
+  }
+}

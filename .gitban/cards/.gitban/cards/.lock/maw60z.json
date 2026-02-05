@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "maw60z",
+  "created_at": "2026-01-05T20:37:08.294477+00:00",
+  "template_name": "spike-technical-research",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "research-partial-circle-detection-at-edges",
+    "priority": "P1",
+    "status": "backlog",
+    "type": "spike",
+    "sprint": "V2IDEAS",
+    "filename": "V2IDEAS-backlog-P1-spike-research-partial-circle-detection-at-edges-maw60z.md"
+  }
+}

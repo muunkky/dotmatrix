@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "ujhfb4",
+  "created_at": "2026-01-05T20:37:29.837762+00:00",
+  "template_name": "spike-prototyping",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "prototype-jitter-rendering-mode",
+    "priority": "P1",
+    "status": "backlog",
+    "type": "spike",
+    "sprint": "V2IDEAS",
+    "filename": "V2IDEAS-backlog-P1-spike-prototype-jitter-rendering-mode-ujhfb4.md"
+  }
+}

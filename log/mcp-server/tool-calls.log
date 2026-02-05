@@ -86,3 +86,236 @@
 {"timestamp": "2025-12-22T14:39:03.900613Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 35 cards", "operation": "get_gitban_stats_cards_found"}
 {"timestamp": "2025-12-22T14:39:03.900613Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
 {"timestamp": "2025-12-22T14:39:03.901609Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T13:02:37.042739Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Plan and implement advanced logging system", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:02:37.102149Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:02:37.334758Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-05T13:02:37.342758Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card b09cyg", "operation": "birth_certificate_created", "card_id": "b09cyg"}
+{"timestamp": "2026-01-05T13:02:37.342758Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: b09cyg", "operation": "create_card_success", "card_id": "b09cyg"}
+{"timestamp": "2026-01-05T13:31:22.216133Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T13:31:22.222134Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 36 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T13:31:22.222134Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T13:31:22.224133Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T13:37:07.923481Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-technical-research'."}
+{"timestamp": "2026-01-05T13:37:07.928482Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Research Jitter/Randomization algorithms", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:07.998480Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:08.020480Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:08.029479Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card sxy0kc", "operation": "birth_certificate_created", "card_id": "sxy0kc"}
+{"timestamp": "2026-01-05T13:37:08.029479Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: sxy0kc", "operation": "create_card_success", "card_id": "sxy0kc"}
+{"timestamp": "2026-01-05T13:37:08.168480Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-technical-research'."}
+{"timestamp": "2026-01-05T13:37:08.168480Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Research ASCII/Text-based cluster rendering", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:08.168480Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:08.169478Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:08.173477Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card wmhy58", "operation": "birth_certificate_created", "card_id": "wmhy58"}
+{"timestamp": "2026-01-05T13:37:08.173477Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: wmhy58", "operation": "create_card_success", "card_id": "wmhy58"}
+{"timestamp": "2026-01-05T13:37:08.195478Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-technical-research'."}
+{"timestamp": "2026-01-05T13:37:08.196480Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Research SVG output format and optimization", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:08.196480Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:08.197480Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:08.273476Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card 4janms", "operation": "birth_certificate_created", "card_id": "4janms"}
+{"timestamp": "2026-01-05T13:37:08.274477Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 4janms", "operation": "create_card_success", "card_id": "4janms"}
+{"timestamp": "2026-01-05T13:37:08.289477Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-technical-research'."}
+{"timestamp": "2026-01-05T13:37:08.289477Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Research partial circle detection at edges", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:08.289477Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:08.290477Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:08.295476Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card maw60z", "operation": "birth_certificate_created", "card_id": "maw60z"}
+{"timestamp": "2026-01-05T13:37:08.295476Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: maw60z", "operation": "create_card_success", "card_id": "maw60z"}
+{"timestamp": "2026-01-05T13:37:29.829763Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-prototyping'."}
+{"timestamp": "2026-01-05T13:37:29.830762Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Prototype Jitter rendering mode", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:29.831762Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:29.833763Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:29.838762Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card ujhfb4", "operation": "birth_certificate_created", "card_id": "ujhfb4"}
+{"timestamp": "2026-01-05T13:37:29.838762Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: ujhfb4", "operation": "create_card_success", "card_id": "ujhfb4"}
+{"timestamp": "2026-01-05T13:37:30.081758Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-prototyping'."}
+{"timestamp": "2026-01-05T13:37:30.082760Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Prototype ASCII output mode", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:30.082760Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:30.083759Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:30.087758Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card hoxmgi", "operation": "birth_certificate_created", "card_id": "hoxmgi"}
+{"timestamp": "2026-01-05T13:37:30.087758Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: hoxmgi", "operation": "create_card_success", "card_id": "hoxmgi"}
+{"timestamp": "2026-01-05T13:37:30.110760Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-prototyping'."}
+{"timestamp": "2026-01-05T13:37:30.111759Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Prototype SVG output mode", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:30.111759Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:30.114765Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:30.238757Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card 7jk86r", "operation": "birth_certificate_created", "card_id": "7jk86r"}
+{"timestamp": "2026-01-05T13:37:30.238757Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 7jk86r", "operation": "create_card_success", "card_id": "7jk86r"}
+{"timestamp": "2026-01-05T13:37:50.671521Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-user-validation'."}
+{"timestamp": "2026-01-05T13:37:50.672525Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Validate Jitter aesthetic with design team", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:50.672525Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:50.673522Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:50.678523Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card n8azng", "operation": "birth_certificate_created", "card_id": "n8azng"}
+{"timestamp": "2026-01-05T13:37:50.678523Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: n8azng", "operation": "create_card_success", "card_id": "n8azng"}
+{"timestamp": "2026-01-05T13:37:51.121514Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-user-validation'."}
+{"timestamp": "2026-01-05T13:37:51.122515Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Validate ASCII output legibility", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:51.123516Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:51.123516Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:51.129515Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card llmfio", "operation": "birth_certificate_created", "card_id": "llmfio"}
+{"timestamp": "2026-01-05T13:37:51.129515Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: llmfio", "operation": "create_card_success", "card_id": "llmfio"}
+{"timestamp": "2026-01-05T13:37:51.143515Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('spike'). Card type is now inferred from template name. Using inferred type 'spike' from template 'spike-user-validation'."}
+{"timestamp": "2026-01-05T13:37:51.144518Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Validate SVG file size and performance", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:37:51.144518Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:37:51.145515Z", "level": "INFO", "logger": "gitban.tools", "message": "No template found for spike, skipping validation"}
+{"timestamp": "2026-01-05T13:37:51.354388Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card wikyff", "operation": "birth_certificate_created", "card_id": "wikyff"}
+{"timestamp": "2026-01-05T13:37:51.354388Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: wikyff", "operation": "create_card_success", "card_id": "wikyff"}
+{"timestamp": "2026-01-05T13:38:14.318772Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('documentation'). Card type is now inferred from template name. Using inferred type 'documentation' from template 'documentation-adr'."}
+{"timestamp": "2026-01-05T13:38:14.318772Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ADR: Jitter Randomization Strategy", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:38:14.318772Z", "level": "WARNING", "logger": "gitban.tools", "message": "Windows-unsafe characters in title: [':']. Auto-stripping unsafe characters from title."}
+{"timestamp": "2026-01-05T13:38:14.319772Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:38:14.332772Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-05T13:38:14.488767Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('documentation'). Card type is now inferred from template name. Using inferred type 'documentation' from template 'documentation-adr'."}
+{"timestamp": "2026-01-05T13:38:14.488767Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ADR: ASCII/Text Rendering Architecture", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:38:14.488767Z", "level": "WARNING", "logger": "gitban.tools", "message": "Windows-unsafe characters in title: [':']. Auto-stripping unsafe characters from title."}
+{"timestamp": "2026-01-05T13:38:14.489768Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:38:14.495771Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-05T13:38:14.511770Z", "level": "WARNING", "logger": "gitban.tools", "message": "create_card called with deprecated card_type parameter ('documentation'). Card type is now inferred from template name. Using inferred type 'documentation' from template 'documentation-adr'."}
+{"timestamp": "2026-01-05T13:38:14.511770Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ADR: SVG Output Specification", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-05T13:38:14.511770Z", "level": "WARNING", "logger": "gitban.tools", "message": "Windows-unsafe characters in title: [':']. Auto-stripping unsafe characters from title."}
+{"timestamp": "2026-01-05T13:38:14.513771Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-05T13:38:14.515769Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-05T13:43:12.529552Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: v2ideas-duplicate-cleanup, card_ids=['kja0uf', '8tgh4j', '9l4s43', 'g1wnof', '0aojwh', 'n1fqa6', '3bn450', 'bh0tpw', 'ycrgen', 'tgayih'], all_done=False, owner=None, preview=False"}
+{"timestamp": "2026-01-05T13:44:02.482773Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T13:44:02.485771Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T13:44:02.485771Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T13:44:02.486770Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T14:18:20.965655Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T14:18:20.972658Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T14:18:20.973657Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T14:18:20.973657Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T18:03:32.999161Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T18:03:33.007164Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T18:03:33.007164Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T18:03:33.008161Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T18:18:15.144074Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T18:18:15.148074Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T18:18:15.148074Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T18:18:15.149074Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T19:48:08.782204Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T19:48:08.819330Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T19:48:08.819330Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T19:48:08.820330Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-05T21:35:06.303752Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-05T21:35:06.310753Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-05T21:35:06.310753Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-05T21:35:06.311753Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-07T15:04:40.824447Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-07T15:04:40.830446Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 39 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-07T15:04:40.830446Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-07T15:04:40.830446Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-07T15:07:12.604441Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ARCHREVIEW Sprint Planning - Roadmap, Documentation, and Architecture Cleanup", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:07:12.652442Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:07:12.706440Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:08:47.648862Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Deep Architectural Review - Patterns, Technical Debt, and Future Principles", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:08:47.651861Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:08:47.657863Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:08:47.663863Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card dbwrwj", "operation": "birth_certificate_created", "card_id": "dbwrwj"}
+{"timestamp": "2026-01-07T15:08:47.663863Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: dbwrwj", "operation": "create_card_success", "card_id": "dbwrwj"}
+{"timestamp": "2026-01-07T15:10:15.431551Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Update ROADMAP.md Milestone Status and Progress", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:10:15.432551Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for chore (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:10:15.435554Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for chore: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:10:15.440553Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card nw1w41", "operation": "birth_certificate_created", "card_id": "nw1w41"}
+{"timestamp": "2026-01-07T15:10:15.440553Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: nw1w41", "operation": "create_card_success", "card_id": "nw1w41"}
+{"timestamp": "2026-01-07T15:10:15.627872Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Review and Update README.md for Current Features", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:10:15.628868Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:10:15.631870Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:10:15.639870Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card njk5lx", "operation": "birth_certificate_created", "card_id": "njk5lx"}
+{"timestamp": "2026-01-07T15:10:15.639870Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: njk5lx", "operation": "create_card_success", "card_id": "njk5lx"}
+{"timestamp": "2026-01-07T15:11:00.919003Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ADR Audit and Gap Analysis", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:11:00.921004Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:11:00.924003Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:11:00.930004Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card 48xfbf", "operation": "birth_certificate_created", "card_id": "48xfbf"}
+{"timestamp": "2026-01-07T15:11:00.931005Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 48xfbf", "operation": "create_card_success", "card_id": "48xfbf"}
+{"timestamp": "2026-01-07T15:11:01.418367Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Document Rendering Architecture and Extension Points", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:11:01.419365Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:11:01.421365Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:11:01.426364Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card o5eync", "operation": "birth_certificate_created", "card_id": "o5eync"}
+{"timestamp": "2026-01-07T15:11:01.426364Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: o5eync", "operation": "create_card_success", "card_id": "o5eync"}
+{"timestamp": "2026-01-07T15:11:36.281462Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Document Color Pipeline Architecture", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:11:36.281462Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:11:36.286461Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:11:36.290462Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card qamzem", "operation": "birth_certificate_created", "card_id": "qamzem"}
+{"timestamp": "2026-01-07T15:11:36.290462Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: qamzem", "operation": "create_card_success", "card_id": "qamzem"}
+{"timestamp": "2026-01-07T15:11:36.446458Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Create Architectural Guidelines for Future Development", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:11:36.447459Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:11:36.452463Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:11:36.458459Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card 7chgdu", "operation": "birth_certificate_created", "card_id": "7chgdu"}
+{"timestamp": "2026-01-07T15:11:36.458459Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 7chgdu", "operation": "create_card_success", "card_id": "7chgdu"}
+{"timestamp": "2026-01-07T15:12:03.228165Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Enhance DEVELOPMENT.md with Architecture Overview", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:12:03.229164Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for documentation (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:12:03.231164Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for documentation: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:12:03.238164Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card 6975lw", "operation": "birth_certificate_created", "card_id": "6975lw"}
+{"timestamp": "2026-01-07T15:12:03.238164Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 6975lw", "operation": "create_card_success", "card_id": "6975lw"}
+{"timestamp": "2026-01-07T15:12:55.398445Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ARCHREVIEW Sprint Closeout and Summary", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-07T15:12:55.400446Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-07T15:12:55.406445Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-07T15:16:55.357735Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-07T15:16:55.366736Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 49 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-07T15:16:55.367736Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-07T15:16:55.368736Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-07T23:53:00.902012Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: archreview-complete-20260107, card_ids=None, all_done=True, owner=None, preview=False"}
+{"timestamp": "2026-01-07T23:53:06.945757Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-07T23:53:06.947758Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 26 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-07T23:53:06.947758Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-07T23:53:06.948761Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-08T00:00:18.122458Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ARCHDEBT Sprint Planning", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T00:00:18.237460Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T00:00:18.250459Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-08T00:00:18.266462Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card r25nf2", "operation": "birth_certificate_created", "card_id": "r25nf2"}
+{"timestamp": "2026-01-08T00:00:18.267458Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: r25nf2", "operation": "create_card_success", "card_id": "r25nf2"}
+{"timestamp": "2026-01-08T00:01:14.453707Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Centralize COLORS Dict to Shared Module", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T00:01:14.503707Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for refactor (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T00:01:14.562706Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for refactor: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T00:01:14.627706Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card clmo5r", "operation": "birth_certificate_created", "card_id": "clmo5r"}
+{"timestamp": "2026-01-08T00:01:14.627706Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: clmo5r", "operation": "create_card_success", "card_id": "clmo5r"}
+{"timestamp": "2026-01-08T00:01:45.779699Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Add RenderConfig Dataclass to Config System", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T00:01:45.780699Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for refactor (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T00:01:45.787699Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for refactor: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T00:01:45.793699Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card n3605m", "operation": "birth_certificate_created", "card_id": "n3605m"}
+{"timestamp": "2026-01-08T00:01:45.793699Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: n3605m", "operation": "create_card_success", "card_id": "n3605m"}
+{"timestamp": "2026-01-08T00:02:19.900492Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: ARCHDEBT Sprint Closeout", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T00:02:19.901492Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T00:02:19.906492Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=False", "operation": "template_validation"}
+{"timestamp": "2026-01-08T00:03:43.183758Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-08T00:03:43.188762Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 30 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-08T00:03:43.188762Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-08T00:03:43.189761Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-08T00:08:35.798982Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-08T00:08:35.808982Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 30 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-08T00:08:35.808982Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-08T00:08:35.809982Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-08T00:17:24.518382Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: archdebt-2026-01-08, card_ids=None, all_done=True, owner=None, preview=False"}
+{"timestamp": "2026-01-08T00:17:59.004629Z", "level": "INFO", "logger": "gitban.tools", "message": "Starting archive_cards: archdebt-2026-01-08, card_ids=['r25nf2', 'd91e1w'], all_done=False, owner=None, preview=False"}
+{"timestamp": "2026-01-08T01:08:56.826214Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Multi-Step Jitter-Drift Pipeline", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T01:08:56.838212Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T01:08:56.848214Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T01:08:56.865214Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card mzea5g", "operation": "birth_certificate_created", "card_id": "mzea5g"}
+{"timestamp": "2026-01-08T01:08:56.866215Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: mzea5g", "operation": "create_card_success", "card_id": "mzea5g"}
+{"timestamp": "2026-01-08T14:35:08.710600Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Planetary Render Method - CMY Dots on Black Surface", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T14:35:08.791738Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T14:35:08.910006Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T14:35:08.923010Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card sso37x", "operation": "birth_certificate_created", "card_id": "sso37x"}
+{"timestamp": "2026-01-08T14:35:08.923010Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: sso37x", "operation": "create_card_success", "card_id": "sso37x"}
+{"timestamp": "2026-01-08T14:55:15.417266Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Research Target-Guided Dot Optimization Algorithm", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T14:55:15.541281Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for spike (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T14:55:15.765852Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for spike: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T14:55:15.786932Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card feshwj", "operation": "birth_certificate_created", "card_id": "feshwj"}
+{"timestamp": "2026-01-08T14:55:15.786932Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: feshwj", "operation": "create_card_success", "card_id": "feshwj"}
+{"timestamp": "2026-01-08T14:56:01.022794Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Target-Guided Dot Optimization (--target-image flag)", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T14:56:01.023793Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T14:56:01.031798Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T14:56:01.049794Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card io1h5h", "operation": "birth_certificate_created", "card_id": "io1h5h"}
+{"timestamp": "2026-01-08T14:56:01.049794Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: io1h5h", "operation": "create_card_success", "card_id": "io1h5h"}
+{"timestamp": "2026-01-08T17:51:58.887041Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: GPU Drift Iteration Memory and Computation Optimization", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-01-08T17:51:58.907041Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for refactor (mode=strict)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-01-08T17:51:58.921039Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for refactor: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-01-08T17:51:58.936038Z", "level": "INFO", "logger": "gitban.tools", "message": "Birth certificate created for card 1s5bu7", "operation": "birth_certificate_created", "card_id": "1s5bu7"}
+{"timestamp": "2026-01-08T17:51:58.936038Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: 1s5bu7", "operation": "create_card_success", "card_id": "1s5bu7"}
+{"timestamp": "2026-01-08T18:12:30.708196Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-08T18:12:30.812888Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 31 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-08T18:12:30.812888Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-08T18:12:30.818521Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-01-11T15:27:21.700785Z", "level": "INFO", "logger": "gitban.tools", "message": "Getting gitban stats", "operation": "get_gitban_stats_start"}
+{"timestamp": "2026-01-11T15:27:21.709786Z", "level": "INFO", "logger": "gitban.tools", "message": "Found 31 cards", "operation": "get_gitban_stats_cards_found"}
+{"timestamp": "2026-01-11T15:27:21.709786Z", "level": "INFO", "logger": "gitban.tools", "message": "Building result without git operations", "operation": "get_gitban_stats_no_subprocess"}
+{"timestamp": "2026-01-11T15:27:21.711784Z", "level": "INFO", "logger": "gitban.tools", "message": "Gitban stats completed", "operation": "get_gitban_stats_success"}
+{"timestamp": "2026-02-04T15:52:08.550567Z", "level": "INFO", "logger": "gitban.tools", "message": "Creating card: Position Drift - Centroid-Based Petal Placement", "tool": "create_card", "operation": "create_card_start"}
+{"timestamp": "2026-02-04T15:52:08.576805Z", "level": "INFO", "logger": "gitban.tools", "message": "Template enforcement enabled for feature (mode=advisory)", "operation": "template_enforcement_check"}
+{"timestamp": "2026-02-04T15:52:08.582803Z", "level": "INFO", "logger": "gitban.tools", "message": "Template validation result for feature: valid=True", "operation": "template_validation"}
+{"timestamp": "2026-02-04T15:52:08.585805Z", "level": "INFO", "logger": "gitban.tools", "message": "Card created successfully: igx4m0", "operation": "create_card_success", "card_id": "igx4m0"}

@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "7jk86r",
+  "created_at": "2026-01-05T20:37:30.236757+00:00",
+  "template_name": "spike-prototyping",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "prototype-svg-output-mode",
+    "priority": "P1",
+    "status": "backlog",
+    "type": "spike",
+    "sprint": "V2IDEAS",
+    "filename": "V2IDEAS-backlog-P1-spike-prototype-svg-output-mode-7jk86r.md"
+  }
+}

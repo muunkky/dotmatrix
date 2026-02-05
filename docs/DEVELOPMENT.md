@@ -2,6 +2,10 @@
 
 Welcome to dotmatrix! This guide will help you set up your development environment and understand the project structure.
 
+> **Documentation Hub**: [docs/README.md](README.md) - Find all documentation from one place
+>
+> **See Also**: [Architectural Guidelines](architectural-guidelines.md) for coding principles and patterns
+
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
@@ -209,14 +213,53 @@ refactor(cli): extract color options to separate group
 
 ## Architecture Overview
 
-Dotmatrix processes images through a pipeline:
+> **Detailed Documentation**: See [architectural-guidelines.md](architectural-guidelines.md) for coding principles and patterns.
+
+Dotmatrix processes images through a **6-layer pipeline**:
 
 ```
-┌─────────┐    ┌───────────┐    ┌───────────┐    ┌──────────┐
-│  Input  │ → │ Detection │ → │   Color   │ → │  Output  │
-│  Image  │    │  Circles  │    │ Analysis  │    │  JSON/   │
-│         │    │  or Masks │    │  CMYK/RGB │    │  Images  │
-└─────────┘    └───────────┘    └───────────┘    └──────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 1: INPUT                                              │
+│  cli.py, config.py, config_loader.py, image_loader.py       │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 2: DETECTION                                          │
+│  circle_detector.py (Hough), convex_detector.py (CMYK)      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 3: COLOR PROCESSING                                   │
+│  color_extractor.py, color_clustering.py,                   │
+│  color_palette_detector.py, color_separation.py             │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 4: CLUSTER PROCESSING                                 │
+│  cluster_pixel_counter.py (ClusterResult dataclass)         │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 5: GPU ACCELERATION (optional)                        │
+│  gpu.py, gpu_renderer.py                                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 6: RENDERING & OUTPUT                                 │
+│  circle_renderer.py, block_renderer.py, treemap_renderer.py │
+│  cluster_renderer.py, svg_renderer.py, formatter.py         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Central Data Contract
+
+`ClusterResult` is the shared data contract that connects all layers:
+
+```python
+from dotmatrix.cluster_pixel_counter import ClusterResult
+
+# All renderers consume List[ClusterResult]
+# All cluster processing produces List[ClusterResult]
 ```
 
 ### Three Processing Modes
@@ -225,17 +268,29 @@ Dotmatrix processes images through a pipeline:
 2. **CMYK Mode** (`dotmatrix --cmyk input.png`): Full CMYK separation + cluster analysis
 3. **Reconstitute Mode** (`dotmatrix reconstitute clusters.json`): Rebuild image from cluster data
 
+### Architecture Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [architectural-guidelines.md](architectural-guidelines.md) | **Start here** - Coding principles and patterns |
+| [architecture/pipeline-overview.md](architecture/pipeline-overview.md) | System-wide data flow |
+| [architecture/rendering-architecture.md](architecture/rendering-architecture.md) | How to add renderers |
+| [architecture/color-pipeline.md](architecture/color-pipeline.md) | BGR convention, color algorithms |
+| [docs/adr/](adr/) | Architecture Decision Records |
+
 ### Architecture Decision Records
 
-Read these to understand key design decisions:
+Key ADRs to understand design decisions:
 
-- **ADR-001**: Large file processing with chunked/tiled approach
-- **ADR-002**: CLI UX refactoring with Click option groups
-- **ADR-003**: Block renderer for 100% pixel accuracy
-- **ADR-004**: GPU acceleration with CuPy
-- **ADR-005**: Cluster-based pixel counting for CMYK analysis
+| ADR | Topic |
+|-----|-------|
+| ADR-001 | Large file processing with chunked/tiled approach |
+| ADR-002 | Jitter randomization strategy |
+| ADR-003 | Block renderer for 100% pixel accuracy |
+| ADR-004 | GPU acceleration with CuPy |
+| ADR-005 | Cluster-based pixel counting for CMYK analysis |
 
-Located in `docs/adr/`.
+Located in `docs/adr/`. See [docs/adr/README.md](adr/README.md) for full index.
 
 ---
 
@@ -305,10 +360,15 @@ def test_my_feature(sample_image_path):
 
 ### Adding a Renderer
 
+> **Detailed guide**: See [rendering-architecture.md](architecture/rendering-architecture.md) for complete patterns and code templates.
+
+Quick checklist:
 1. Create `src/dotmatrix/my_renderer.py`
-2. Implement render function taking `List[ClusterResult]`
-3. Add CLI option in `cli.py` for `--render-method`
-4. Add tests in `tests/test_my_renderer.py`
+2. Implement `render_<name>(clusters: List[ClusterResult], image_shape, **params) -> np.ndarray`
+3. Use BGR color format (cv2 convention)
+4. Add CLI option in `cli.py` for `--render-method`
+5. Add tests in `tests/test_my_renderer.py`
+6. Update README.md if user-facing
 
 ---
 
@@ -451,10 +511,20 @@ cat benchmarks/gpu_benchmark_results.json
 
 ### Documentation
 
-- **README.md** - User-facing installation and usage
-- **docs/adr/** - Architecture Decision Records for design context
-- **docs/architecture/** - Technical architecture documentation
-- **CHANGELOG.md** - Version history and recent changes
+| Document | Purpose |
+|----------|---------|
+| **README.md** | User-facing installation and usage |
+| **[architectural-guidelines.md](architectural-guidelines.md)** | Coding principles and patterns |
+| **[docs/architecture/](architecture/)** | Technical architecture docs |
+| **[docs/adr/](adr/)** | Architecture Decision Records |
+| **CHANGELOG.md** | Version history |
+| **ROADMAP.md** | Future development plans |
+
+### Key Architecture Documents
+
+- [rendering-architecture.md](architecture/rendering-architecture.md) - **How to add renderers**
+- [color-pipeline.md](architecture/color-pipeline.md) - BGR convention and color processing
+- [pipeline-overview.md](architecture/pipeline-overview.md) - System data flow
 
 ### Issue Templates
 

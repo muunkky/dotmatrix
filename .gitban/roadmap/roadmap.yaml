@@ -98,6 +98,16 @@ changelog:
       - Resolved status inconsistency in card 6b4iz6 (appears in both done and 
         todo)
       - Recommended weekly Friday triage sessions to prevent done card backlog
+  - version: 2.0.0-alpha
+    date: '2026-01-05'
+    changes:
+      - 'Research phase complete: Jitter, ASCII, SVG, and partial circle detection'
+      - 4 research spikes completed with 43.5KB of comprehensive documentation
+      - 'Jitter: Gaussian algorithm recommended with CLI flags designed'
+      - 'ASCII: Character-per-circle rendering with Unicode/ASCII character sets'
+      - 'SVG: Color-grouped structure with optimization techniques'
+      - 'Partial circles: Arc fitting approach with confidence scoring'
+      - Roadmap updated with V2 milestone and project tracking
 versions:
   v1:
     id: v1
@@ -278,15 +288,16 @@ versions:
               edge-detection:
                 id: edge-detection
                 title: Improve Edge Detection
-                description: Use Canny edge detection and adaptive thresholding 
-                  for better circle boundaries
-                owner: ''
-                tdd_spec: Detects edges of overlapping circles with <10% false 
-                  positive rate
-                docs_ref: docs/algorithms/edge-detection.md
+                description: Enhanced edge detection using Canny algorithm with 
+                  L2 gradient and adaptive thresholding. Reduces false positive 
+                  rate from 22% to 8.5% on overlapping circle test dataset. 
+                  Integrated with CLI via --edge-detection, --canny-low, 
+                  --canny-high, and --adaptive-threshold flags.
+                status: done
                 sequence: 1
-                depends_on: []
-                status: todo
+                owner: CAMERON
+                tdd_spec: tests/test_edge_detector.py (11 tests, 83% coverage)
+                docs_ref: docs/adr/ADR-008-edge-detection-algorithm.md
               multi-scale-detection:
                 id: multi-scale-detection
                 title: Multi-Scale Circle Detection
@@ -818,7 +829,311 @@ versions:
                 description: 'Final verification and documentation. Card: 2z9217'
   v2:
     id: v2
-    milestones: {}
+    milestones:
+      m1:
+        depends_on: []
+        description: Research and design V2 artistic rendering features 
+          including jitter randomization, ASCII/text output, SVG graphics 
+          format, and partial circle detection. Complete prototypes and 
+          validation before implementation phase.
+        due_date: '2026-01-31'
+        features:
+          jitter-rendering:
+            depends_on: []
+            description: Add randomization to circle positions and sizes to 
+              break up grid patterns and create organic appearance
+            id: jitter-rendering
+            priority: high
+            projects:
+              jitter-validation:
+                depends_on:
+                  - jitter-prototype
+                description: Test with design team to validate visual quality at
+                  various jitter levels
+                id: jitter-validation
+                owner: CAMERON
+                sequence: 3
+                status: todo
+                title: Validate jitter aesthetic
+              jitter-research:
+                description: Evaluate Gaussian, uniform, blue-noise, and Perlin 
+                  algorithms for circle jittering
+                docs_ref: 'Card sxy0kc: 8.4KB research findings'
+                id: jitter-research
+                owner: CAMERON
+                sequence: 1
+                status: done
+                title: Research jitter algorithms
+              jitter-prototype:
+                depends_on:
+                  - jitter-research
+                description: Implement CLI flags and Gaussian jitter algorithm 
+                  with configurable thresholds
+                docs_ref: TDD required
+                id: jitter-prototype
+                owner: CAMERON
+                sequence: 2
+                status: todo
+                title: Prototype jitter rendering mode
+            status: in_progress
+            title: Jitter/Randomization Rendering
+          ascii-rendering:
+            depends_on: []
+            description: Output halftone patterns as ASCII art using Unicode or 
+              ASCII characters
+            id: ascii-rendering
+            priority: high
+            projects:
+              ascii-research:
+                description: Evaluate character-per-circle, multi-char, and 
+                  density-based approaches
+                docs_ref: 'Card wmhy58: 12.2KB research findings'
+                id: ascii-research
+                owner: CAMERON
+                sequence: 1
+                status: done
+                title: Research ASCII rendering strategies
+              ascii-prototype:
+                depends_on:
+                  - ascii-research
+                description: Implement character-per-circle renderer with 
+                  Unicode/ASCII character sets
+                docs_ref: TDD required
+                id: ascii-prototype
+                owner: CAMERON
+                sequence: 2
+                status: todo
+                title: Prototype ASCII output mode
+              ascii-validation:
+                depends_on:
+                  - ascii-prototype
+                description: Test terminal compatibility and readability across 
+                  CMD, PowerShell, bash
+                id: ascii-validation
+                owner: CAMERON
+                sequence: 3
+                status: todo
+                title: Validate ASCII legibility
+            status: in_progress
+            title: ASCII/Text Rendering
+          svg-output:
+            depends_on: []
+            description: Export halftone patterns as scalable SVG files with 
+              CMYK color grouping
+            id: svg-output
+            priority: high
+            projects:
+              svg-research:
+                description: Evaluate circle vs path elements, grouping 
+                  strategies, optimization techniques
+                docs_ref: 'Card 4janms: 11.5KB research findings'
+                id: svg-research
+                owner: CAMERON
+                sequence: 1
+                status: done
+                title: Research SVG format and optimization
+              svg-prototype:
+                depends_on:
+                  - svg-research
+                description: Implement color-grouped SVG renderer with 
+                  optimization flags
+                docs_ref: TDD required
+                id: svg-prototype
+                owner: CAMERON
+                sequence: 2
+                status: todo
+                title: Prototype SVG output mode
+              svg-validation:
+                depends_on:
+                  - svg-prototype
+                description: Test file sizes at scale and editor compatibility 
+                  (Inkscape, Illustrator, Figma)
+                id: svg-validation
+                owner: CAMERON
+                sequence: 3
+                status: todo
+                title: Validate SVG file size and performance
+            status: in_progress
+            title: SVG Output Format
+          partial-circle-detection:
+            depends_on: []
+            description: Detect and extrapolate circles that are clipped at 
+              image boundaries (V2 feature)
+            id: partial-circle-detection
+            priority: high
+            projects:
+              partial-circle-research:
+                description: Evaluate arc fitting algorithms for detecting 
+                  25-75% visible circles at edges
+                docs_ref: 'Card maw60z: 11.5KB research findings'
+                id: partial-circle-research
+                owner: CAMERON
+                sequence: 1
+                status: done
+                title: Research partial circle detection
+              partial-circle-implementation:
+                depends_on:
+                  - partial-circle-research
+                description: Implement arc fitting with least-squares 
+                  optimization and confidence scoring (future card)
+                id: partial-circle-implementation
+                owner: ''
+                sequence: 2
+                status: todo
+                title: Implement partial circle detection
+            status: in_progress
+            title: Partial Circle Detection
+          target-guided-optimization:
+            depends_on:
+              - jitter-rendering
+            description: Enable dots to match a reference PNG halftone image 
+              through optimization algorithms. Allows replicating existing 
+              halftone patterns.
+            id: target-guided-optimization
+            priority: high
+            projects:
+              algorithm-research:
+                id: algorithm-research
+                title: Algorithm Research Spike
+                description: Research best algorithm for target-guided dot 
+                  optimization (ICP, gradient descent, simulated annealing, 
+                  etc.)
+                status: done
+                sequence: 1
+                owner: CAMERON
+                depends_on: []
+                docs_ref: Spike card feshwj (completed)
+                tdd_spec: tests/test_target_guided.py
+              optimization-impl:
+                depends_on:
+                  - algorithm-research
+                  - target-detection
+                description: Integrate optimization into render_flower_svg with 
+                  CLI flags
+                docs_ref: src/dotmatrix/cli.py
+                id: optimization-impl
+                owner: CAMERON
+                sequence: 3
+                status: done
+                title: CLI & Renderer Integration
+              target-detection:
+                id: target-detection
+                title: Target Image Detection
+                description: Implement target circle detection from PNG
+                status: done
+                sequence: 2
+                owner: CAMERON
+                depends_on:
+                  - algorithm-research
+                docs_ref: tests/test_target_guided.py
+            status: todo
+            title: Target-Guided Dot Optimization
+          gpu-drift-optimization:
+            description: Optimize GPU drift correction iteration to reduce 
+              memory transfers and move computation to GPU - ALL PROJECTS 
+              COMPLETED
+            id: gpu-drift-optimization
+            priority: high
+            projects:
+              gpu-adjustment-kernel:
+                depends_on:
+                  - persistent-gpu-arrays
+                description: New CUDA kernel to calculate radius adjustments on 
+                  GPU instead of CPU serial loop - COMPLETED
+                docs_ref: Card 1s5bu7
+                id: gpu-adjustment-kernel
+                sequence: 2
+                status: done
+                title: GPU Adjustment Kernel
+              persistent-gpu-arrays:
+                depends_on: []
+                description: Move position array allocation outside iteration 
+                  loop, upload px/py once - COMPLETED
+                docs_ref: Card 1s5bu7
+                id: persistent-gpu-arrays
+                sequence: 1
+                status: done
+                title: Persistent GPU Arrays
+              prebuilt-index-arrays:
+                depends_on: []
+                description: Build measurement index arrays once before loop, 
+                  eliminate per-iteration list rebuilding - COMPLETED
+                docs_ref: Card 1s5bu7
+                id: prebuilt-index-arrays
+                sequence: 3
+                status: done
+                title: Pre-built Index Arrays
+            status: done
+            title: GPU Drift Correction Optimization
+        id: m1
+        status: in_progress
+        success_criteria:
+          - All research spikes completed with comprehensive findings
+          - Working prototypes for jitter, ASCII, and SVG output modes
+          - Validation completed with design team and users
+          - ADRs documenting all design decisions
+        title: 'M1: V2 Feature Research & Design'
+      m2:
+        description: Implementation of artistic rendering features researched in
+          M1
+        due_date: '2026-03-31'
+        features:
+          planetary-render:
+            description: New render method that positions CMY dots tangent to 
+              black circle surface, creating a 'planetary' or 'atomic' 
+              appearance with fully visible color satellites
+            id: planetary-render
+            priority: high
+            projects:
+              planetary-svg:
+                depends_on: []
+                description: SVG implementation of planetary render with CMY 
+                  dots positioned at black_radius + cmy_radius distance from 
+                  center
+                docs_ref: README.md
+                id: planetary-svg
+                owner: ''
+                sequence: 1
+                status: todo
+                tdd_spec: render_planetary_svg() produces SVG with CMY circles 
+                  tangent to black center
+                title: Planetary SVG Renderer
+              planetary-png:
+                depends_on:
+                  - planetary-svg
+                description: PNG implementation with blend-overlaps support and 
+                  GPU acceleration
+                docs_ref: README.md
+                id: planetary-png
+                owner: ''
+                sequence: 2
+                status: todo
+                tdd_spec: render_planetary() produces PNG with correct color 
+                  blending at CMY overlaps
+                title: Planetary PNG Renderer
+              planetary-cli:
+                depends_on:
+                  - planetary-svg
+                description: Add --render-method planetary to CLI with all 
+                  jitter, rotation, and drift options
+                docs_ref: README.md
+                id: planetary-cli
+                owner: ''
+                sequence: 3
+                status: todo
+                tdd_spec: dotmatrix --render-method planetary produces correct 
+                  output
+                title: Planetary CLI Integration
+            status: todo
+            title: Planetary Render Method
+        id: m2
+        status: todo
+        success_criteria:
+          - All new render methods implemented and tested
+          - CLI options documented in README
+          - GPU acceleration for performance-critical methods
+          - Full test coverage for new features
+        title: 'M2: V2 Feature Implementation'
     start_date: '2025-12-03'
     description: Artistic enhancements including jitter, ASCII output, and SVG 
       vector graphics.

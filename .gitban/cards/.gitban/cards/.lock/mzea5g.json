@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "mzea5g",
+  "created_at": "2026-01-08T08:08:56.860213+00:00",
+  "template_name": "feature",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "multi-step-jitter-drift-pipeline",
+    "priority": "P1",
+    "status": "backlog",
+    "type": "feature",
+    "sprint": null,
+    "filename": "backlog-P1-feature-multi-step-jitter-drift-pipeline-mzea5g.md"
+  }
+}

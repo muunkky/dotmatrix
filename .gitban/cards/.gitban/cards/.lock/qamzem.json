@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "qamzem",
+  "created_at": "2026-01-07T22:11:36.289463+00:00",
+  "template_name": "documentation",
+  "owner": "CAMERON",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "document-color-pipeline-architecture",
+    "priority": "P1",
+    "status": "todo",
+    "type": "documentation",
+    "sprint": "ARCHREVIEW",
+    "filename": "ARCHREVIEW-todo-P1-documentation-document-color-pipeline-architecture-qamzem-CAMERON.md"
+  }
+}

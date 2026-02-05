@@ -42,7 +42,7 @@ PHASE 3: TRANSFORM (Execute Action)
 
 **Disposition Categories** (choose ONE per card):
 
-| Disposition | When to Use | Action | ⚠️ Critical Anti-Patterns |
+| Disposition | When to Use | Action | Critical Anti-Patterns |
 |:------------|:------------|:-------|:--------------------------|
 | **ACT** | Clear, valuable work aligned with goals | Transform to proper card type (feature, bug, chore) | Never use if card has legitimate product value regardless of validation difficulty |
 | **DONE** | Work already completed | **Move to backlog** with "VERIFY AND CLOSE" banner, then verify and close properly | **NEVER archive without verification** - must confirm work is complete |
@@ -53,21 +53,21 @@ PHASE 3: TRANSFORM (Execute Action)
 
 **Decision Rule**: Choose the FIRST matching disposition from top to bottom. Don't overthink.
 
-### ⚠️ Critical Safeguards Against Lazy Triage
+### Critical Safeguards Against Lazy Triage
 
 **The Lazy Archival Anti-Pattern**: Archiving valid features because validation is "too hard" or content is "incomplete" is **FORBIDDEN** and degrades the product.
 
 **MANDATORY Rules:**
 
 1. **Valid Features That Are Hard to Promote** (most common during triage):
-   - ❌ NEVER ARCHIVE: Features with validation errors
-   - ❌ NEVER ARCHIVE: Features that need "more work"
-   - ❌ NEVER ARCHIVE: Low-priority features (P2s are expected in backlog)
-   - ✅ CORRECT: Keep in draft/ folder with status=draft (cards stay in draft/ until validation passes)
-   - ✅ CORRECT: Downgrade priority if appropriate (P1 → P2)
-   - ✅ CORRECT: Prepend banner **at the very top** of card to flag as valid:
+   - NEVER ARCHIVE: Features with validation errors
+   - NEVER ARCHIVE: Features that need "more work"
+   - NEVER ARCHIVE: Low-priority features (P2s are expected in backlog)
+   - CORRECT: Keep in draft/ folder with status=draft (cards stay in draft/ until validation passes)
+   - CORRECT: Downgrade priority if appropriate (P1 → P2)
+   - CORRECT: Prepend banner **at the very top** of card to flag as valid:
      ```markdown
-     ⚠️ **VALID FEATURE - NEEDS VALIDATION FIXES**
+     **VALID FEATURE - NEEDS VALIDATION FIXES**
 
      This is a legitimate, useful feature worth implementing. It needs template validation fixes before it can be promoted to todo status.
 

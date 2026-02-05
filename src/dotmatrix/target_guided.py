@@ -1,10 +1,18 @@
 """Target-Guided Dot Optimization for Halftone Style Transfer.
 
 This module implements algorithms for guiding flower/planetary dots toward
-target positions and sizes extracted from a reference PNG halftone image.
+positions and sizes extracted from a REFERENCE halftone image, enabling
+style transfer between halftone images.
 
-Spike Investigation: feshwj
-Feature Card: io1h5h (pending spike completion)
+**IMPORTANT: This is for STYLE TRANSFER, not color-coverage optimization.**
+
+Use case: Make one image's halftone pattern look like another image's pattern.
+- Input: Your source image rendered as halftone
+- Target: A reference halftone whose dot pattern you want to mimic
+- Result: Source colors rendered with target-like dot arrangement
+
+This does NOT improve color accuracy of the source image. For that, use
+standard drift (--drift) which adjusts petal sizes to match source colors.
 
 Algorithm: Per-Cluster Local Gradient with Target Assignment
 1. Detect target circles per color channel from reference PNG
@@ -14,17 +22,10 @@ Algorithm: Per-Cluster Local Gradient with Target Assignment
 5. Apply gradient step with CMYK balance constraint (integrated with drift)
 6. Repeat until convergence or max iterations
 
-Cost Function (per dot):
-    position_error = distance_to_target / max_distance
-    radius_error = |r - target_r| / r
-    mass_deviation = |actual_mass - expected_mass| / expected_mass
-    
-    total_cost = w_pos * position_error + w_rad * radius_error + w_mass * mass_deviation
-    
-    Configurable via --target-weight flag:
-    - target_weight=0.0: Pure CMYK balance (existing drift)
-    - target_weight=1.0: Pure target matching
-    - target_weight=0.5: Balanced (default)
+Configurable via --target-weight flag:
+- target_weight=0.0: Ignore reference pattern (pure CMYK drift)
+- target_weight=1.0: Prioritize pattern matching
+- target_weight=0.5: Balanced (default)
 """
 
 import math
@@ -98,7 +99,7 @@ class TargetCircleIndex:
             for color, color_circles in self._by_color.items():
                 if color_circles:
                     points = np.array([[c.x, c.y] for c in color_circles])
-                    self._kdtrees[color] = KDTree(points)
+                    self._kdtrees[color] = KDTree(points)  # type: ignore
                 else:
                     self._kdtrees[color] = None
     
@@ -121,20 +122,23 @@ class TargetCircleIndex:
         if not color_circles:
             return None
         
-        if HAS_SCIPY and self._kdtrees.get(color) is not None:
+        kdtree = self._kdtrees.get(color)
+        if HAS_SCIPY and kdtree is not None:
             # O(log n) lookup
-            dist, idx = self._kdtrees[color].query([x, y])
-            return color_circles[idx], dist
+            dist, idx = kdtree.query([x, y])
+            return color_circles[idx], float(dist)
         else:
             # Brute force fallback
             min_dist = float('inf')
-            nearest = None
+            nearest: Optional[TargetCircle] = None
             for circle in color_circles:
                 dist = math.sqrt((x - circle.x)**2 + (y - circle.y)**2)
                 if dist < min_dist:
                     min_dist = dist
                     nearest = circle
-            return nearest, min_dist
+            if nearest is not None:
+                return nearest, min_dist
+            return None
 
 
 def parse_target_image(
@@ -259,6 +263,63 @@ def compute_target_gradient(
     return dx, dy, dr
 
 
+def _compute_match_score(
+    circles_by_color: Dict[str, List[Tuple[float, float, float]]],
+    cluster_circle_map: List[Dict[str, Tuple[int, int]]],
+    target_index: "TargetCircleIndex",
+    max_distance: float,
+) -> float:
+    """Compute current target match score as percentage.
+    
+    Score is based on average distance to nearest target circles
+    normalized to a 0-100% scale.
+    
+    Args:
+        circles_by_color: Current circle positions/sizes
+        cluster_circle_map: Mapping from clusters to circle indices
+        target_index: Target circle spatial index
+        max_distance: Maximum possible distance (diagonal of image)
+        
+    Returns:
+        Match score as percentage (0-100), where 100 is perfect match
+    """
+    total_match = 0.0
+    count = 0
+    
+    for circle_indices in cluster_circle_map:
+        if not circle_indices:
+            continue
+        
+        for color in ['cyan', 'magenta', 'yellow']:
+            if color not in circle_indices:
+                continue
+            
+            circle_idx, _ = circle_indices[color]
+            cx, cy, r = circles_by_color[color][circle_idx]
+            
+            match = target_index.find_nearest(cx, cy, color)
+            if match is None:
+                continue
+            
+            target_circle, distance = match
+            
+            # Position match: 1.0 when distance=0, 0.0 at max_distance
+            pos_match = max(0.0, 1.0 - (distance / max_distance))
+            
+            # Radius match: 1.0 when radii equal, decreases with difference
+            rad_match = 1.0 - min(1.0, abs(r - target_circle.radius) / max(r, target_circle.radius))
+            
+            # Combined match (weighted average)
+            combined = 0.7 * pos_match + 0.3 * rad_match
+            total_match += combined
+            count += 1
+    
+    if count == 0:
+        return 0.0
+    
+    return (total_match / count) * 100.0
+
+
 def apply_target_guided_optimization(
     circles_by_color: Dict[str, List[Tuple[float, float, float]]],
     cluster_metadata: List[Dict[str, Any]],
@@ -294,6 +355,12 @@ def apply_target_guided_optimization(
     
     # Track convergence
     prev_total_error = float('inf')
+    
+    # Log initial state
+    initial_score = _compute_match_score(
+        circles_by_color, cluster_circle_map, target_index, max_distance
+    )
+    print(f"[TARGET] Initial match score: {initial_score:.2f}%", flush=True)
     
     for iteration in range(config.max_iterations):
         total_error = 0.0
@@ -349,18 +416,38 @@ def apply_target_guided_optimization(
                 total_error += pos_error + rad_error
                 adjustments += 1
         
-        # Check convergence
+        # Check convergence and log progress
         if adjustments > 0:
             avg_error = total_error / adjustments
             error_change = abs(prev_total_error - total_error) / max(prev_total_error, 0.001)
             
+            # Compute and log match score every 5 iterations or at convergence check
+            if iteration % 5 == 0 or error_change < config.convergence_threshold:
+                current_score = _compute_match_score(
+                    circles_by_color, cluster_circle_map, target_index, max_distance
+                )
+                print(f"[TARGET] Iteration {iteration+1}/{config.max_iterations}: "
+                      f"match score: {current_score:.2f}%", flush=True)
+            
             logger.debug(f"Iteration {iteration}: avg_error={avg_error:.4f}, change={error_change:.4f}")
             
             if error_change < config.convergence_threshold:
+                final_score = _compute_match_score(
+                    circles_by_color, cluster_circle_map, target_index, max_distance
+                )
+                print(f"[TARGET] Converged after {iteration+1} iterations. "
+                      f"Final match score: {final_score:.2f}%", flush=True)
                 logger.info(f"Target optimization converged after {iteration+1} iterations")
                 break
             
             prev_total_error = total_error
+    else:
+        # Loop completed without early convergence
+        final_score = _compute_match_score(
+            circles_by_color, cluster_circle_map, target_index, max_distance
+        )
+        print(f"[TARGET] Completed {config.max_iterations} iterations. "
+              f"Final match score: {final_score:.2f}%", flush=True)
     
     return circles_by_color
 

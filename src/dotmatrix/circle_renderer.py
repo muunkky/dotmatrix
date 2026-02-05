@@ -28,19 +28,31 @@ Key algorithms:
 - Global black mask: Build all black circles first, then optimize petals against global mask
 - Exposed area optimization: Test cv2.circle renders against global black mask
 - CMYK decomposition: C=C+G+B, M=M+R+B, Y=Y+R+G (secondaries contribute to primaries)
+
+V2 ENHANCEMENTS (2026-01-05)
+=============================
+Jitter/randomization support for breaking up grid patterns:
+- Position jitter: Add Gaussian noise to circle positions
+- Size jitter: Add Gaussian noise to circle radii
+- Reproducible with seed parameter
+- Default: disabled (jitter_position=0, jitter_size=0)
 """
 
 import math
 import hashlib
 import random
 import time
-from typing import Dict, List, Tuple, Optional, Callable
+from typing import Dict, List, Tuple, Optional, Callable, Any
 from dataclasses import dataclass
+from pathlib import Path
 
 import cv2
 import numpy as np
 
 from dotmatrix.cluster_pixel_counter import ClusterResult
+from dotmatrix.logger import get_logger
+from dotmatrix.jitter import apply_position_jitter, apply_size_jitter
+from dotmatrix.centroid_drift import compute_color_centroid_from_mask, apply_centroid_position
 
 
 def compute_cluster_rotation(
@@ -70,7 +82,8 @@ def compute_cluster_rotation(
             rng = random.Random(seed + cluster_x * 10000 + cluster_y)
         else:
             rng = random.Random()
-        return base_rotation + rng.uniform(0, 360)
+        rotation = base_rotation + rng.uniform(0, 360)
+        return rotation
 
     elif mode == 'cluster-hash':
         # Deterministic rotation based on position hash
@@ -86,26 +99,7 @@ def compute_cluster_rotation(
         return base_rotation
 
 
-# CMYK colors in BGR format (for cv2)
-COLORS_BGR = {
-    'cyan': (255, 255, 0),      # BGR
-    'magenta': (255, 0, 255),   # BGR
-    'yellow': (0, 255, 255),    # BGR
-    'black': (0, 0, 0),         # BGR
-    'white': (255, 255, 255),   # BGR
-    # Secondary colors from overlaps
-    'red': (0, 0, 255),         # M + Y
-    'green': (0, 255, 0),       # C + Y
-    'blue': (255, 0, 0),        # C + M
-}
-
-# Petal angles for flower layout (degrees from top, clockwise)
-# Black at center, CMY at 90° apart (N/E/S) to reduce neighbor black overlap
-PETAL_ANGLES = {
-    'cyan': 0,       # Top (North)
-    'magenta': 90,   # Right (East)
-    'yellow': 180,   # Bottom (South)
-}
+from dotmatrix.colors import COLORS_BGR, PETAL_ANGLES
 
 
 def radius_from_pixels(pixel_count: int) -> float:
@@ -354,7 +348,11 @@ def render_flower_cluster(
     petal_distance: float = 0.35,
     scale: int = 1,
     rotation_offset: float = 0.0,
-    blend_overlaps: bool = False
+    blend_overlaps: bool = False,
+    jitter_position: float = 0.0,
+    jitter_size: float = 0.0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian'
 ) -> Dict[str, int]:
     """Render a single cluster as a flower pattern.
 
@@ -379,6 +377,10 @@ def render_flower_cluster(
         rotation_offset: Angle offset in degrees to rotate all petals
         blend_overlaps: If True, use subtractive CMY blending at petal overlaps
             (C+M=Blue, C+Y=Green, M+Y=Red, C+M+Y≈Black)
+        jitter_position: Position jitter strength (0-100, percentage of black radius)
+        jitter_size: Size jitter strength (0-100, percentage of radius)
+        jitter_seed: Random seed for reproducible jitter (optional)
+        jitter_algorithm: 'gaussian' or 'uniform' distribution
 
     Returns:
         Dict of actual pixels drawn per color
@@ -386,11 +388,34 @@ def render_flower_cluster(
     cx = cluster.x * scale
     cy = cluster.y * scale
 
+    # Apply position jitter to cluster center if enabled
+    if jitter_position > 0 and jitter_seed is not None:
+        # Generate unique seed for this cluster based on position
+        cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+        black_radius = radius_from_pixels(cluster.black)
+        cx, cy = apply_position_jitter(
+            cx, cy,
+            position_pct=jitter_position,
+            base_radius=black_radius * scale,
+            seed=cluster_seed,
+            algorithm=jitter_algorithm
+        )
+
     drawn = {}
     h, w = image.shape[:2]
 
     # Calculate black radius first (always uses simple formula)
     black_radius = radius_from_pixels(cluster.black)
+
+    # Apply size jitter to black radius if enabled
+    if jitter_size > 0 and jitter_seed is not None:
+        cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+        black_radius = apply_size_jitter(
+            black_radius,
+            size_pct=jitter_size,
+            seed=cluster_seed,
+            algorithm=jitter_algorithm
+        )
 
     # CMYK Decomposition: Add RGB overlaps to their parent CMY primaries
     # Co = cyan + green (C∩Y) + blue (C∩M)
@@ -566,7 +591,19 @@ def render_flower(
     base_rotation: float = 0.0,
     rotation_seed: Optional[int] = None,
     blend_overlaps: bool = False,
-    use_exposed_area: bool = True  # Deprecated, kept for backward compatibility
+    use_exposed_area: bool = True,  # Deprecated, kept for backward compatibility
+    jitter_position: float = 0.0,
+    jitter_size: float = 0.0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian',
+    jitter_exclude: str = '',
+    drift: bool = False,
+    drift_tolerance: float = 0.2,
+    drift_max_iterations: int = 10,
+    drift_max_step: float = 2.0,
+    jitter_steps: int = 1,
+    target_image: Optional[Path] = None,
+    target_weight: float = 0.5,
 ) -> np.ndarray:
     """Render all clusters as flower patterns.
 
@@ -587,6 +624,12 @@ def render_flower(
         blend_overlaps: If True, use subtractive CMY blending at petal overlaps
             (C+M=Blue, C+Y=Green, M+Y=Red, C+M+Y≈Black)
         use_exposed_area: Deprecated - exposed area sizing is always used
+        jitter_position: Position jitter strength (0-100, percentage of radius)
+        jitter_size: Size jitter strength (0-100, percentage of radius)
+        jitter_seed: Random seed for reproducible jitter (optional)
+        jitter_algorithm: 'gaussian' or 'uniform' distribution
+        target_image: Optional target halftone PNG for style transfer
+        target_weight: Target matching strength (0.0-1.0, default: 0.5)
 
     Returns:
         BGR numpy array with rendered flowers
@@ -603,10 +646,22 @@ def render_flower(
             rotation_mode=rotation_mode,
             base_rotation=base_rotation,
             rotation_seed=rotation_seed,
+            jitter_position=jitter_position,
+            jitter_size=jitter_size,
+            jitter_seed=jitter_seed,
+            jitter_algorithm=jitter_algorithm,
+            jitter_exclude=jitter_exclude,
+            drift=drift,
+            drift_tolerance=drift_tolerance,
+            drift_max_iterations=drift_max_iterations,
+            drift_max_step=drift_max_step,
+            jitter_steps=jitter_steps,
+            target_image=target_image,
+            target_weight=target_weight,
         )
 
     h, w = image_shape
-    out_h, out_w = h * scale, w * scale
+    out_h, out_w = int(h * scale), int(w * scale)
 
     # White background
     output = np.full((out_h, out_w, 3), 255, dtype=np.uint8)
@@ -631,7 +686,11 @@ def render_flower(
             petal_distance=petal_distance,
             scale=scale,
             rotation_offset=rotation,
-            blend_overlaps=blend_overlaps
+            blend_overlaps=blend_overlaps,
+            jitter_position=jitter_position,
+            jitter_size=jitter_size,
+            jitter_seed=jitter_seed,
+            jitter_algorithm=jitter_algorithm
         )
 
         for color, count in drawn.items():
@@ -650,6 +709,18 @@ def render_flower_global_blend(
     base_rotation: float = 0.0,
     rotation_seed: Optional[int] = None,
     progress_callback: Optional[Callable[[int, int, str, Optional[dict]], None]] = None,
+    jitter_position: float = 0.0,
+    jitter_size: float = 0.0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian',
+    jitter_exclude: str = '',
+    drift: bool = False,
+    drift_tolerance: float = 0.2,
+    drift_max_iterations: int = 10,
+    drift_max_step: float = 2.0,
+    jitter_steps: int = 1,
+    target_image: Optional[Path] = None,
+    target_weight: float = 0.5,
 ) -> np.ndarray:
     """Render all clusters with global CMY subtractive blending.
 
@@ -690,7 +761,7 @@ def render_flower_global_blend(
         BGR numpy array with globally blended flowers
     """
     h, w = image_shape
-    out_h, out_w = h * scale, w * scale
+    out_h, out_w = int(h * scale), int(w * scale)
 
     # Phase 1a: Collect all BLACK geometry first
     # We need the global black mask before optimizing petal radii
@@ -704,6 +775,19 @@ def render_flower_global_blend(
         cx = cluster.x * scale
         cy = cluster.y * scale
 
+        # Apply position jitter to cluster center if enabled
+        if jitter_position > 0 and jitter_seed is not None:
+            # Generate unique seed for this cluster based on position
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius_for_jitter = radius_from_pixels(cluster.black)
+            cx, cy = apply_position_jitter(
+                cx, cy,
+                position_pct=jitter_position,
+                base_radius=black_radius_for_jitter * scale,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+
         # Compute rotation for this cluster
         rotation = compute_cluster_rotation(
             cluster.x, cluster.y,
@@ -714,6 +798,17 @@ def render_flower_global_blend(
 
         # Calculate black radius
         black_radius = radius_from_pixels(cluster.black)
+        
+        # Apply size jitter to black radius if enabled
+        if jitter_size > 0 and jitter_seed is not None:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = apply_size_jitter(
+                black_radius,
+                size_pct=jitter_size,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
         if cluster.black > 0 and black_radius > 0:
             black_circles.append((cx, cy, black_radius))
 
@@ -837,8 +932,9 @@ def render_flower_global_blend(
                     metadata
                 )
             else:
-                print(f"    Phase 1c: Optimizing petals {current}/{total_clusters} ({pct}%) "
-                      f"[{throughput:.1f} clusters/sec, ETA {eta_seconds:.1f}s]", flush=True)
+                logger = get_logger(__name__)
+                logger.info(f"    Phase 1c: Optimizing petals {current}/{total_clusters} ({pct}%) "
+                           f"[{throughput:.1f} clusters/sec, ETA {eta_seconds:.1f}s]")
 
         cx, cy = data['cx'], data['cy']
         black_radius = data['black_radius']
@@ -1045,7 +1141,7 @@ def render_cmyk_blend(
         BGR numpy array with rendered image
     """
     h, w = image_shape
-    out_h, out_w = h * scale, w * scale
+    out_h, out_w = int(h * scale), int(w * scale)
 
     # White background
     output = np.full((out_h, out_w, 3), 255, dtype=np.uint8)
@@ -1055,4 +1151,1248 @@ def render_cmyk_blend(
             continue
         render_cmyk_blend_cluster(output, cluster, scale=scale)
 
+    return output
+
+
+def _apply_jitter_to_circles(
+    circles_by_color: Dict[str, List[Tuple[float, float, float]]],
+    cluster_metadata: List[Dict[str, Any]],
+    cluster_circle_map: List[Dict[str, Tuple[int, int]]],
+    jitter_position: float,
+    jitter_size: float,
+    jitter_seed: int,
+    jitter_algorithm: str,
+    excluded_colors: set,
+    scale: int,
+) -> Dict[str, List[Tuple[float, float, float]]]:
+    """Apply position and size jitter to existing circles.
+    
+    Used in multi-step jitter-drift pipeline to re-jitter circles at each step
+    with a different seed, compounding the randomization effect.
+    
+    Args:
+        circles_by_color: Dict mapping colors to list of (x, y, r) tuples
+        cluster_metadata: List of cluster info dicts (cx, cy, black_radius, etc.)
+        cluster_circle_map: List of dicts mapping color -> (circle_index, target_pixels)
+        jitter_position: Position jitter percentage (0-100)
+        jitter_size: Size jitter percentage (0-100)
+        jitter_seed: Random seed for this jitter step
+        jitter_algorithm: 'gaussian' or 'uniform'
+        excluded_colors: Set of color names to exclude from jitter
+        scale: Scale factor applied to coordinates
+    
+    Returns:
+        Updated circles_by_color dict with jittered positions and sizes
+    """
+    # Convert to mutable lists
+    circles_by_color = {
+        color: list(circles)
+        for color, circles in circles_by_color.items()
+    }
+    
+    # Apply jitter to each cluster's circles
+    for cluster_idx, circle_indices in enumerate(cluster_circle_map):
+        if not circle_indices:
+            continue
+        
+        metadata = cluster_metadata[cluster_idx]
+        cluster_x = metadata.get('original_x', metadata['cx'] / scale)
+        cluster_y = metadata.get('original_y', metadata['cy'] / scale)
+        
+        # Apply jitter to petal circles (CMY)
+        for color in ['cyan', 'magenta', 'yellow']:
+            if color in circle_indices and color not in excluded_colors:
+                circle_idx, target_pixels = circle_indices[color]
+                cx, cy, r = circles_by_color[color][circle_idx]
+                
+                # Position jitter
+                if jitter_position > 0:
+                    # Generate unique seed for this circle
+                    color_offset = {'cyan': 100, 'magenta': 200, 'yellow': 300}[color]
+                    circle_seed = jitter_seed + int(cluster_x) * 10000 + int(cluster_y) + color_offset
+                    
+                    # Jitter amount based on radius
+                    jitter_amount = (r / scale) * (jitter_position / 100.0) * scale
+                    
+                    cx, cy = apply_position_jitter(
+                        cx, cy,
+                        position_pct=jitter_position,
+                        base_radius=r,
+                        seed=circle_seed,
+                        algorithm=jitter_algorithm
+                    )
+                
+                # Size jitter
+                if jitter_size > 0:
+                    color_offset = {'cyan': 100, 'magenta': 200, 'yellow': 300}[color]
+                    circle_seed = jitter_seed + int(cluster_x) * 10000 + int(cluster_y) + color_offset + 1000
+                    
+                    r = apply_size_jitter(
+                        r,
+                        size_pct=jitter_size,
+                        seed=circle_seed,
+                        algorithm=jitter_algorithm
+                    )
+                
+                circles_by_color[color][circle_idx] = (cx, cy, r)
+        
+        # Apply jitter to black circle if not excluded
+        if 'black' not in excluded_colors:
+            black_idx = metadata.get('black_circle_idx')
+            if black_idx is not None:
+                cx, cy, r = circles_by_color['black'][black_idx]
+                
+                if jitter_position > 0:
+                    circle_seed = jitter_seed + int(cluster_x) * 10000 + int(cluster_y)
+                    cx, cy = apply_position_jitter(
+                        cx, cy,
+                        position_pct=jitter_position,
+                        base_radius=r,
+                        seed=circle_seed,
+                        algorithm=jitter_algorithm
+                    )
+                
+                if jitter_size > 0:
+                    circle_seed = jitter_seed + int(cluster_x) * 10000 + int(cluster_y) + 1000
+                    r = apply_size_jitter(
+                        r,
+                        size_pct=jitter_size,
+                        seed=circle_seed,
+                        algorithm=jitter_algorithm
+                    )
+                
+                circles_by_color['black'][black_idx] = (cx, cy, r)
+    
+    return circles_by_color
+
+
+def _apply_drift_to_svg_circles(
+    circles_by_color: Dict[str, List[Tuple[float, float, float]]],
+    cluster_metadata: List[Dict[str, Any]],
+    cluster_circle_map: List[Dict[str, Tuple[int, int]]],
+    image_shape: Tuple[int, int],
+    drift_tolerance: float,
+    max_iterations: int,
+    max_step_size: Optional[float] = None,
+    output_dir: Optional[Path] = None,
+) -> Dict[str, List[Tuple[float, float, float]]]:
+    """Apply drift-balanced size compensation to SVG circles.
+    
+    Uses cluster-local rendering (option B) to measure actual vs target pixel masses,
+    then iteratively adjusts circle radii to maintain color balance.
+    
+    Args:
+        circles_by_color: Dict mapping colors to list of (x, y, r) tuples
+        cluster_metadata: List of cluster info dicts (cx, cy, black_radius, decomposed_counts)
+        cluster_circle_map: List of dicts mapping color -> (circle_index, target_pixels)
+        image_shape: (height, width) for rendering
+        drift_tolerance: Acceptable deviation from target mass (0.0-1.0)
+        max_iterations: Maximum balancing iterations
+        max_step_size: Optional maximum scale_factor per iteration (e.g., 2.0 = max 2x growth/shrink)
+    
+    Returns:
+        Updated circles_by_color dict with adjusted radii
+    """
+    import numpy as np
+    import cv2
+    
+    h, w = image_shape
+    
+    # Convert to mutable lists
+    circles_by_color = {
+        color: list(circles)
+        for color, circles in circles_by_color.items()
+    }
+    
+    # Iterate to balance
+    for iteration in range(max_iterations):
+        all_balanced = True
+        adjustments_made = 0
+        sum_squared_error = 0.0
+        total_circles = 0
+        
+        # For each cluster, measure and adjust
+        for cluster_idx, circle_indices in enumerate(cluster_circle_map):
+            if not circle_indices:
+                continue
+            
+            metadata = cluster_metadata[cluster_idx]
+            cx_cluster = metadata['cx']
+            cy_cluster = metadata['cy']
+            black_r = metadata['black_radius']
+            black_idx = metadata['black_circle_idx']
+            
+            # Get actual black circle (may be jittered)
+            if black_idx is not None:
+                black_circle = circles_by_color['black'][black_idx]
+            else:
+                # No black circle for this cluster
+                black_circle = (cx_cluster, cy_cluster, black_r)
+            
+            # Gather all circles for this flower
+            flower_circles = {
+                'cyan': None,
+                'magenta': None,
+                'yellow': None,
+                'black': black_circle  # Use actual jittered black circle
+            }
+            
+            # Get current petal circles
+            for color in ['cyan', 'magenta', 'yellow']:
+                if color in circle_indices:
+                    circle_idx, target_pixels = circle_indices[color]
+                    flower_circles[color] = circles_by_color[color][circle_idx]
+            
+            # Measure exposed areas for full flower
+            exposed_counts = _measure_full_flower_exposure(
+                flower_circles['cyan'],
+                flower_circles['magenta'],
+                flower_circles['yellow'],
+                flower_circles['black'],
+                h, w
+            )
+            
+            # Adjust each petal
+            for color in ['cyan', 'magenta', 'yellow']:
+                if color not in circle_indices:
+                    continue
+                
+                circle_idx, target_pixels = circle_indices[color]
+                cx, cy, r = circles_by_color[color][circle_idx]
+                actual_pixels = exposed_counts[color]
+                
+                # If petal is completely occluded (actual=0), size adjustment can't fix it.
+                # This happens when jitter moved it completely under black. Skip it.
+                if actual_pixels == 0:
+                    continue
+                
+                # If measurement is unreliable (<5 pixels), skip it
+                if actual_pixels < 5:
+                    continue
+                
+                # Calculate deviation and accumulate squared error
+                deviation = (actual_pixels - target_pixels) / target_pixels if target_pixels > 0 else 0
+                sum_squared_error += deviation * deviation
+                total_circles += 1
+                
+                if abs(deviation) > drift_tolerance:
+                    all_balanced = False
+                    
+                    # Adjust size: scale by sqrt ratio
+                    scale_factor = math.sqrt(target_pixels / actual_pixels) if actual_pixels > 0 else 1.0
+                    
+                    # Clamp scale_factor to limit change per iteration
+                    # max_step_size represents max multiplier (e.g., 2.0 = allow 2x growth or 0.5x shrink)
+                    if max_step_size is not None:
+                        # Clamp to range [1 - max_step_size, 1 + max_step_size] for small steps
+                        # Or [1 / max_step_size, max_step_size] for large steps (old behavior)
+                        if max_step_size < 1.0:
+                            # Small step mode: 0.02 means ±2% change (0.98x to 1.02x)
+                            min_scale = 1.0 - max_step_size
+                            max_scale = 1.0 + max_step_size
+                        else:
+                            # Large step mode: 2.0 means 0.5x to 2x
+                            min_scale = 1.0 / max_step_size
+                            max_scale = max_step_size
+                        scale_factor = max(min_scale, min(max_scale, scale_factor))
+                    
+                    cx, cy, r = circles_by_color[color][circle_idx]
+                    new_r = max(0.5, r * scale_factor)
+                    
+                    adjustments_made += 1
+                    
+                    # Update circle
+                    circles_by_color[color][circle_idx] = (cx, cy, new_r)
+        
+        # Calculate RMS error for convergence metric
+        rms_error = math.sqrt(sum_squared_error / total_circles) if total_circles > 0 else 0.0
+        print(f"\r[DRIFT] Iteration {iteration}: adjusted {adjustments_made} circles, RMS error={rms_error:.4f}", end='', flush=True)
+        
+        if all_balanced:
+            print(f"\n[DRIFT] Converged after {iteration + 1} iterations", flush=True)
+            break
+    
+    if not all_balanced:
+        rms_error = math.sqrt(sum_squared_error / total_circles) if total_circles > 0 else 0.0
+        print(f"\n[DRIFT] Did not converge after {max_iterations} iterations (RMS error={rms_error:.4f})", flush=True)
+    
+    # Save final cluster states for debugging - EXACT data that went into SVG
+    final_states = []
+    for cluster_idx, metadata in enumerate(cluster_metadata):
+        cluster_state = {
+            'cluster_id': cluster_idx,
+            'center': (metadata['cx'], metadata['cy']),
+            'black': {'radius': metadata['black_radius']},
+            'circles': {}
+        }
+        
+        # Find all circles belonging to this cluster by matching positions
+        cx, cy = metadata['cx'], metadata['cy']
+        for color in ['cyan', 'magenta', 'yellow']:
+            cluster_state['circles'][color] = []
+            for circle_cx, circle_cy, circle_r in circles_by_color[color]:
+                # Match circles within distance of cluster center (account for jitter)
+                if abs(circle_cx - cx) < 50 and abs(circle_cy - cy) < 50:
+                    cluster_state['circles'][color].append({
+                        'position': (float(circle_cx), float(circle_cy)),
+                        'radius': float(circle_r)
+                    })
+        
+        final_states.append(cluster_state)
+    
+    import json
+    if output_dir:
+        debug_file = output_dir / 'drift_debug_clusters.json'
+    else:
+        debug_file = Path('drift_debug_clusters.json')
+    with open(debug_file, 'w') as f:
+        json.dump(final_states, f, indent=2)
+    print(f"[DRIFT] Saved debug data: {debug_file.name}", flush=True)
+    
+    return circles_by_color
+
+
+def _measure_full_flower_exposure(
+    cyan_circle: Optional[Tuple[float, float, float]],
+    magenta_circle: Optional[Tuple[float, float, float]],
+    yellow_circle: Optional[Tuple[float, float, float]],
+    black_circle: Tuple[float, float, float],
+    h: int,
+    w: int,
+) -> Dict[str, int]:
+    """Measure exposed pixels for each color in a full flower (with all occlusion).
+    
+    Renders the complete flower with proper layering (CMY under, black on top),
+    counts visible pixels of each color considering all overlaps.
+    
+    OPTIMIZED: Only renders in local bounding box around the flower, not full image.
+    
+    Args:
+        cyan_circle, magenta_circle, yellow_circle: Optional (x, y, r) tuples
+        black_circle: (x, y, r) tuple for black circle
+        h, w: Canvas dimensions (for bounds checking only)
+    
+    Returns:
+        Dict with keys 'cyan', 'magenta', 'yellow', 'black' and exposed pixel counts
+    """
+    import numpy as np
+    import cv2
+    
+    # Find bounding box for all circles
+    min_x, max_x = black_circle[0] - black_circle[2], black_circle[0] + black_circle[2]
+    min_y, max_y = black_circle[1] - black_circle[2], black_circle[1] + black_circle[2]
+    
+    for circle in [cyan_circle, magenta_circle, yellow_circle]:
+        if circle is not None and circle[2] > 0:
+            min_x = min(min_x, circle[0] - circle[2])
+            max_x = max(max_x, circle[0] + circle[2])
+            min_y = min(min_y, circle[1] - circle[2])
+            max_y = max(max_y, circle[1] + circle[2])
+    
+    # Add padding and clamp to image bounds
+    padding = 5
+    min_x = max(0, int(min_x) - padding)
+    max_x = min(w, int(max_x) + padding)
+    min_y = max(0, int(min_y) - padding)
+    max_y = min(h, int(max_y) + padding)
+    
+    local_w = max_x - min_x
+    local_h = max_y - min_y
+    
+    if local_w <= 0 or local_h <= 0:
+        return {'cyan': 0, 'magenta': 0, 'yellow': 0, 'black': 0}
+    
+    # Create local masks (offset coordinates to local space)
+    masks = {}
+    
+    for color, circle in [('cyan', cyan_circle), ('magenta', magenta_circle), 
+                          ('yellow', yellow_circle)]:
+        if circle is not None and circle[2] > 0:
+            mask = np.zeros((local_h, local_w), dtype=np.uint8)
+            local_x = int(circle[0]) - min_x
+            local_y = int(circle[1]) - min_y
+            cv2.circle(mask, (local_x, local_y), int(circle[2]),
+                      255, thickness=-1, lineType=cv2.LINE_AA)
+            masks[color] = mask
+        else:
+            masks[color] = np.zeros((local_h, local_w), dtype=np.uint8)
+    
+    # Black circle mask (offset to local space)
+    if black_circle[2] > 0:
+        black_mask = np.zeros((local_h, local_w), dtype=np.uint8)
+        local_x = int(black_circle[0]) - min_x
+        local_y = int(black_circle[1]) - min_y
+        cv2.circle(black_mask, (local_x, local_y), int(black_circle[2]),
+                  255, thickness=-1, lineType=cv2.LINE_AA)
+        masks['black'] = black_mask
+    else:
+        masks['black'] = np.zeros((local_h, local_w), dtype=np.uint8)
+    
+    # Calculate exposed areas (black occludes everything)
+    black_pixels = masks['black'] > 0
+    exposed = {}
+    
+    for color in ['cyan', 'magenta', 'yellow']:
+        # Petal minus black occlusion
+        exposed[color] = masks[color] & ~black_pixels
+    
+    exposed['black'] = black_pixels
+    
+    # Count pixels
+    return {
+        color: int(np.sum(mask))
+        for color, mask in exposed.items()
+    }
+
+
+def _measure_svg_circle_mass(
+    petal_x: float,
+    petal_y: float,
+    petal_r: float,
+    black_r: float,
+    black_x: float,
+    black_y: float,
+    h: int,
+    w: int,
+) -> int:
+    """Measure actual pixel mass for a circle in cluster-local rendering.
+    
+    Renders just the petal and its cluster's black circle in isolation,
+    counts exposed pixels (petal - black overlap).
+    
+    Args:
+        petal_x, petal_y, petal_r: Petal circle parameters
+        black_r, black_x, black_y: Black circle parameters
+        h, w: Canvas dimensions
+    
+    Returns:
+        Number of exposed pixels
+    """
+    import numpy as np
+    import cv2
+    
+    # Create local mask for this petal
+    petal_mask = np.zeros((h, w), dtype=np.uint8)
+    if petal_r > 0:
+        cv2.circle(petal_mask, (int(petal_x), int(petal_y)), int(petal_r),
+                  255, thickness=-1, lineType=cv2.LINE_AA)
+    
+    # Create local mask for black (if exists)
+    if black_r > 0:
+        black_mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.circle(black_mask, (int(black_x), int(black_y)), int(black_r),
+                  255, thickness=-1, lineType=cv2.LINE_AA)
+        # Subtract black from petal
+        exposed = petal_mask & ~(black_mask > 0)
+    else:
+        exposed = petal_mask > 0
+    
+    return np.count_nonzero(exposed)
+
+
+def render_flower_svg(
+    clusters: List[ClusterResult],
+    image_shape: Tuple[int, int],
+    petal_distance: float = 0.35,
+    scale: float = 1.0,
+    skip_partial: bool = False,
+    rotation_mode: str = 'fixed',
+    base_rotation: float = 0.0,
+    rotation_seed: Optional[int] = None,
+    jitter_position: float = 0.0,
+    jitter_size: float = 0.0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian',
+    jitter_exclude: str = '',
+    drift: bool = False,
+    drift_tolerance: float = 0.2,
+    drift_max_iterations: int = 10,
+    drift_max_step: float = 2.0,
+    jitter_steps: int = 1,
+    target_image: Optional[Path] = None,
+    target_weight: float = 0.5,
+    centroid_drift: bool = False,
+    centroid_step: float = 0.5,
+    ink_masks: Optional[Dict[str, np.ndarray]] = None,
+    precision: int = 1,
+    output_dir: Optional[Path] = None,
+) -> str:
+    """Render flower clusters directly as SVG (no rasterization).
+    
+    This is the native SVG rendering path that generates vector output directly
+    from circle geometry without intermediate numpy array. Uses the same
+    positioning, rotation, and jitter logic as render_flower(), but outputs
+    SVG with proper CMYK layer structure and blend modes.
+    
+    Architecture: Detection → Vector data → SVG (lossless, first-class output)
+    
+    Args:
+        clusters: List of ClusterResult from detection
+        image_shape: (height, width) of original image
+        petal_distance: Fraction of black radius for petal center placement
+        scale: Output scale factor
+        skip_partial: If True, skip edge clusters
+        rotation_mode: 'fixed', 'random', or 'cluster-hash'
+        base_rotation: Base angle offset in degrees
+        rotation_seed: Random seed for 'random' mode
+        jitter_position: Position jitter strength (0-100, percentage of radius)
+        jitter_size: Size jitter strength (0-100, percentage of radius)
+        jitter_seed: Random seed for reproducible jitter (optional)
+        jitter_algorithm: 'gaussian' or 'uniform' distribution
+        drift: If True, enable drift-balanced jitter (size compensation for color balance)
+        drift_tolerance: Tolerance for color mass deviation (0.0-1.0, default 0.2)
+        target_image: Path to target halftone PNG for style transfer (optional)
+        target_weight: Balance between target matching and color accuracy (0.0-1.0)
+        centroid_drift: If True, move petals toward color centroids instead of random jitter
+        centroid_step: Fraction of distance to move toward centroid (0.0-1.0)
+        ink_masks: Pre-separated CMYK masks from separate_cmyk_inks() (required for centroid_drift)
+        precision: Decimal places for coordinates (default 1)
+    
+    Returns:
+        Complete SVG document as string
+    """
+    h, w = image_shape
+    out_h, out_w = int(h * scale), int(w * scale)
+    
+    # CMYK colors in RGB hex for SVG
+    COLORS_HEX = {
+        'cyan': '#00FFFF',
+        'magenta': '#FF00FF',
+        'yellow': '#FFFF00',
+        'black': '#000000'
+    }
+    
+    # Collect circles by color for layer grouping
+    circles_by_color = {
+        'yellow': [],
+        'magenta': [],
+        'cyan': [],
+        'black': []
+    }
+    
+    # For drift: track cluster metadata and circle-to-cluster mapping
+    cluster_metadata = []  # List of dicts with cluster info
+    cluster_circle_map = []  # List of dicts mapping colors to their index in circles_by_color
+    
+    # Parse jitter exclusion list (c=cyan, m=magenta, y=yellow, k=black)
+    color_map = {'c': 'cyan', 'm': 'magenta', 'y': 'yellow', 'k': 'black'}
+    excluded_colors = set()
+    if jitter_exclude:
+        for char in jitter_exclude.lower():
+            if char in color_map:
+                excluded_colors.add(color_map[char])
+    
+    for cluster_idx, cluster in enumerate(clusters):
+        if skip_partial and cluster.partial:
+            continue
+        
+        cx = cluster.x * scale
+        cy = cluster.y * scale
+        
+        # Compute rotation for this cluster
+        rotation = compute_cluster_rotation(
+            cluster.x, cluster.y,
+            mode=rotation_mode,
+            base_rotation=base_rotation,
+            seed=rotation_seed
+        )
+        
+        # Debug logging for first few clusters
+        if cluster_idx < 5:
+            print(f"[ROTATION DEBUG] Cluster {cluster_idx} at ({cluster.x}, {cluster.y}): mode={rotation_mode}, seed={rotation_seed}, rotation={rotation:.1f}°", flush=True)
+        
+        # Apply position jitter to cluster center if enabled
+        if jitter_position > 0 and jitter_seed is not None and 'black' not in excluded_colors:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = radius_from_pixels(cluster.black)
+            cx, cy = apply_position_jitter(
+                cx, cy,
+                position_pct=jitter_position,
+                base_radius=black_radius * scale,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
+        # Calculate black radius
+        black_radius = radius_from_pixels(cluster.black)
+        
+        # Apply size jitter to black radius if enabled
+        if jitter_size > 0 and jitter_seed is not None and 'black' not in excluded_colors:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = apply_size_jitter(
+                black_radius,
+                size_pct=jitter_size,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
+        # CMYK Decomposition: Add RGB overlaps to CMY primaries
+        decomposed_counts = {
+            'cyan': cluster.cyan + cluster.green + cluster.blue,
+            'magenta': cluster.magenta + cluster.red + cluster.blue,
+            'yellow': cluster.yellow + cluster.red + cluster.green,
+        }
+        
+        # Track cluster metadata for drift
+        # Store original coordinates (pre-jitter) for reproducible multi-step jitter
+        cluster_info = {
+            'cx': cx,
+            'cy': cy,
+            'original_x': cluster.x,  # Original coordinates for consistent seeding
+            'original_y': cluster.y,
+            'black_radius': black_radius * scale,
+            'decomposed_counts': decomposed_counts,
+            'black_circle_idx': None,  # Will be set when we add black circle
+        }
+        cluster_metadata.append(cluster_info)
+        
+        # Track which circles belong to this cluster
+        circle_indices = {}
+        
+        # Generate circles for each color
+        for color in ['yellow', 'magenta', 'cyan']:
+            pixel_count = decomposed_counts[color]
+            if pixel_count <= 0:
+                continue
+            
+            # Calculate preliminary radius
+            preliminary_radius = radius_from_pixels(pixel_count)
+            if preliminary_radius <= 0:
+                continue
+            
+            # Position petal with rotation offset
+            angle_deg = PETAL_ANGLES[color] + rotation
+            angle_rad = math.radians(angle_deg - 90)  # -90 to start from top
+            
+            # Distance from center: fraction of black radius
+            dist = black_radius * petal_distance
+            
+            # Calculate petal radius so EXPOSED area equals target pixel count
+            if black_radius > 0 and dist < black_radius + preliminary_radius:
+                # Petal overlaps with black - use exposed area formula
+                petal_radius = radius_for_exposed_pixels(pixel_count, black_radius, dist)
+            else:
+                # No overlap with black - simple area formula
+                petal_radius = preliminary_radius
+            
+            # Apply size jitter to petal radius if enabled
+            if jitter_size > 0 and jitter_seed is not None and color not in excluded_colors:
+                # Use different seed offset per color to vary each petal
+                color_offset = {'cyan': 100, 'magenta': 200, 'yellow': 300}[color]
+                petal_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y) + color_offset
+                petal_radius = apply_size_jitter(
+                    petal_radius,
+                    size_pct=jitter_size,
+                    seed=petal_seed,
+                    algorithm=jitter_algorithm
+                )
+            
+            petal_x = cx + dist * math.cos(angle_rad)
+            petal_y = cy + dist * math.sin(angle_rad)
+            
+            # Apply centroid-guided position drift if enabled
+            if centroid_drift and ink_masks is not None and color in ink_masks:
+                # Find centroid of this color's pixels in local region using pre-separated mask
+                search_radius = black_radius * 2.0 * scale  # Search 2x black radius
+                centroid = compute_color_centroid_from_mask(
+                    color_mask=ink_masks[color],
+                    cluster_cx=petal_x / scale,  # Convert back to source coords
+                    cluster_cy=petal_y / scale,
+                    search_radius=search_radius / scale,
+                )
+                if centroid is not None:
+                    # Move petal toward centroid
+                    new_x, new_y = apply_centroid_position(
+                        petal_x=petal_x / scale,
+                        petal_y=petal_y / scale,
+                        centroid_x=centroid[0],
+                        centroid_y=centroid[1],
+                        step_size=centroid_step,
+                    )
+                    petal_x = new_x * scale
+                    petal_y = new_y * scale
+            
+            if petal_radius > 0.5:  # Skip tiny circles
+                circle_idx = len(circles_by_color[color])
+                circles_by_color[color].append((petal_x, petal_y, petal_radius * scale))
+                circle_indices[color] = (circle_idx, pixel_count)  # Store index and target pixels
+        
+        # Add black center
+        if cluster.black > 0 and black_radius > 0.5:
+            black_idx = len(circles_by_color['black'])
+            circles_by_color['black'].append((cx, cy, black_radius * scale))
+            cluster_metadata[-1]['black_circle_idx'] = black_idx
+        
+        # Store circle mapping for this cluster
+        cluster_circle_map.append(circle_indices)
+    
+    # Apply drift balancing if enabled (iterate jitter_steps times)
+    if drift and (jitter_position > 0 or jitter_size > 0):
+        print(f"[DRIFT] Starting: {len(cluster_metadata)} clusters, {jitter_steps} step(s)", flush=True)
+        
+        # Use GPU acceleration if available
+        from .gpu import is_gpu_available
+        use_gpu = is_gpu_available()
+        
+        for step in range(jitter_steps):
+            step_seed = (jitter_seed + step) if jitter_seed is not None else None
+            if jitter_steps > 1:
+                print(f"[DRIFT] Step {step + 1}/{jitter_steps} (seed={step_seed})", flush=True)
+            
+            # Apply jitter at each step (re-jitter from current positions)
+            # This compounds the jitter effect across steps
+            if step_seed is not None:
+                circles_by_color = _apply_jitter_to_circles(
+                    circles_by_color=circles_by_color,
+                    cluster_metadata=cluster_metadata,
+                    cluster_circle_map=cluster_circle_map,
+                    jitter_position=jitter_position,
+                    jitter_size=jitter_size,
+                    jitter_seed=step_seed,
+                    jitter_algorithm=jitter_algorithm,
+                    excluded_colors=excluded_colors,
+                    scale=scale,
+                )
+            
+            if use_gpu:
+                from .gpu_renderer import apply_drift_gpu
+                circles_by_color = apply_drift_gpu(
+                    circles_by_color=circles_by_color,
+                    cluster_metadata=cluster_metadata,
+                    cluster_circle_map=cluster_circle_map,
+                    image_shape=(out_h, out_w),
+                    drift_tolerance=drift_tolerance,
+                    max_iterations=drift_max_iterations,
+                    max_step_size=drift_max_step,
+                    jitter_seed=step_seed,
+                )
+            else:
+                circles_by_color = _apply_drift_to_svg_circles(
+                    circles_by_color=circles_by_color,
+                    cluster_metadata=cluster_metadata,
+                    cluster_circle_map=cluster_circle_map,
+                    image_shape=(out_h, out_w),
+                    drift_tolerance=drift_tolerance,
+                    max_iterations=drift_max_iterations,
+                    max_step_size=drift_max_step,
+                    output_dir=output_dir,
+                    jitter_seed=step_seed,
+                )
+        print(f"[DRIFT] Completed", flush=True)
+    
+    # Apply target-guided optimization if target image provided
+    if target_image is not None and drift:
+        from .target_guided import (
+            parse_target_image,
+            apply_target_guided_optimization,
+            TargetGuidedConfig,
+        )
+        print(f"[TARGET] Parsing target image: {target_image}", flush=True)
+        target_index = parse_target_image(
+            target_image,
+            sensitivity='relaxed',
+            min_radius=1,
+            max_radius=100,
+        )
+        
+        config = TargetGuidedConfig(
+            target_image_path=target_image,
+            target_weight=target_weight,
+            step_size=0.1,
+            max_iterations=drift_max_iterations,
+            convergence_threshold=drift_tolerance,
+        )
+        
+        circles_by_color = apply_target_guided_optimization(
+            circles_by_color=circles_by_color,
+            cluster_metadata=cluster_metadata,
+            cluster_circle_map=cluster_circle_map,
+            target_index=target_index,
+            image_shape=(out_h, out_w),
+            config=config,
+        )
+        print(f"[TARGET] Optimization complete", flush=True)
+    
+    # Build SVG document
+    svg_lines = []
+    svg_lines.append('<?xml version="1.0" encoding="UTF-8"?>')
+    svg_lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" '
+                    f'width="{out_w}" height="{out_h}" '
+                    f'viewBox="0 0 {out_w} {out_h}">')
+    svg_lines.append(f'  <title>DotMatrix Flower Rendering</title>')
+    svg_lines.append(f'  <desc>CMYK halftone with {len(clusters)} clusters</desc>')
+    
+    # White background
+    svg_lines.append(f'  <rect width="{out_w}" height="{out_h}" fill="#FFFFFF"/>')
+    
+    # Draw CMYK layers in order (Y, M, C, K) with blend modes
+    # Note: In SVG, later elements paint over earlier ones
+    # Blend mode "multiply" handles overlaps correctly (subtractive mixing)
+    for color in ['yellow', 'magenta', 'cyan', 'black']:
+        circles = circles_by_color[color]
+        if not circles:
+            continue
+        
+        svg_lines.append(f'  <g id="{color}-layer" fill="{COLORS_HEX[color]}" '
+                        f'style="mix-blend-mode: multiply">')
+        
+        for cx, cy, r in circles:
+            # Format with specified precision
+            cx_str = f'{cx:.{precision}f}'
+            cy_str = f'{cy:.{precision}f}'
+            r_str = f'{r:.{precision}f}'
+            svg_lines.append(f'    <circle cx="{cx_str}" cy="{cy_str}" r="{r_str}"/>')
+        
+        svg_lines.append('  </g>')
+    
+    svg_lines.append('</svg>')
+    
+    return '\n'.join(svg_lines)
+
+
+def render_planetary_svg(
+    clusters: List[ClusterResult],
+    image_shape: Tuple[int, int],
+    scale: float = 1.0,
+    skip_partial: bool = False,
+    rotation_mode: str = 'fixed',
+    base_rotation: float = 0.0,
+    rotation_seed: Optional[int] = None,
+    jitter_position: float = 0.0,
+    jitter_size: float = 0.0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian',
+    jitter_exclude: str = '',
+    drift: bool = False,
+    drift_tolerance: float = 0.2,
+    drift_max_iterations: int = 10,
+    drift_max_step: float = 2.0,
+    jitter_steps: int = 1,
+    precision: int = 1,
+    output_dir: Optional[Path] = None,
+) -> str:
+    """Render planetary clusters directly as SVG - CMY dots tangent to black surface.
+    
+    Like moons orbiting a planet, CMY dots sit ON the surface of the black circle
+    rather than overlapping with it like flower mode. This creates a more "atomic"
+    or "molecular" appearance with better color separation.
+    
+    Key difference from flower:
+    - Flower: petal_distance = black_radius * fraction (dots overlap black)
+    - Planetary: orbital_distance = black_radius + petal_radius (dots tangent)
+    
+    Args:
+        clusters: List of ClusterResult from detection
+        image_shape: (height, width) of original image
+        scale: Output scale factor
+        skip_partial: If True, skip edge clusters
+        rotation_mode: 'fixed', 'random', or 'cluster-hash'
+        base_rotation: Base angle offset in degrees
+        rotation_seed: Random seed for 'random' mode
+        jitter_position: Position jitter strength (0-100, percentage of radius)
+        jitter_size: Size jitter strength (0-100, percentage of radius)
+        jitter_seed: Random seed for reproducible jitter (optional)
+        jitter_algorithm: 'gaussian' or 'uniform' distribution
+        jitter_exclude: Colors to exclude from jitter (c=cyan, m=magenta, y=yellow, k=black)
+        drift: If True, enable drift-balanced jitter
+        drift_tolerance: Tolerance for color mass deviation (0.0-1.0)
+        drift_max_iterations: Max drift iterations
+        drift_max_step: Max drift step size
+        jitter_steps: Number of jitter-drift iterations
+        precision: Decimal places for coordinates (default 1)
+        output_dir: Optional output directory for debug files
+    
+    Returns:
+        Complete SVG document as string
+    """
+    h, w = image_shape
+    out_h, out_w = int(h * scale), int(w * scale)
+    
+    # CMYK colors in RGB hex for SVG
+    COLORS_HEX = {
+        'cyan': '#00FFFF',
+        'magenta': '#FF00FF',
+        'yellow': '#FFFF00',
+        'black': '#000000'
+    }
+    
+    # Collect circles by color for layer grouping
+    circles_by_color = {
+        'yellow': [],
+        'magenta': [],
+        'cyan': [],
+        'black': []
+    }
+    
+    # For drift: track cluster metadata and circle-to-cluster mapping
+    cluster_metadata = []
+    cluster_circle_map = []
+    
+    # Parse jitter exclusion list
+    color_map = {'c': 'cyan', 'm': 'magenta', 'y': 'yellow', 'k': 'black'}
+    excluded_colors = set()
+    if jitter_exclude:
+        for char in jitter_exclude.lower():
+            if char in color_map:
+                excluded_colors.add(color_map[char])
+    
+    for cluster_idx, cluster in enumerate(clusters):
+        if skip_partial and cluster.partial:
+            continue
+        
+        cx = cluster.x * scale
+        cy = cluster.y * scale
+        
+        # Compute rotation for this cluster
+        rotation = compute_cluster_rotation(
+            cluster.x, cluster.y,
+            mode=rotation_mode,
+            base_rotation=base_rotation,
+            seed=rotation_seed
+        )
+        
+        # Apply position jitter to cluster center if enabled
+        if jitter_position > 0 and jitter_seed is not None and 'black' not in excluded_colors:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = radius_from_pixels(cluster.black)
+            cx, cy = apply_position_jitter(
+                cx, cy,
+                position_pct=jitter_position,
+                base_radius=black_radius * scale,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
+        # Calculate black radius
+        black_radius = radius_from_pixels(cluster.black)
+        
+        # Apply size jitter to black radius if enabled
+        if jitter_size > 0 and jitter_seed is not None and 'black' not in excluded_colors:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = apply_size_jitter(
+                black_radius,
+                size_pct=jitter_size,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
+        # CMYK Decomposition: Add RGB overlaps to CMY primaries
+        decomposed_counts = {
+            'cyan': cluster.cyan + cluster.green + cluster.blue,
+            'magenta': cluster.magenta + cluster.red + cluster.blue,
+            'yellow': cluster.yellow + cluster.red + cluster.green,
+        }
+        
+        # Track cluster metadata for drift
+        cluster_info = {
+            'cx': cx,
+            'cy': cy,
+            'original_x': cluster.x,
+            'original_y': cluster.y,
+            'black_radius': black_radius * scale,
+            'decomposed_counts': decomposed_counts,
+            'black_circle_idx': None,
+        }
+        cluster_metadata.append(cluster_info)
+        
+        # Track which circles belong to this cluster
+        circle_indices = {}
+        
+        # Generate circles for each color - PLANETARY POSITIONING
+        for color in ['yellow', 'magenta', 'cyan']:
+            pixel_count = decomposed_counts[color]
+            if pixel_count <= 0:
+                continue
+            
+            # Calculate petal radius (no exposed-area compensation needed - dots are fully visible)
+            petal_radius = radius_from_pixels(pixel_count)
+            if petal_radius <= 0:
+                continue
+            
+            # Position petal with rotation offset
+            angle_deg = PETAL_ANGLES[color] + rotation
+            angle_rad = math.radians(angle_deg - 90)  # -90 to start from top
+            
+            # PLANETARY: Distance = black_radius + petal_radius (tangent to black surface)
+            # This ensures CMY dots touch but don't overlap the black circle
+            dist = black_radius + petal_radius
+            
+            # Apply size jitter to petal radius if enabled
+            if jitter_size > 0 and jitter_seed is not None and color not in excluded_colors:
+                color_offset = {'cyan': 100, 'magenta': 200, 'yellow': 300}[color]
+                petal_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y) + color_offset
+                petal_radius = apply_size_jitter(
+                    petal_radius,
+                    size_pct=jitter_size,
+                    seed=petal_seed,
+                    algorithm=jitter_algorithm
+                )
+                # Recalculate distance with jittered radius
+                dist = black_radius + petal_radius
+            
+            petal_x = cx + dist * math.cos(angle_rad)
+            petal_y = cy + dist * math.sin(angle_rad)
+            
+            if petal_radius > 0.5:  # Skip tiny circles
+                circle_idx = len(circles_by_color[color])
+                circles_by_color[color].append((petal_x, petal_y, petal_radius * scale))
+                circle_indices[color] = (circle_idx, pixel_count)
+        
+        # Add black center
+        if cluster.black > 0 and black_radius > 0.5:
+            black_idx = len(circles_by_color['black'])
+            circles_by_color['black'].append((cx, cy, black_radius * scale))
+            cluster_metadata[-1]['black_circle_idx'] = black_idx
+        
+        # Store circle mapping for this cluster
+        cluster_circle_map.append(circle_indices)
+    
+    # Apply drift balancing if enabled (iterate jitter_steps times)
+    # Note: Drift may have less impact on planetary since dots don't overlap black
+    if drift and (jitter_position > 0 or jitter_size > 0):
+        print(f"[DRIFT] Starting planetary: {len(cluster_metadata)} clusters, {jitter_steps} step(s)", flush=True)
+        print(f"[DEBUG] jitter_position={jitter_position}, jitter_size={jitter_size}, excluded={excluded_colors}", flush=True)
+        
+        # Sample a circle before jitter for debugging
+        if circles_by_color['cyan']:
+            sample_before = circles_by_color['cyan'][0]
+            print(f"[DEBUG] Sample cyan circle BEFORE jitter: {sample_before}", flush=True)
+        
+        from .gpu import is_gpu_available
+        use_gpu = is_gpu_available()
+        
+        for step in range(jitter_steps):
+            step_seed = (jitter_seed + step) if jitter_seed is not None else None
+            if jitter_steps > 1:
+                print(f"[DRIFT] Step {step + 1}/{jitter_steps} (seed={step_seed})", flush=True)
+            
+            if step_seed is not None:
+                circles_by_color = _apply_jitter_to_circles(
+                    circles_by_color=circles_by_color,
+                    cluster_metadata=cluster_metadata,
+                    cluster_circle_map=cluster_circle_map,
+                    jitter_position=jitter_position,
+                    jitter_size=jitter_size,
+                    jitter_seed=step_seed,
+                    jitter_algorithm=jitter_algorithm,
+                    excluded_colors=excluded_colors,
+                    scale=scale,
+                )
+                # Debug: show sample after jitter
+                if circles_by_color['cyan']:
+                    print(f"[DEBUG] Cyan[0] after jitter step {step+1}: {circles_by_color['cyan'][0]}", flush=True)
+            
+            if use_gpu:
+                from .gpu_renderer import apply_drift_gpu
+                circles_by_color = apply_drift_gpu(
+                    circles_by_color=circles_by_color,
+                    cluster_metadata=cluster_metadata,
+                    cluster_circle_map=cluster_circle_map,
+                    image_shape=(out_h, out_w),
+                    drift_tolerance=drift_tolerance,
+                    max_iterations=drift_max_iterations,
+                    max_step_size=drift_max_step,
+                    jitter_seed=step_seed,
+                )
+                # Debug: show sample after drift
+                if circles_by_color['cyan']:
+                    print(f"[DEBUG] Cyan[0] after drift step {step+1}: {circles_by_color['cyan'][0]}", flush=True)
+            else:
+                circles_by_color = _apply_drift_to_svg_circles(
+                    circles_by_color=circles_by_color,
+                    cluster_metadata=cluster_metadata,
+                    cluster_circle_map=cluster_circle_map,
+                    image_shape=(out_h, out_w),
+                    drift_tolerance=drift_tolerance,
+                    max_iterations=drift_max_iterations,
+                    max_step_size=drift_max_step,
+                    output_dir=output_dir,
+                    jitter_seed=step_seed,
+                )
+                # Debug: show sample after drift (CPU)
+                if circles_by_color['cyan']:
+                    print(f"[DEBUG] Cyan[0] after drift step {step+1}: {circles_by_color['cyan'][0]}", flush=True)
+        
+        # Debug: final sample before SVG generation
+        if circles_by_color['cyan']:
+            print(f"[DEBUG] Cyan[0] FINAL (before SVG): {circles_by_color['cyan'][0]}", flush=True)
+        print(f"[DRIFT] Completed", flush=True)
+    
+    # Build SVG document
+    svg_lines = []
+    svg_lines.append('<?xml version="1.0" encoding="UTF-8"?>')
+    svg_lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" '
+                    f'width="{out_w}" height="{out_h}" '
+                    f'viewBox="0 0 {out_w} {out_h}">')
+    svg_lines.append(f'  <title>DotMatrix Planetary Rendering</title>')
+    svg_lines.append(f'  <desc>CMYK halftone with {len(clusters)} clusters (planetary mode)</desc>')
+    
+    # White background
+    svg_lines.append(f'  <rect width="{out_w}" height="{out_h}" fill="#FFFFFF"/>')
+    
+    # Draw CMYK layers in order (Y, M, C, K) with blend modes
+    for color in ['yellow', 'magenta', 'cyan', 'black']:
+        circles = circles_by_color[color]
+        if not circles:
+            continue
+        
+        svg_lines.append(f'  <g id="{color}-layer" fill="{COLORS_HEX[color]}" '
+                        f'style="mix-blend-mode: multiply">')
+        
+        for cx, cy, r in circles:
+            cx_str = f'{cx:.{precision}f}'
+            cy_str = f'{cy:.{precision}f}'
+            r_str = f'{r:.{precision}f}'
+            svg_lines.append(f'    <circle cx="{cx_str}" cy="{cy_str}" r="{r_str}"/>')
+        
+        svg_lines.append('  </g>')
+    
+    svg_lines.append('</svg>')
+    
+    return '\n'.join(svg_lines)
+
+
+def render_planetary(
+    clusters: List[ClusterResult],
+    image_shape: Tuple[int, int],
+    scale: int = 1,
+    skip_partial: bool = False,
+    rotation_mode: str = 'fixed',
+    base_rotation: float = 0.0,
+    rotation_seed: Optional[int] = None,
+    blend_overlaps: bool = False,
+    jitter_position: float = 0.0,
+    jitter_size: float = 0.0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian',
+    jitter_exclude: str = '',
+) -> np.ndarray:
+    """Render all clusters as planetary patterns (PNG output).
+    
+    Each cluster becomes a planet with black center and CMY moons orbiting
+    tangent to the surface (not overlapping like flower mode).
+    
+    Args:
+        clusters: List of ClusterResult from detection
+        image_shape: (height, width) of original image
+        scale: Output scale factor
+        skip_partial: If True, skip edge clusters
+        rotation_mode: 'fixed', 'random', or 'cluster-hash'
+        base_rotation: Base angle offset in degrees
+        rotation_seed: Random seed for 'random' mode
+        blend_overlaps: If True, use subtractive CMY blending at petal overlaps
+        jitter_position: Position jitter strength (0-100)
+        jitter_size: Size jitter strength (0-100)
+        jitter_seed: Random seed for reproducible jitter
+        jitter_algorithm: 'gaussian' or 'uniform' distribution
+        jitter_exclude: Colors to exclude from jitter
+    
+    Returns:
+        BGR numpy array with rendered planetary patterns
+    """
+    h, w = image_shape
+    out_h, out_w = int(h * scale), int(w * scale)
+    
+    # White background
+    output = np.full((out_h, out_w, 3), 255, dtype=np.uint8)
+    
+    # Parse jitter exclusion list
+    color_map = {'c': 'cyan', 'm': 'magenta', 'y': 'yellow', 'k': 'black'}
+    excluded_colors = set()
+    if jitter_exclude:
+        for char in jitter_exclude.lower():
+            if char in color_map:
+                excluded_colors.add(color_map[char])
+    
+    for cluster in clusters:
+        if skip_partial and cluster.partial:
+            continue
+        
+        cx = cluster.x * scale
+        cy = cluster.y * scale
+        
+        # Compute rotation
+        rotation = compute_cluster_rotation(
+            cluster.x, cluster.y,
+            mode=rotation_mode,
+            base_rotation=base_rotation,
+            seed=rotation_seed
+        )
+        
+        # Apply position jitter to cluster center
+        if jitter_position > 0 and jitter_seed is not None and 'black' not in excluded_colors:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = radius_from_pixels(cluster.black)
+            cx, cy = apply_position_jitter(
+                cx, cy,
+                position_pct=jitter_position,
+                base_radius=black_radius * scale,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
+        # Calculate black radius
+        black_radius = radius_from_pixels(cluster.black)
+        
+        # Apply size jitter to black
+        if jitter_size > 0 and jitter_seed is not None and 'black' not in excluded_colors:
+            cluster_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y)
+            black_radius = apply_size_jitter(
+                black_radius,
+                size_pct=jitter_size,
+                seed=cluster_seed,
+                algorithm=jitter_algorithm
+            )
+        
+        # CMYK Decomposition
+        decomposed_counts = {
+            'cyan': cluster.cyan + cluster.green + cluster.blue,
+            'magenta': cluster.magenta + cluster.red + cluster.blue,
+            'yellow': cluster.yellow + cluster.red + cluster.green,
+        }
+        
+        # Draw CMY moons first (so black can overlay if needed)
+        for color in ['yellow', 'magenta', 'cyan']:
+            pixel_count = decomposed_counts[color]
+            if pixel_count <= 0:
+                continue
+            
+            petal_radius = radius_from_pixels(pixel_count)
+            if petal_radius <= 0:
+                continue
+            
+            # Position with rotation
+            angle_deg = PETAL_ANGLES[color] + rotation
+            angle_rad = math.radians(angle_deg - 90)
+            
+            # PLANETARY: tangent to black surface
+            dist = black_radius + petal_radius
+            
+            # Apply size jitter
+            if jitter_size > 0 and jitter_seed is not None and color not in excluded_colors:
+                color_offset = {'cyan': 100, 'magenta': 200, 'yellow': 300}[color]
+                petal_seed = jitter_seed + int(cluster.x) * 10000 + int(cluster.y) + color_offset
+                petal_radius = apply_size_jitter(
+                    petal_radius,
+                    size_pct=jitter_size,
+                    seed=petal_seed,
+                    algorithm=jitter_algorithm
+                )
+                dist = black_radius + petal_radius
+            
+            petal_x = cx + dist * math.cos(angle_rad)
+            petal_y = cy + dist * math.sin(angle_rad)
+            
+            # Draw the moon
+            if petal_radius > 0:
+                int_radius = max(1, int(round(petal_radius * scale)))
+                cv2.circle(output, (int(petal_x), int(petal_y)), int_radius,
+                          COLORS_BGR[color], thickness=-1, lineType=cv2.LINE_AA)
+        
+        # Draw black center
+        if cluster.black > 0 and black_radius > 0:
+            int_radius = max(1, int(round(black_radius * scale)))
+            cv2.circle(output, (int(cx), int(cy)), int_radius,
+                      COLORS_BGR['black'], thickness=-1, lineType=cv2.LINE_AA)
+    
     return output

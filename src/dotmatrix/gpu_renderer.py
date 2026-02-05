@@ -19,6 +19,8 @@ Performance:
 """
 
 import math
+import random
+from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any, Callable
 
 import numpy as np
@@ -26,9 +28,8 @@ import cv2
 
 from dotmatrix.gpu import is_gpu_available, get_array_module, to_gpu, to_cpu, synchronize
 from dotmatrix.cluster_pixel_counter import ClusterResult
+from dotmatrix.colors import COLORS_BGR, PETAL_ANGLES
 from dotmatrix.circle_renderer import (
-    COLORS_BGR,
-    PETAL_ANGLES,
     radius_from_pixels,
     radius_for_exposed_pixels,
     find_best_radius_for_pixels,
@@ -218,6 +219,220 @@ def _batch_count_exposed_pixels_cpu(
     return output
 
 
+def _apply_drift_compensation(
+    cluster_data: List[Dict[str, Any]],
+    cyan_circles: List[Tuple[float, float, float]],
+    magenta_circles: List[Tuple[float, float, float]],
+    yellow_circles: List[Tuple[float, float, float]],
+    black_circles: List[Tuple[float, float, float]],
+    image_shape: Tuple[int, int],
+    jitter_position: int,
+    jitter_size: int,
+    jitter_seed: Optional[int],
+    jitter_algorithm: str,
+    drift_tolerance: float,
+    max_iterations: int,
+    max_step_size: Optional[float] = None,
+) -> Tuple[List[Tuple[float, float, float]], List[Tuple[float, float, float]], List[Tuple[float, float, float]]]:
+    """Apply drift-balanced jitter with iterative size compensation.
+    
+    Strategy:
+    1. Apply jitter to positions
+    2. For each cluster, measure actual color mass per petal (render in isolation)
+    3. Compare to target masses, adjust sizes
+    4. Iterate until balanced or max iterations reached
+    
+    Args:
+        cluster_data: List of cluster metadata dicts from Phase 1a
+        cyan_circles, magenta_circles, yellow_circles: Initial circle lists (x, y, r)
+        black_circles: Black circle list for overlap calculation
+        image_shape: (height, width) for rendering
+        jitter_position: Position jitter strength (percentage)
+        jitter_size: Size jitter strength (percentage)
+        jitter_seed: Random seed
+        jitter_algorithm: 'gaussian' or 'uniform'
+        drift_tolerance: Acceptable deviation from target mass (0.0-1.0)
+        max_iterations: Maximum balancing iterations
+        max_step_size: Optional maximum scale_factor per iteration (e.g., 2.0 = max 2x growth/shrink)
+    
+    Returns:
+        Tuple of (cyan_circles, magenta_circles, yellow_circles) with adjusted sizes
+    """
+    h, w = image_shape
+    
+    # Build petal-to-cluster mapping (track which circles belong to which cluster)
+    # Each cluster has 3 petals (cyan, magenta, yellow) at specific indices
+    cluster_petal_map = []  # List of (cluster_idx, color, petal_idx_in_color_list)
+    cyan_idx, magenta_idx, yellow_idx = 0, 0, 0
+    
+    for cluster_idx, data in enumerate(cluster_data):
+        decomposed_counts = data['decomposed_counts']
+        cluster_petals = {}
+        
+        if decomposed_counts['cyan'] > 0:
+            cluster_petals['cyan'] = (cyan_idx, decomposed_counts['cyan'])
+            cyan_idx += 1
+        if decomposed_counts['magenta'] > 0:
+            cluster_petals['magenta'] = (magenta_idx, decomposed_counts['magenta'])
+            magenta_idx += 1
+        if decomposed_counts['yellow'] > 0:
+            cluster_petals['yellow'] = (yellow_idx, decomposed_counts['yellow'])
+            yellow_idx += 1
+        
+        cluster_petal_map.append(cluster_petals)
+    
+    # Convert circle lists to mutable lists for adjustment
+    cyan_circles = list(cyan_circles)
+    magenta_circles = list(magenta_circles)
+    yellow_circles = list(yellow_circles)
+    
+    # Initialize RNG for jitter
+    if jitter_seed is not None:
+        random.seed(jitter_seed)
+    
+    # Iteration 0: Apply jitter to positions and sizes
+    def apply_jitter_to_list(circles, color_offset):
+        """Apply jitter to position and size."""
+        jittered = []
+        if jitter_seed is not None:
+            random.seed(jitter_seed + color_offset)
+        
+        for cx, cy, r in circles:
+            # Position jitter
+            if jitter_position > 0:
+                jitter_amount = r * (jitter_position / 100.0)
+                if jitter_algorithm == 'gaussian':
+                    dx = random.gauss(0, jitter_amount / 2.0)
+                    dy = random.gauss(0, jitter_amount / 2.0)
+                else:
+                    dx = random.uniform(-jitter_amount, jitter_amount)
+                    dy = random.uniform(-jitter_amount, jitter_amount)
+                cx += dx
+                cy += dy
+            
+            # Size jitter
+            if jitter_size > 0:
+                jitter_amount = r * (jitter_size / 100.0)
+                if jitter_algorithm == 'gaussian':
+                    dr = random.gauss(0, jitter_amount / 2.0)
+                else:
+                    dr = random.uniform(-jitter_amount, jitter_amount)
+                r = max(1, r + dr)
+            
+            jittered.append((cx, cy, r))
+        return jittered
+    
+    cyan_circles = apply_jitter_to_list(cyan_circles, 100)
+    magenta_circles = apply_jitter_to_list(magenta_circles, 200)
+    yellow_circles = apply_jitter_to_list(yellow_circles, 300)
+    
+    # Iterate to balance
+    for iteration in range(max_iterations):
+        all_balanced = True
+        
+        # For each cluster, measure actual masses and adjust
+        for cluster_idx, cluster_petals in enumerate(cluster_petal_map):
+            if not cluster_petals:
+                continue
+            
+            # Get cluster's black circle for occlusion
+            cx_cluster, cy_cluster, black_r = black_circles[cluster_idx] if cluster_idx < len(black_circles) else (0, 0, 0)
+            
+            # Measure actual color masses for this cluster's petals
+            for color in ['cyan', 'magenta', 'yellow']:
+                if color not in cluster_petals:
+                    continue
+                
+                petal_idx, target_pixels = cluster_petals[color]
+                
+                # Get current circle
+                if color == 'cyan':
+                    cx, cy, r = cyan_circles[petal_idx]
+                elif color == 'magenta':
+                    cx, cy, r = magenta_circles[petal_idx]
+                else:  # yellow
+                    cx, cy, r = yellow_circles[petal_idx]
+                
+                # Measure actual mass (cluster-local rendering - option B)
+                actual_pixels = _measure_cluster_local_mass(cx, cy, r, black_r, cx_cluster, cy_cluster, h, w)
+                
+                # Skip if measurement failed or is too small to trust
+                if actual_pixels < 5:
+                    continue
+                
+                # Calculate deviation
+                deviation = (actual_pixels - target_pixels) / target_pixels if target_pixels > 0 else 0
+                
+                if abs(deviation) > drift_tolerance:
+                    all_balanced = False
+                    
+                    # Adjust size to compensate
+                    # If actual > target (too much mass), shrink
+                    # If actual < target (too little mass), grow
+                    scale_factor = math.sqrt(target_pixels / actual_pixels) if actual_pixels > 0 else 1.0
+                    
+                    # Optionally clamp scale_factor if max_step_size specified
+                    if max_step_size is not None:
+                        scale_factor = max(1.0 / max_step_size, min(max_step_size, scale_factor))
+                    
+                    new_r = max(1, r * scale_factor)
+                    
+                    # Update circle
+                    if color == 'cyan':
+                        cyan_circles[petal_idx] = (cx, cy, new_r)
+                    elif color == 'magenta':
+                        magenta_circles[petal_idx] = (cx, cy, new_r)
+                    else:  # yellow
+                        yellow_circles[petal_idx] = (cx, cy, new_r)
+        
+        if all_balanced:
+            break
+    
+    return cyan_circles, magenta_circles, yellow_circles
+
+
+def _measure_cluster_local_mass(
+    petal_x: float,
+    petal_y: float,
+    petal_r: float,
+    black_r: float,
+    black_x: float,
+    black_y: float,
+    h: int,
+    w: int,
+) -> int:
+    """Measure actual pixel mass for a petal in cluster-local rendering (option B).
+    
+    Renders just the petal and its cluster's black circle in isolation,
+    counts exposed pixels (petal - black overlap).
+    
+    Args:
+        petal_x, petal_y, petal_r: Petal circle parameters
+        black_r, black_x, black_y: Black circle parameters
+        h, w: Canvas dimensions
+    
+    Returns:
+        Number of exposed pixels
+    """
+    # Create local mask for this petal
+    petal_mask = np.zeros((h, w), dtype=np.uint8)
+    if petal_r > 0:
+        cv2.circle(petal_mask, (int(petal_x), int(petal_y)), int(petal_r),
+                  255, thickness=-1, lineType=cv2.LINE_AA)
+    
+    # Create local mask for black (if exists)
+    if black_r > 0:
+        black_mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.circle(black_mask, (int(black_x), int(black_y)), int(black_r),
+                  255, thickness=-1, lineType=cv2.LINE_AA)
+        # Subtract black from petal
+        exposed = petal_mask & ~(black_mask > 0)
+    else:
+        exposed = petal_mask > 0
+    
+    return np.count_nonzero(exposed)
+
+
 def render_flower_global_blend_gpu(
     clusters: List[ClusterResult],
     image_shape: Tuple[int, int],
@@ -229,6 +444,18 @@ def render_flower_global_blend_gpu(
     rotation_seed: Optional[int] = None,
     use_gpu: bool = True,
     progress_callback: Optional[Callable[[int, int, str, Optional[dict]], None]] = None,
+    jitter_position: int = 0,
+    jitter_size: int = 0,
+    jitter_seed: Optional[int] = None,
+    jitter_algorithm: str = 'gaussian',
+    jitter_exclude: str = '',
+    drift: bool = False,
+    drift_tolerance: float = 0.2,
+    drift_max_iterations: int = 10,
+    drift_max_step: float = 2.0,
+    jitter_steps: int = 1,
+    target_image: Optional[Path] = None,
+    target_weight: float = 0.5,
 ) -> np.ndarray:
     """GPU-accelerated global CMY blending flower renderer.
 
@@ -251,6 +478,12 @@ def render_flower_global_blend_gpu(
             - total: Total count for this phase
             - phase_name: String describing current phase (e.g., 'petal_optimization')
             - metadata: Optional dict with additional info (e.g., 'gpu': True/False)
+        jitter_position: Position jitter strength (percentage of radius)
+        jitter_size: Size jitter strength (percentage of radius)
+        jitter_seed: Random seed for reproducible jitter
+        jitter_algorithm: 'gaussian' or 'uniform' distribution
+        drift: If True, enable drift-balanced jitter (size compensation for color balance)
+        drift_tolerance: Tolerance for color mass deviation (0.0-1.0, default 0.2)
 
     Returns:
         BGR numpy array with globally blended flowers
@@ -508,6 +741,73 @@ def render_flower_global_blend_gpu(
                 elif color == 'yellow':
                     yellow_circles.append((petal_x, petal_y, best_r))
 
+    # Phase 1d: Drift-balanced jitter (if enabled)
+    if drift and (jitter_position > 0 or jitter_size > 0):
+        for step in range(jitter_steps):
+            step_seed = (jitter_seed + step) if jitter_seed is not None else None
+            if jitter_steps > 1:
+                print(f"[DRIFT] Step {step + 1}/{jitter_steps} (seed={step_seed})", flush=True)
+            if progress_callback:
+                progress_callback(step, jitter_steps, 'drift_balancing', {'gpu': gpu_available, 'step': step + 1, 'total_steps': jitter_steps})
+            
+            # Apply jitter first, then iteratively adjust sizes to maintain balance
+            cyan_circles, magenta_circles, yellow_circles = _apply_drift_compensation(
+                cluster_data=cluster_data,
+                cyan_circles=cyan_circles,
+                magenta_circles=magenta_circles,
+                yellow_circles=yellow_circles,
+                black_circles=black_circles,
+                image_shape=(out_h, out_w),
+                jitter_position=jitter_position,
+                jitter_size=jitter_size,
+                jitter_seed=step_seed,
+                jitter_algorithm=jitter_algorithm,
+                drift_tolerance=drift_tolerance,
+                max_iterations=drift_max_iterations,
+            )
+        if jitter_steps > 1:
+            print(f"[DRIFT] Completed {jitter_steps} steps", flush=True)
+    elif jitter_position > 0 or jitter_size > 0:
+        # Jitter without drift - apply directly to circles
+        if jitter_seed is not None:
+            random.seed(jitter_seed)
+        
+        def apply_jitter(circles, color_offset):
+            """Apply position and size jitter to circle list."""
+            jittered = []
+            # Set per-petal seed for independent randomization
+            if jitter_seed is not None:
+                random.seed(jitter_seed + color_offset)
+            
+            for cx, cy, r in circles:
+                # Position jitter
+                if jitter_position > 0:
+                    jitter_amount = r * (jitter_position / 100.0)
+                    if jitter_algorithm == 'gaussian':
+                        dx = random.gauss(0, jitter_amount / 2.0)
+                        dy = random.gauss(0, jitter_amount / 2.0)
+                    else:  # uniform
+                        dx = random.uniform(-jitter_amount, jitter_amount)
+                        dy = random.uniform(-jitter_amount, jitter_amount)
+                    cx += dx
+                    cy += dy
+                
+                # Size jitter
+                if jitter_size > 0:
+                    jitter_amount = r * (jitter_size / 100.0)
+                    if jitter_algorithm == 'gaussian':
+                        dr = random.gauss(0, jitter_amount / 2.0)
+                    else:  # uniform
+                        dr = random.uniform(-jitter_amount, jitter_amount)
+                    r = max(1, r + dr)
+                
+                jittered.append((cx, cy, r))
+            return jittered
+        
+        cyan_circles = apply_jitter(cyan_circles, 100)
+        magenta_circles = apply_jitter(magenta_circles, 200)
+        yellow_circles = apply_jitter(yellow_circles, 300)
+
     # Phase 2: Build global petal masks
     def build_petal_mask(circle_list):
         """Build a boolean mask of all petal circles for a single color channel.
@@ -549,3 +849,303 @@ def render_flower_global_blend_gpu(
     output[global_black] = COLORS_BGR['black']
 
     return output
+
+
+def apply_drift_gpu(
+    circles_by_color: Dict[str, List[Tuple[float, float, float]]],
+    cluster_metadata: List[Dict[str, Any]],
+    cluster_circle_map: List[Dict[str, Tuple[int, int]]],
+    image_shape: Tuple[int, int],
+    drift_tolerance: float,
+    max_iterations: int,
+    max_step_size: Optional[float] = None,
+    jitter_seed: Optional[int] = None,
+) -> Dict[str, List[Tuple[float, float, float]]]:
+    """GPU-accelerated drift correction with optimized memory transfers.
+    
+    Batches all measurements per iteration and processes them in parallel on GPU.
+    For 15K+ clusters, this provides 10-50x speedup vs CPU serial processing.
+    
+    Optimizations (v2):
+    - Position arrays (px, py) uploaded once before loop (they don't change)
+    - Target pixels array uploaded once (constant across iterations)
+    - Radii array updated in-place on GPU each iteration
+    - Adjustment calculation done on GPU via CUDA kernel (eliminates CPU loop)
+    - Measurement index arrays pre-built once before loop
+    
+    Args:
+        circles_by_color: Dict mapping colors to list of (x, y, r) tuples
+        cluster_metadata: List of cluster info dicts
+        cluster_circle_map: List of dicts mapping color -> (circle_index, target_pixels)
+        image_shape: (height, width) for rendering
+        drift_tolerance: Acceptable deviation from target mass
+        max_iterations: Maximum balancing iterations
+        max_step_size: Optional maximum scale factor per iteration
+    
+    Returns:
+        Updated circles_by_color dict with adjusted radii
+    """
+    try:
+        import cupy as cp
+    except ImportError:
+        # Fallback to CPU version
+        from .circle_renderer import _apply_drift_to_svg_circles
+        return _apply_drift_to_svg_circles(
+            circles_by_color, cluster_metadata, cluster_circle_map,
+            image_shape, drift_tolerance, max_iterations, max_step_size, None,
+            jitter_seed
+        )
+    
+    import math
+    
+    h, w = image_shape
+    
+    # Convert to mutable lists
+    circles_by_color = {
+        color: list(circles)
+        for color, circles in circles_by_color.items()
+    }
+    
+    # Build global black mask once (all black circles)
+    black_mask = np.zeros((h, w), dtype=np.uint8)
+    for cx, cy, r in circles_by_color.get('black', []):
+        if r > 0:
+            cv2.circle(black_mask, (int(cx), int(cy)), max(1, int(r)),
+                      255, thickness=-1, lineType=cv2.LINE_AA)
+    black_mask_bool = black_mask > 0
+    black_mask_gpu = cp.asarray(black_mask_bool)
+    
+    # CUDA kernel for measuring exposed pixels of petals
+    # Measures how much of each petal is visible (not covered by black)
+    measure_kernel = cp.RawKernel(r'''
+    extern "C" __global__
+    void measure_exposed_petals(
+        const bool* black_mask,
+        const float* px_arr, const float* py_arr, const float* pr_arr,
+        int* exposed_counts,
+        int n_petals, int width, int height
+    ) {
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx >= n_petals) return;
+        
+        float px = px_arr[idx];
+        float py = py_arr[idx];
+        float radius = pr_arr[idx];
+        
+        if (radius <= 0.5f) {
+            exposed_counts[idx] = 0;
+            return;
+        }
+        
+        // ROI bounds
+        int margin = (int)radius + 2;
+        int x1 = max(0, (int)px - margin);
+        int y1 = max(0, (int)py - margin);
+        int x2 = min(width, (int)px + margin + 1);
+        int y2 = min(height, (int)py + margin + 1);
+        
+        // Match cv2.circle LINE_AA behavior with (r + 0.5)^2
+        float effective_r = radius + 0.5f;
+        float radius_sq = effective_r * effective_r;
+        int count = 0;
+        
+        // Count pixels in circle NOT covered by black
+        for (int y = y1; y < y2; y++) {
+            for (int x = x1; x < x2; x++) {
+                float dx = x - px;
+                float dy = y - py;
+                float dist_sq = dx * dx + dy * dy;
+                
+                if (dist_sq <= radius_sq && !black_mask[y * width + x]) {
+                    count++;
+                }
+            }
+        }
+        
+        exposed_counts[idx] = count;
+    }
+    ''', 'measure_exposed_petals')
+    
+    # CUDA kernel for calculating radius adjustments on GPU
+    # Eliminates CPU-side serial loop - all adjustments computed in parallel
+    adjust_kernel = cp.RawKernel(r'''
+    extern "C" __global__
+    void calculate_adjustments(
+        const int* exposed_counts,
+        const int* target_pixels,
+        float* radii,
+        int* needs_adjustment,
+        float* squared_errors,
+        float drift_tolerance,
+        float min_scale,
+        float max_scale,
+        int n_petals
+    ) {
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx >= n_petals) return;
+        
+        int actual = exposed_counts[idx];
+        int target = target_pixels[idx];
+        
+        // Skip if completely occluded or measurement unreliable
+        if (actual < 5 || target <= 0) {
+            needs_adjustment[idx] = 0;
+            squared_errors[idx] = 0.0f;
+            return;
+        }
+        
+        // Calculate deviation
+        float deviation = (float)(actual - target) / (float)target;
+        squared_errors[idx] = deviation * deviation;
+        
+        if (fabsf(deviation) > drift_tolerance) {
+            // Adjust size: scale by sqrt ratio
+            float scale = sqrtf((float)target / (float)actual);
+            
+            // Clamp scale factor to limit change per iteration
+            scale = fmaxf(min_scale, fminf(max_scale, scale));
+            
+            // Update radius in-place (min 0.5)
+            radii[idx] = fmaxf(0.5f, radii[idx] * scale);
+            needs_adjustment[idx] = 1;
+        } else {
+            needs_adjustment[idx] = 0;
+        }
+    }
+    ''', 'calculate_adjustments')
+    
+    # ==========================================================================
+    # OPTIMIZATION: Pre-build measurement arrays ONCE before iteration loop
+    # These arrays define the structure of measurements and don't change
+    # ==========================================================================
+    
+    # Build measurement index arrays once (color indices, circle indices, targets)
+    # Maps: measurement_idx -> (color_code, circle_idx_in_color, target_pixels)
+    color_codes = []      # 0=cyan, 1=magenta, 2=yellow
+    circle_indices = []   # Index into circles_by_color[color]
+    target_pixels_list = []
+    px_list = []
+    py_list = []
+    pr_list = []
+    
+    color_to_code = {'cyan': 0, 'magenta': 1, 'yellow': 2}
+    
+    for cluster_idx, circle_map in enumerate(cluster_circle_map):
+        if not circle_map:
+            continue
+        
+        for color in ['cyan', 'magenta', 'yellow']:
+            if color not in circle_map:
+                continue
+            
+            circle_idx, target = circle_map[color]
+            cx, cy, r = circles_by_color[color][circle_idx]
+            
+            color_codes.append(color_to_code[color])
+            circle_indices.append(circle_idx)
+            target_pixels_list.append(target)
+            px_list.append(cx)
+            py_list.append(cy)
+            pr_list.append(r)
+    
+    n_petals = len(color_codes)
+    if n_petals == 0:
+        return circles_by_color
+    
+    # Convert to numpy arrays
+    color_codes_arr = np.array(color_codes, dtype=np.int32)
+    circle_indices_arr = np.array(circle_indices, dtype=np.int32)
+    target_pixels_arr = np.array(target_pixels_list, dtype=np.int32)
+    px_arr = np.array(px_list, dtype=np.float32)
+    py_arr = np.array(py_list, dtype=np.float32)
+    pr_arr = np.array(pr_list, dtype=np.float32)
+    
+    # ==========================================================================
+    # OPTIMIZATION: Upload position and target arrays to GPU ONCE
+    # Only radii change during iteration - positions and targets are constant
+    # ==========================================================================
+    px_gpu = cp.asarray(px_arr)  # Uploaded once, never changes
+    py_gpu = cp.asarray(py_arr)  # Uploaded once, never changes
+    target_gpu = cp.asarray(target_pixels_arr)  # Uploaded once, never changes
+    
+    # Radii array - will be updated in-place on GPU each iteration
+    pr_gpu = cp.asarray(pr_arr)
+    
+    # Output arrays (reused each iteration)
+    exposed_gpu = cp.zeros(n_petals, dtype=cp.int32)
+    needs_adjustment_gpu = cp.zeros(n_petals, dtype=cp.int32)
+    squared_errors_gpu = cp.zeros(n_petals, dtype=cp.float32)
+    
+    # Calculate scale bounds based on max_step_size
+    if max_step_size is not None:
+        if max_step_size < 1.0:
+            # Small step mode: 0.02 means ±2% change
+            min_scale = 1.0 - max_step_size
+            max_scale_val = 1.0 + max_step_size
+        else:
+            # Large step mode: 2.0 means 0.5x to 2x
+            min_scale = 1.0 / max_step_size
+            max_scale_val = max_step_size
+    else:
+        # Default: 0.5x to 2x (same as legacy behavior)
+        min_scale = 0.5
+        max_scale_val = 2.0
+    
+    # Kernel launch parameters
+    block_size = 256
+    grid_size = (n_petals + block_size - 1) // block_size
+    
+    # ==========================================================================
+    # Iteration loop - now with minimal GPU↔CPU transfers
+    # Only transfers per iteration: exposed_counts download for convergence check
+    # ==========================================================================
+    for iteration in range(max_iterations):
+        # Launch measurement kernel
+        measure_kernel(
+            (grid_size,), (block_size,),
+            (black_mask_gpu, px_gpu, py_gpu, pr_gpu, exposed_gpu,
+             n_petals, w, h)
+        )
+        
+        # Launch adjustment kernel (replaces CPU serial loop)
+        adjust_kernel(
+            (grid_size,), (block_size,),
+            (exposed_gpu, target_gpu, pr_gpu, needs_adjustment_gpu, squared_errors_gpu,
+             np.float32(drift_tolerance), np.float32(min_scale), np.float32(max_scale_val),
+             n_petals)
+        )
+        
+        # Check convergence using GPU reduction (minimal transfer)
+        adjustments_made = int(cp.sum(needs_adjustment_gpu))
+        
+        # Calculate RMS error on GPU
+        sum_squared_error = float(cp.sum(squared_errors_gpu))
+        # Count valid measurements (where squared_error > 0 means it was measured)
+        total_circles = int(cp.sum(squared_errors_gpu > 0))
+        rms_error = math.sqrt(sum_squared_error / total_circles) if total_circles > 0 else 0.0
+        
+        print(f"\r[DRIFT GPU] Iteration {iteration}: adjusted {adjustments_made} circles, RMS error={rms_error:.4f}", end='', flush=True)
+        
+        if adjustments_made == 0:
+            print(f"\n[DRIFT GPU] Converged after {iteration + 1} iterations", flush=True)
+            break
+    else:
+        # Did not converge
+        print(f"\n[DRIFT GPU] Did not converge after {max_iterations} iterations (RMS error={rms_error:.4f})", flush=True)
+    
+    # ==========================================================================
+    # OPTIMIZATION: Copy final radii back to CPU only ONCE at the end
+    # ==========================================================================
+    final_radii = cp.asnumpy(pr_gpu)
+    
+    # Update circles_by_color with final adjusted radii
+    for i in range(n_petals):
+        color_code = color_codes_arr[i]
+        circle_idx = circle_indices_arr[i]
+        new_r = float(final_radii[i])
+        
+        color = ['cyan', 'magenta', 'yellow'][color_code]
+        cx, cy, _ = circles_by_color[color][circle_idx]
+        circles_by_color[color][circle_idx] = (cx, cy, new_r)
+    
+    return circles_by_color

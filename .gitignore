@@ -50,6 +50,7 @@ Thumbs.db
 # Project specific
 output/
 temp/
+scripts/temp/
 log/
 *.log
 demo_results/
@@ -57,6 +58,10 @@ inputs/*.png
 inputs/*.jpg
 inputs/*.tiff
 !inputs/README.md
+
+# Benchmark and analysis artifacts
+*_results.json
+drift_debug_clusters.json
 
 # Temporary files
 *.tmp

@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "nw1w41",
+  "created_at": "2026-01-07T22:10:15.439551+00:00",
+  "template_name": "chore-basic",
+  "owner": "CAMERON",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "update-roadmap-md-milestone-status-and-progress",
+    "priority": "P1",
+    "status": "todo",
+    "type": "chore",
+    "sprint": "ARCHREVIEW",
+    "filename": "ARCHREVIEW-todo-P1-chore-update-roadmap-md-milestone-status-and-progress-nw1w41-CAMERON.md"
+  }
+}

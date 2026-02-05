@@ -74,6 +74,50 @@ class CalibrationParams:
 
 
 @dataclass
+class JitterParams:
+    """Jitter/randomization settings for breaking grid patterns.
+    
+    Controls random variation in circle positions and sizes to create
+    more natural-looking halftone patterns.
+    """
+    position: int = 0  # 0-100 percentage of radius
+    size: int = 0  # 0-100 percentage of radius
+    seed: Optional[int] = 1  # Random seed for reproducibility
+    algorithm: Literal['gaussian', 'uniform'] = 'gaussian'
+    exclude: str = ''  # Colors to exclude (e.g., "ck" for cyan+black)
+    drift: bool = False  # Enable drift-balanced jitter
+    drift_tolerance: float = 0.2  # 0.0-1.0 balance tolerance
+    drift_max_iterations: int = 10
+    drift_max_step: float = 2.0
+    steps: int = 1  # Number of jitter-drift iterations (each step uses seed+step offset)
+
+
+@dataclass
+class RenderParams:
+    """Renderer configuration parameters.
+    
+    Controls how detected clusters are rendered to output images.
+    All rendering-related options are consolidated here for easy
+    configuration via CLI or config file.
+    """
+    method: Literal['bullseye', 'block', 'treemap', 'exact', 'flower', 'planetary', 'cmyk-blend'] = 'bullseye'
+    segment_height: int = 10  # Block renderer row height
+    cluster_size: int = 20  # Treemap renderer rectangle size
+    scale: int = 1  # Output scale multiplier
+    color_mode: Literal['full', 'cmyk'] = 'full'  # 7-color or 4-color
+    diff_mode: Literal['mask', 'highlight'] = 'mask'
+    output_format: Literal['svg', 'png'] = 'svg'
+    # Flower/Planetary renderer specific
+    petal_rotation: Literal['fixed', 'random', 'cluster-hash'] = 'fixed'
+    petal_offset: float = 0.0  # Base rotation angle offset in degrees
+    petal_distance: float = 0.35  # Petal center distance as fraction of black radius (flower only)
+    exposed_area_sizing: bool = True  # Size petals based on visible area (flower only)
+    blend_overlaps: bool = False  # Use subtractive CMY blending
+    # Jitter settings (nested)
+    jitter: JitterParams = field(default_factory=JitterParams)
+
+
+@dataclass
 class DetectionConfig:
     """Complete detection configuration.
 
@@ -107,6 +151,7 @@ class DetectionConfig:
     output: OutputParams = field(default_factory=OutputParams)
     performance: PerformanceParams = field(default_factory=PerformanceParams)
     calibration: CalibrationParams = field(default_factory=CalibrationParams)
+    render: RenderParams = field(default_factory=RenderParams)
 
     def to_dict(self) -> dict:
         """Convert config to dictionary for serialization."""
@@ -161,6 +206,28 @@ class DetectionConfig:
         chunk_size: str,
         auto_calibrate: bool,
         calibrate_from: Optional[str],
+        # Render parameters
+        render_method: str = 'bullseye',
+        segment_height: int = 10,
+        cluster_size: int = 20,
+        render_scale: int = 1,
+        color_mode: str = 'full',
+        diff_mode: str = 'mask',
+        output_format: str = 'svg',
+        petal_rotation: str = 'fixed',
+        petal_offset: float = 0.0,
+        petal_distance: float = 0.35,
+        exposed_area_sizing: bool = True,
+        blend_overlaps: bool = False,
+        jitter_position: int = 0,
+        jitter_size: int = 0,
+        jitter_seed: Optional[int] = 1,
+        jitter_algorithm: str = 'gaussian',
+        jitter_exclude: str = '',
+        drift: bool = False,
+        drift_tolerance: float = 0.2,
+        drift_max_iterations: int = 10,
+        drift_max_step: float = 2.0,
     ) -> 'DetectionConfig':
         """Create DetectionConfig from CLI arguments.
 
@@ -213,5 +280,30 @@ class DetectionConfig:
             calibration=CalibrationParams(
                 auto_calibrate=auto_calibrate,
                 calibrate_from=calibrate_from,
+            ),
+            render=RenderParams(
+                method=render_method,
+                segment_height=segment_height,
+                cluster_size=cluster_size,
+                scale=render_scale,
+                color_mode=color_mode,
+                diff_mode=diff_mode,
+                output_format=output_format,
+                petal_rotation=petal_rotation,
+                petal_offset=petal_offset,
+                petal_distance=petal_distance,
+                exposed_area_sizing=exposed_area_sizing,
+                blend_overlaps=blend_overlaps,
+                jitter=JitterParams(
+                    position=jitter_position,
+                    size=jitter_size,
+                    seed=jitter_seed,
+                    algorithm=jitter_algorithm,
+                    exclude=jitter_exclude,
+                    drift=drift,
+                    drift_tolerance=drift_tolerance,
+                    drift_max_iterations=drift_max_iterations,
+                    drift_max_step=drift_max_step,
+                ),
             ),
         )

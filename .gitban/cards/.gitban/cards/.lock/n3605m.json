@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "n3605m",
+  "created_at": "2026-01-08T07:01:45.791699+00:00",
+  "template_name": "refactor",
+  "owner": "CAMERON",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "add-renderconfig-dataclass-to-config-system",
+    "priority": "P2",
+    "status": "backlog",
+    "type": "refactor",
+    "sprint": "ARCHDEBT",
+    "filename": "ARCHDEBT-backlog-P2-refactor-add-renderconfig-dataclass-to-config-system-n3605m-CAMERON.md"
+  }
+}

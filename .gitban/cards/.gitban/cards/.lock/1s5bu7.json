@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "1s5bu7",
+  "created_at": "2026-01-09T00:51:58.933039+00:00",
+  "template_name": "refactor",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "gpu-drift-iteration-memory-and-computation-optimization",
+    "priority": "P1",
+    "status": "todo",
+    "type": "refactor",
+    "sprint": "GPUDRIFT",
+    "filename": "GPUDRIFT-todo-P1-refactor-gpu-drift-iteration-memory-and-computation-optimization-1s5bu7.md"
+  }
+}

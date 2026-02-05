@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "r25nf2",
+  "created_at": "2026-01-08T07:00:18.265459+00:00",
+  "template_name": "feature-sprint",
+  "owner": "CAMERON",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "archdebt-sprint-planning",
+    "priority": "P1",
+    "status": "todo",
+    "type": "feature",
+    "sprint": "ARCHDEBT",
+    "filename": "ARCHDEBT-todo-P1-feature-archdebt-sprint-planning-r25nf2-CAMERON.md"
+  }
+}

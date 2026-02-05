@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "card_id": "llmfio",
+  "created_at": "2026-01-05T20:37:51.128516+00:00",
+  "template_name": "spike-user-validation",
+  "owner": "UNASSIGNED",
+  "created_by": "mcp_tool",
+  "initial_metadata": {
+    "title": "validate-ascii-output-legibility",
+    "priority": "P2",
+    "status": "backlog",
+    "type": "spike",
+    "sprint": "V2IDEAS",
+    "filename": "V2IDEAS-backlog-P2-spike-validate-ascii-output-legibility-llmfio.md"
+  }
+}
